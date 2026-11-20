@@ -45,11 +45,17 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
   'pan', 'kettle', 'plates', 'takeaway']; // (the last row: the prologue's kitchen)
 // level 2A's street (tools/generate_assets.py, "the road of level 2A"): what stands on its sidewalks, in its works and
 // over it, and the pieces a car loses (Vehicle.shed, data/destruction.js CAR_PARTS); what is painted on its ground
-// (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps
+// (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps. Its part two (the works and the detour, the
+// side street, the on-ramp, the toll: generate_assets.py RAMP_PROPS / RAMP_PAINT) is listed at the end of each
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
-  'gantry_sign', 'car_bumper', 'car_bumper_black', 'car_mirror', 'car_hubcap', 'car_headlight', 'car_plate', 'car_grille'];
+  'gantry_sign', 'car_bumper', 'car_bumper_black', 'car_mirror', 'car_hubcap', 'car_headlight', 'car_plate', 'car_grille',
+  'road_closed', 'sign_detour', 'sign_detour_left', 'jersey_barrier', 'water_barrier', 'excavator', 'dump_truck', 'works_light',
+  'site_fence', 'roller_door', 'loading_dock', 'chainlink_gate', 'pallet_stack', 'oil_drum', 'sign_stop', 'guardrail',
+  'guardrail_end', 'crash_cushion', 'highway_lamp', 'sign_freeway', 'sign_wrong_way', 'sign_speed_55', 'sign_toll_ahead',
+  'reflector_post', 'toll_island', 'toll_booth', 'toll_canopy', 'gate_arm_wood', 'gate_arm_bit_a', 'gate_arm_bit_b',
+  'gate_arm_bit_c', 'gate_steel', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
@@ -58,8 +64,13 @@ const ROAD_PAINT = [
   'road_arrow_turn', 'road_bus', 'road_clear', 'road_crack_a', 'road_crack_b', 'road_keep', 'road_only', 'road_patch_a',
   'road_patch_b', 'road_patch_c', 'road_slow', 'road_stop', 'spoil', 'steel_plate', 'stop_line', 'tree_grate', 'trench',
   'valve_cap', 'viaduct_shadow', 'zebra_a', 'zebra_b',
-  'hatch_kerb', 'oil_stain_a', 'oil_stain_b', 'road_loading', 'skid_marks']; // (the last row: level 1's street)
-const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade'];
+  'hatch_kerb', 'oil_stain_a', 'oil_stain_b', 'road_loading', 'skid_marks',
+  'road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
+  'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow', 'rumble_strip',
+  'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4'];
+// (in ROAD_PAINT: level 1's street from hatch_kerb to skid_marks; from road_cut on, 2A's part two: the works, the ramp, the toll)
+const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
+  'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop'];
 // level 1's interiors (tools/generate_assets.py, "the rooms of level 1": INTERIOR_PROPS): what its shops, its
 // laundromat, the bar's back and its offices are full of, what hangs on their walls, two things painted on a floor
 const INTERIOR_PROPS = ['shop_shelf', 'wine_rack', 'beer_cases', 'lottery_stand', 'tv_stack', 'vcr_shelf', 'tv_box', 'repair_bench',

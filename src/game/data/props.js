@@ -20,7 +20,7 @@ export const ON_WALL = new Set(['wall_lamp', 'tube_light', 'neon_tube_pink', 'ne
   'towel_dispenser', 'neon_sign_beer', 'neon_sign_bay', 'poster_pinup', 'poster_revue', 'mirror_strip', 'neon_sign_lips',
   'conduit', 'flyers', 'neon_sign_diner', 'neon_sign_cafe', 'security_mirror', 'cig_rack', 'price_board', 'tape_rack',
   'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'wall_clock', 'cleaning_rack', 'boiler', 'mirror_cracked',
-  'mailboxes', 'calendar']);
+  'mailboxes', 'calendar', 'roller_door']);
 
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
@@ -340,6 +340,64 @@ export const PROPS = {
   viaduct: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'metal', w: 144, h: 320, hp: 99, chips: '#3c4350', sound: 'metal' },
   gantry_sign: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'metal', w: 306, h: 36, hp: 99, chips: '#1c6a4c', sound: 'metal',
     light: [{ r: 70, color: '#fff0c8', intensity: 0.4, x: -65, y: 22 }, { r: 70, color: '#fff0c8', intensity: 0.4, x: 65, y: 22 }] },
+  // ---- level 2A, part two (docs/LEVEL2.md segment 2; sprites: "level 2A, part two" in tools/generate_assets.py): the
+  // works that close the street and the detour, the side street, the on-ramp, the toll. What a car goes through is
+  // light and loose (flung: Drive.fling) or bolted and not `lasting` (torn off at once); what is `lasting` never gives
+  // (nose-on into it is the crash; along it the car scrapes).
+  // The road closed: the barricade across it (ROAD CLOSED, a flasher on each end), the DETOUR signs on their stands
+  road_closed: { signal: 'flash', material: 'wood', w: 124, h: 8, hp: 4, kg: 60, mu: 0.5, chips: '#d0242c', sound: 'wood',
+    lamps: [[[0, 128]], [[128, 128]]],
+    light: [{ r: 40, color: '#ffb02a', intensity: 0.5, x: -58, y: -5.5 }, { r: 40, color: '#ffb02a', intensity: 0.5, x: 58, y: -5.5 }] },
+  sign_detour: { material: 'metal', w: 38, h: 6, hp: 3, kg: 9, mu: 0.45, chips: '#f08a1c', sound: 'metal' },
+  sign_detour_left: { material: 'metal', w: 38, h: 6, hp: 3, kg: 9, mu: 0.45, chips: '#f08a1c', sound: 'metal' },
+  // a concrete barrier never gives; a water-filled one bursts (static: torn) and lets its water go
+  jersey_barrier: { static: true, lasting: true, vault: true, material: 'stone', w: 96, h: 18, hp: 99, chips: '#a8a49a', sound: 'stone', blocksPath: true },
+  water_barrier: { static: true, vault: true, material: 'plastic', w: 56, h: 18, hp: 6, chips: '#ee6a1e', sound: 'wood' },
+  // the works' plant, parked: never moved
+  excavator: { static: true, lasting: true, material: 'metal', w: 184, h: 78, hp: 99, chips: '#d8a018', sparks: true, sound: 'metal', blocksPath: true },
+  dump_truck: { static: true, lasting: true, material: 'metal', w: 236, h: 78, hp: 99, chips: '#c04a1c', sparks: true, sound: 'metal', blocksPath: true },
+  // the lighting tower: its floodlights face +x (the pool thrown ahead of them); knocked down, they die
+  works_light: { fixture: true, static: true, material: 'metal', w: 60, h: 34, hp: 8, chips: '#d8d6cc', sparks: true, glass: true, sound: 'metal', blocksPath: true,
+    light: [{ r: 240, color: '#eef4ff', intensity: 0.85, x: 44 }, { r: 70, color: '#ffffff', intensity: 0.45, x: -10 }] },
+  site_fence: { static: true, material: 'mesh', w: 110, h: 4, hp: 16, chips: '#9ea4ae', sound: 'metal' },
+  // the side street: a shed's shutter on its wall (marked, never gone), a loading bay's edge, a yard's gate, what
+  // lies about
+  roller_door: { static: true, lasting: true, material: 'metal', w: 96, h: 4, hp: 99, chips: '#7c8494', sound: 'metal' },
+  loading_dock: { static: true, lasting: true, material: 'stone', w: 128, h: 22, hp: 99, chips: '#8e8a84', sound: 'stone', blocksPath: true },
+  chainlink_gate: { static: true, material: 'mesh', w: 126, h: 4, hp: 20, chips: '#9ea4ae', sound: 'metal' },
+  pallet_stack: { vault: true, material: 'wood', w: 38, h: 32, hp: 10, kg: 110, mu: 0.55, chips: '#b89060', sound: 'wood' },
+  oil_drum: { material: 'metal', r: 9, hp: 8, kg: 70, mu: 0.4, chips: '#2a4a8a', sound: 'metal' },
+  sign_stop: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#c8242c', sound: 'metal', bends: 6 },
+  // the on-ramp: the guardrail and its end (along it the car scrapes), the sand barrels (they burst), the lamps over
+  // it, its signs on their posts, the delineators
+  guardrail: { static: true, lasting: true, material: 'metal', w: 128, h: 6, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
+  guardrail_end: { static: true, lasting: true, material: 'metal', w: 60, h: 14, hp: 99, chips: '#e8c020', sparks: true, sound: 'metal' },
+  crash_cushion: { static: true, material: 'plastic', w: 84, h: 82, hp: 10, chips: '#e8c020', sound: 'wood' },
+  highway_lamp: { material: 'metal', r: 4, hp: 5, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.02,
+    light: [{ r: 210, color: '#ffb46a', intensity: 0.85, x: -90 }, { r: 210, color: '#ffb46a', intensity: 0.85, x: 90 }] },
+  sign_freeway: { overhead: true, height: 0.012, pole: ['#4a4e58', 3], static: true, material: 'metal', r: 3, hp: 4, chips: '#1c6a4c', sound: 'metal', bends: 6 },
+  sign_wrong_way: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#c8242c', sound: 'metal', bends: 6 },
+  sign_speed_55: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#ece8de', sound: 'metal', bends: 6 },
+  sign_toll_ahead: { overhead: true, height: 0.012, pole: ['#4a4e58', 3], static: true, material: 'metal', r: 3, hp: 4, chips: '#1c6a4c', sound: 'metal', bends: 6 },
+  reflector_post: { static: true, material: 'plastic', r: 1.5, hp: 2, chips: '#e8e4da', sound: 'wood' },
+  // the toll: islands and booths never give; the roof over the lanes is out of reach (it fades over him); the wooden
+  // arm is torn off (its pieces, gate_arm_bit_*, are loose bits to throw), the steel one kills; the lane lights
+  toll_island: { static: true, lasting: true, material: 'stone', w: 254, h: 46, hp: 99, chips: '#d8b030', sound: 'stone', blocksPath: true },
+  toll_booth: { static: true, lasting: true, material: 'metal', glass: true, w: 92, h: 38, hp: 99, chips: '#d8d4c8', sound: 'metal', blocksPath: true,
+    light: { r: 70, color: '#ffe2a8', intensity: 0.6, x: 13 } },
+  toll_canopy: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 188, h: 636, hp: 99, chips: '#4e5562', sound: 'metal',
+    light: [{ r: 150, color: '#e8f0ff', intensity: 0.6, y: -216 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: -72 },
+      { r: 150, color: '#e8f0ff', intensity: 0.6, y: 72 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: 216 }] },
+  gate_arm_wood: { static: true, material: 'wood', w: 110, h: 4, hp: 3, chips: '#d0242c', sound: 'wood' },
+  gate_arm_bit_a: { material: 'wood', w: 42, h: 4, hp: 2, kg: 3, mu: 0.5, chips: '#d0242c', sound: 'wood' },
+  gate_arm_bit_b: { material: 'wood', w: 30, h: 4, hp: 2, kg: 2, mu: 0.5, chips: '#d0242c', sound: 'wood' },
+  gate_arm_bit_c: { material: 'wood', w: 20, h: 4, hp: 2, kg: 1.5, mu: 0.5, chips: '#d0242c', sound: 'wood' },
+  gate_steel: { static: true, lasting: true, material: 'metal', w: 110, h: 8, hp: 99, chips: '#c8242c', sparks: true, sound: 'metal' },
+  lane_signal_go: { overhead: true, height: 0.02, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#26262e', sparks: true, glass: true, sound: 'metal',
+    light: { r: 44, color: '#2af08a', intensity: 0.5 } },
+  lane_signal_stop: { overhead: true, height: 0.02, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#26262e', sparks: true, glass: true, sound: 'metal',
+    light: { r: 44, color: '#ff2c2c', intensity: 0.5 } },
+  sign_exact_change: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8b828', sound: 'metal', bends: 6 },
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },

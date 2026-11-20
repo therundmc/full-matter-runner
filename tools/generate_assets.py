@@ -11120,6 +11120,1390 @@ CHASE_PROPS.update(ROAD_PROPS)
 CHASE_SIZES.update(ROAD_SIZES)
 
 
+# ---------------------------------------------------------------- level 2A, part two (docs/LEVEL2.md segment 2)
+# Made to measure for what comes after the back road: the street closed by works and the detour round them, a short
+# side street of sheds and loading bays, the freeway's on-ramp (its rails, lamps, signs and paint) and the toll plaza
+# under its roof. The street's rules hold: FINE density, real sizes (1 m = 32 px), every painter its own
+# random.Random, signs laid back to be read from above. RAMP_PAINT is floor paint (levelkit FLOOR), RAMP_PROPS stand.
+FONT_STENCIL.setdefault('/', ["....#", "...#.", "...#.", "..#..", ".#...", ".#...", "#...."])
+SIGN_WHITE, SIGN_INK = hx('#ece8de'), hx('#17151d')
+SIGN_GREEN, SIGN_RED, SIGN_YELLOW, SIGN_ORANGE = '#1c6a4c', '#c8242c', '#e8b828', '#f08a1c'
+FLASH = (hx('#ff9a14'), hx('#ffbe3a'), hx('#fff2c4'))
+CONCRETE = ramp('#a8a49a', 0.46, 0.24, 0.22)
+ZINC = ramp('#9aa0a8', 0.5, 0.25, 0.3)
+
+
+def words_w(text, k=1.0):
+    return (len(text) * 6 - 1) * k
+
+
+def words(cv, x, y, text, col, k=1.0, centre=False):
+    """Capitals of FONT_STENCIL, a font pixel k world px square (0.5: one pixel of a fine sprite), (x, y) its top left
+    (centre: x is the middle of the line)."""
+    if centre:
+        x = round((x - words_w(text, k) / 2) * 2) / 2
+    for n, ch in enumerate(text):
+        for gy, row in enumerate(FONT_STENCIL[ch]):
+            for gx, c in enumerate(row):
+                if c == '#':
+                    x0, y0 = x + (n * 6 + gx) * k, y + gy * k
+                    frect(cv, x0, y0, x0 + k, y0 + k, col)
+
+
+def sign_plate(cv, x0, y0, x1, y1, face, rim=SIGN_WHITE, r=1.5, border=1.0):
+    """A sign's plate laid back to be read from above: its rim, the face inside it, the sheen of the lamps across its
+    top left corner."""
+    cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+    rim = hx(rim) if isinstance(rim, str) else rim
+    fill_shape(cv, cx, cy, rx, ry, lambda u, v, L: rim, kind='rect', corner=r, bevel=0.5)
+    fr = ramp(face, 0.4, 0.2, 0.14)
+    fill_shape(cv, cx, cy, rx - border, ry - border,
+               lambda u, v, L: fr[3] if (u + rx) + (v + ry) < min(rx, ry) * 0.8 else fr[2],
+               kind='rect', corner=max(0.5, r - border), bevel=0.5)
+
+
+def sign_wear(cv, rng, box, n=4):
+    """What a roadside sign collects: grime in soft patches, a few chips to the metal, a sticker's ghost."""
+    smudge(cv, rng, n, box, (1.2, 3.0), 0.16)
+    smudge(cv, rng, n // 2 + 1, box, (0.4, 0.9), 0.5, hx('#8a8e98'))
+
+
+# ---- the road closed by the works, the way round them
+def p_road_closed():
+    """The road closed, from above, 4 m: a barricade across the street (two rails striped red and white, the stripes
+    leaning down toward its middle, on four splayed steel legs, a sandbag over each pair of feet), the ROAD CLOSED
+    plate bolted over its middle, an amber flasher on each end post (the emissive map; signal `flash`)."""
+    W, H = 128, 24
+    cv, gl = Cv(W, H), Cv(W, H)
+    rng = random.Random(9601)
+
+    def legs(ly):
+        for x in (6.0, 18.0, W - 18.0, W - 6.0):
+            frect(ly, x - 1.0, 1, x + 1.0, H - 1, shade(STEEL_L, 0.32))
+            frect(ly, x - 1.0, 1, x + 1.0, 1.5, shade(STEEL_L, 0.75))
+    layer(cv, legs)
+    sand = ramp('#8a7650', 0.5, 0.26, 0.25)
+
+    def bags(ly):
+        for x in (12.0, W - 12.0):
+            for y in (2.6, H - 2.6):
+                fill_shape(ly, x, y, 7.4, 2.1, lambda u, v, L: shade(sand, 0.25 + L * 0.7), kind='super', p=2.6)
+                frect(ly, x - 0.25, y - 1.6, x + 0.25, y + 1.6, dk(sand[1], 0.2))   # its tie
+    layer(cv, bags)
+    red, white = ramp('#d0242c', 0.5, 0.26, 0.3), ramp('#ece8de', 0.4, 0.2, 0.2)
+
+    def rails(ly):
+        for (y0, y1) in ((4.0, 9.0), (15.0, 20.0)):
+            def rail(x, y, cur, y0=y0, y1=y1):
+                d = x if x < W / 2 else W - x
+                r = red if int((d + (y - y0)) // 6) % 2 == 0 else white
+                t = (y - y0) / (y1 - y0)
+                return shade(r, 0.86 if t < 0.2 else 0.3 if t > 0.8 else 0.62)
+            px_paint(ly, 1, y0, W - 1, y1, rail)
+    layer(cv, rails)
+
+    def plate(ly):
+        sign_plate(ly, 29, 4.5, W - 29, 19.5, '#ece8de', rim=SIGN_INK, r=1.0, border=0.5)
+        words(ly, W / 2, 8.5, 'ROAD CLOSED', SIGN_INK, 1.0, centre=True)
+        for x in (30.5, W - 31.0):
+            for y in (5.5, 18.0):
+                stud(ly, x, y, hx('#9a9aa2'))
+    layer(cv, plate)
+    for x in (6.0, W - 6.0):
+        fill_shape(cv, x, 6.5, 2.7, 2.7, lambda u, v, L: SIGN_INK)
+        fill_shape(cv, x, 6.5, 2.0, 2.0, lambda u, v, L: shade(ramp('#8a6a16', 0.5, 0.25, 0.4), 0.3 + L * 0.7))
+        cv.dot(x - 0.75, 5.75, hx('#ffe9a0'))
+        fill_shape(gl, x, 6.5, 2.0, 2.0, lambda u, v, L: FLASH[2] if u * u + v * v < 1.4 else FLASH[1])
+        ring(gl, x, 6.5, 2.0, 4.2, lambda dx, dy, d: alpha(FLASH[0], 130 if d < 3.0 else 56))
+    smudge(cv, rng, 9, (2, 4, W - 2, 20), (0.6, 1.6), 0.45, hx('#8a8a92'))   # chipped
+    smudge(cv, rng, 7, (2, 2, W - 2, H - 2), (1.5, 3.5), 0.18)
+    return cv, gl
+
+
+def p_sign_detour(left=False):
+    """The works' DETOUR sign on its folding stand, laid back to be read: an orange plate, black rim, the word and a
+    bent arrow (up, then off to the right, or the left), the stand's splayed feet under it."""
+    def make():
+        W, H = 42, 28
+        cv = Cv(W, H)
+        rng = random.Random(9611 + left)
+        s = -1 if left else 1
+
+        def stand(ly):
+            for x in (5.0, W - 5.0):
+                frect(ly, x - 0.75, H - 7, x + 0.75, H - 1.5, shade(STEEL_L, 0.42))
+                frect(ly, x - 3.5, H - 2.0, x + 3.5, H - 0.75, shade(STEEL_L, 0.3))   # its feet
+        layer(cv, stand)
+
+        def face(ly):
+            sign_plate(ly, 1, 1, W - 1, H - 4, SIGN_ORANGE, rim=SIGN_INK, r=1.5, border=1.0)
+            words(ly, W / 2, 3.5, 'DETOUR', SIGN_INK, 1.0, centre=True)
+
+            def arrow(x, y, cur):
+                u = (x - W / 2) * s
+                stem = abs(u + 6.0) < 1.1 and 13.5 <= y < 21.5
+                bar = -7.1 <= u < 7.5 and 13.5 <= y < 15.7
+                head = 7.0 <= u < 12.0 and abs(y - 14.6) < (12.0 - u) * 0.8
+                return SIGN_INK if stem or bar or head else None
+            px_paint(ly, 2, 11, W - 2, 23, arrow)
+        layer(cv, face)
+        sign_wear(cv, rng, (2, 2, W - 2, H - 5))
+        return cv
+    return make
+
+
+def p_jersey_barrier():
+    """A concrete safety barrier from above, 3 m (laid end to end along x): its narrow top, the sloped faces down to
+    the toes (the one toward the light lit), two lifting slots across the top, the joint loops at its ends, the drain
+    notch at its foot; chipped along every arris down to the aggregate, a rust run from a bar, black where tyres rubbed
+    its toe, an amber reflector on the top."""
+    W, H = 96, 20
+    cv = Cv(W, H)
+    rng = random.Random(9621)
+    chip = VNoise(W, 20, 2, rng)
+    grit = VNoise(W, 20, 4, rng)
+    agg = hx('#7a766e')
+
+    def f(x, y, cur):
+        t = y - H / 2
+        a, e = abs(t), min(x, W - x)
+        if a >= 9.5 or e < max(0.0, (a - 2.5) * 0.22):
+            return None
+        arris = abs(a - 2.5) < 0.6 or abs(a - 7.5) < 0.6 or a > 8.8 or e < 1.2
+        if arris and chip(x, y) > 0.7:
+            return None if (a > 8.8 or e < 1.2) and chip(x, y) > 0.78 else shift(agg, rng.randint(-8, 8))
+        if a < 2.5:
+            L = 0.84
+        elif a < 7.5:
+            L = 0.95 if t < 0 else 0.34
+        else:
+            L = 0.7 if t < 0 else 0.2
+        if 44 <= x < 52 and a >= 7.5:
+            return hx('#1c1a22')                                           # the drain notch
+        c = shade(CONCRETE, L)
+        return shift(c, int((grit(x, y) - 0.5) * 18))
+    px_paint(cv, 0, 0, W, H, f)
+    for x in (22, 74):                                                     # the lifting slots
+        frect(cv, x - 1.5, 7.5, x + 1.5, 12.5, hx('#16141c'))
+        frect(cv, x - 1.5, 7.5, x + 1.5, 8.0, dk(CONCRETE[1], 0.3))
+    for y in (6.5, 13.5):                                                  # the joint loops
+        frect(cv, 0.5, y - 0.75, 2.0, y + 0.75, shade(STEEL_L, 0.45))
+        frect(cv, W - 2.0, y - 0.75, W - 0.5, y + 0.75, shade(STEEL_L, 0.3))
+    for k in range(9):                                                     # rust run down the near face
+        cv.dot(23.0 + k * 0.15, 12.5 + k * 0.6, alpha(hx('#8a4a22'), 200 - k * 16))
+        cv.dot(23.5 + k * 0.15, 12.5 + k * 0.6, alpha(hx('#6a3a1c'), 150 - k * 12))
+    frect(cv, 47, 8.5, 49, 11.5, hx('#e8901c'))                             # the reflector
+    cv.dot(47.25, 8.75, hx('#ffe0a0'))
+    tyre = VNoise(W, 20, 6, rng)
+    px_paint(cv, 0, H / 2 + 7.0, W, H / 2 + 9.5, lambda x, y, cur: mix(cur, hx('#1a1820'), 0.55) if cur[3] and tyre(x, y) > 0.56 else None)
+    smudge(cv, rng, 10, (2, 2, W - 2, H - 2), (1.5, 4.0), 0.14)
+    cv.outline()
+    return cv
+
+
+def p_water_barrier():
+    """A plastic water-filled barrier from above, 1.8 m: blow-moulded orange, faded to salmon where the sun sits on
+    it, the moulded ribs across it, its fill cap and drain plug, the lugs that pin it to the next one (two at one end,
+    one at the other), scuffed black where cars kissed it."""
+    W, H = 60, 20
+    cv = Cv(W, H)
+    rng = random.Random(9631)
+    org = ramp('#ee6a1e', 0.5, 0.26, 0.3)
+    salmon = hx('#f2a274')
+
+    def lugs(ly):
+        for (x, y) in ((2.6, 5.5), (2.6, H - 5.5), (W - 2.6, H / 2)):
+            fill_shape(ly, x, y, 2.4, 2.2, lambda u, v, L: shade(org, 0.2 + L * 0.6), kind='rect', corner=1.0, bevel=0.8)
+            fill_shape(ly, x, y, 0.8, 0.8, lambda u, v, L: hx('#2a1810'))
+    layer(cv, lugs)
+    fade = VNoise(W, 20, 5, rng)
+
+    def body(ly):
+        def f(u, v, L):
+            c = shade(org, 0.15 + L * 0.8)
+            if abs(v) < 2.0:
+                c = lt(c, 0.1)                                             # the spine along its top
+            return mix(c, salmon, 0.45) if fade(u + W / 2, v + H / 2) > 0.62 and L > 0.5 else c
+        fill_shape(ly, W / 2, H / 2, W / 2 - 4.5, H / 2 - 1.5, f, kind='rect', corner=4.0, bevel=4.0)
+    layer(cv, body)
+    for x in (16.0, 26.0, 34.0, 44.0):                                     # the ribs
+        px_paint(cv, x, 3.5, x + 0.5, H - 3.5, lambda x_, y, cur: dk(cur, 0.35) if cur[3] and cur != OUTLINE else None)
+        px_paint(cv, x + 0.5, 3.5, x + 1.0, H - 3.5, lambda x_, y, cur: lt(cur, 0.18) if cur[3] and cur != OUTLINE else None)
+    fill_shape(cv, 21.0, 8.0, 2.3, 2.3, lambda u, v, L: shade(ramp('#e8e4da', 0.4, 0.2, 0.2), 0.3 + L * 0.7))   # the fill cap
+    ring(cv, 21.0, 8.0, 1.3, 1.6, lambda dx, dy, d: hx('#9a968c'))
+    fill_shape(cv, 39.5, 12.5, 1.1, 1.1, lambda u, v, L: hx('#3a2216'))     # the drain plug
+    smudge(cv, rng, 6, (6, 3, W - 6, H - 3), (1.0, 3.0), 0.4, hx('#2a2228'))   # tyre scuffs
+    smudge(cv, rng, 5, (6, 3, W - 6, H - 3), (1.5, 3.5), 0.15)
+    return cv
+
+
+def p_excavator():
+    """A tracked excavator parked for the night, from above, 6 m by 3 m (facing +x): two steel tracks caked with mud,
+    the house over them (the rounded counterweight at the back with its fleet number, the engine deck with its
+    louvres, exhaust and air filter, a handrail, the cab on the left with its glass roof, its guard bars and a dead
+    beacon), the boom reaching forward on the right of the cab with its rams and hoses, the bucket curled on the
+    ground under its end, teeth toward the machine. Construction yellow gone dull, chipped to grey and rust at every
+    edge, mud to the knees."""
+    W, H = 192, 96
+    cv = Cv(W, H)
+    rng = random.Random(9641)
+    yel = ramp('#d8a018', 0.5, 0.27, 0.28)
+    mud = ramp('#5a4632', 0.5, 0.26, 0.26)
+    trk = ramp('#3e3e46', 0.5, 0.25, 0.35)
+    caked = VNoise(W, H, 4, rng)
+
+    def tracks(ly):
+        for (y0, y1, inner) in ((8.0, 30.0, 1), (66.0, 88.0, -1)):
+            fill_shape(ly, 63, (y0 + y1) / 2, 53, (y1 - y0) / 2, lambda u, v, L: trk[2], kind='rect', corner=9.0, bevel=2.0)
+
+            def shoe(x, y, cur, y0=y0, y1=y1, inner=inner):
+                if not cur[3]:
+                    return None
+                t = (y - y0) / (y1 - y0)
+                if (inner > 0 and t > 0.76) or (inner < 0 and t < 0.24):
+                    c = shade(yel, 0.45)                                   # the track frame, inside
+                    if abs((x - 20) % 24 - 12) < 2.2 and abs(t - (0.88 if inner > 0 else 0.12)) < 0.08:
+                        c = shade(trk, 0.6)                                # a carrier roller
+                else:
+                    c = shade(trk, 0.72 if x % 4 < 0.75 else 0.42 if x % 4 > 3.25 else 0.55)   # the grousers
+                    if t < 0.08 or t > 0.92:
+                        c = dk(c, 0.2)
+                if caked(x, y) > 0.66 or (x < 20 or x > 106) and caked(x, y) > 0.5:
+                    c = tone(mud, 0.3 + caked(x * 2, y) * 0.7)
+                return c
+            px_paint(ly, 9, y0, 118, y1, shoe)
+    layer(cv, tracks)
+
+    def house(ly):
+        fill_shape(ly, 70, 48, 42, 27, lambda u, v, L: shade(yel, 0.2 + L * 0.72), kind='rect', corner=5.0, bevel=3.0)
+        fill_shape(ly, 31, 48, 13, 29, lambda u, v, L: shade(yel, 0.16 + L * 0.74), kind='super', p=3.0)   # the counterweight
+    layer(cv, house)
+    frect(cv, 41.5, 23, 42.25, 73, dk(yel[1], 0.35))                       # its seam
+    for k in range(12):                                                    # the hazard band on its back
+        px_paint(cv, 18.5, 26 + k * 3.7, 22.5, 28.0 + k * 3.7, lambda x, y, cur: SIGN_INK if cur[3] and cur != OUTLINE and int(x + y) % 4 < 2 else None)
+    words(cv, 27.5, 46.0, '07', SIGN_INK, 0.5)
+    for x in range(46, 68, 3):                                             # the engine deck's louvres
+        frect(cv, x, 54, x + 1.5, 72, dk(yel[1], 0.4))
+        frect(cv, x, 54, x + 1.5, 54.5, lt(yel[2], 0.2))
+    fill_shape(cv, 50.0, 29.0, 3.4, 3.4, lambda u, v, L: shade(ramp('#5a5e68', 0.5, 0.25, 0.35), 0.2 + L * 0.8))   # air filter
+    fill_shape(cv, 60.0, 30.0, 2.2, 2.2, lambda u, v, L: shade(CHROME, 0.3 + L * 0.6))   # the exhaust
+    fill_shape(cv, 60.0, 30.0, 1.2, 1.2, lambda u, v, L: hx('#0c0a10'))
+    smudge(cv, rng, 4, (54, 24, 72, 36), (2.0, 4.5), 0.35, hx('#1c1a1e'))   # soot
+    frect(cv, 44, 22.0, 70, 22.75, shade(yel, 0.9))                        # the handrail
+    frect(cv, 44, 22.75, 70, 23.25, dk(yel[1], 0.4))
+
+    def cab(ly):
+        fill_shape(ly, 90, 33, 17, 12, lambda u, v, L: shade(ramp('#3a3c44', 0.5, 0.25, 0.35), 0.25 + L * 0.7), kind='rect', corner=2.5, bevel=1.5)
+
+        def glass(x, y, cur):
+            c = shade(GLASS, 0.55 + 0.25 * (1 if (x - y) % 23 < 2.5 else 0))   # the street's lamps in it
+            return lt(c, 0.25) if (x + y) % 31 < 1.0 else c
+        px_paint(ly, 76, 24, 104, 43, glass)
+        for y in (28.5, 33.5, 38.5):                                       # the guard bars over the roof
+            frect(ly, 76, y - 0.5, 104, y + 0.5, shade(ramp('#3a3c44', 0.5, 0.25, 0.35), 0.75))
+        fill_shape(ly, 100, 26.5, 1.8, 1.8, lambda u, v, L: shade(ramp('#b86a10', 0.5, 0.25, 0.35), 0.3 + L * 0.7))   # the beacon
+    layer(cv, cab)
+    chrome = lambda k, L, s, i, t: shade(CHROME, 0.3 + L * 0.7)
+    barrel = lambda k, L, s, i, t: shade(ramp('#4a4c56', 0.5, 0.25, 0.35), 0.2 + L * 0.7)
+
+    def rams(ly):
+        for (a, b, m) in (((104, 49.5), (134, 50.5), (122, 50.2)), ((104, 66.0), (134, 61.5), (122, 63.3))):
+            fill_capsule(ly, [a, m], 2.0, barrel)
+            fill_capsule(ly, [m, b], 1.2, chrome)
+    layer(cv, rams)
+    worn = ramp('#6a6458', 0.5, 0.25, 0.3)
+
+    def bucket(ly):
+        fill_shape(ly, 178, 54, 12, 15, lambda u, v, L: shade(worn, 0.2 + L * 0.75) if abs(v) < 12 else shade(yel, 0.15 + L * 0.7), kind='rect', corner=4.0, bevel=3.0)
+        for k in range(5):                                                 # the teeth, toward the machine
+            y = 43.5 + k * 5.25
+            px_paint(ly, 161, y - 1.6, 167, y + 1.6, lambda x, y_, cur, y=y: shade(STEEL_L, 0.55 if y_ < y else 0.3) if abs(y_ - y) < (x - 161) * 0.32 + 0.4 else None)
+    layer(cv, bucket)
+    smudge(cv, rng, 8, (164, 40, 190, 68), (1.5, 4.0), 0.55, mud[1])
+
+    def boom(ly):
+        fill_capsule(ly, [(100, 57.5), (142, 55.0), (172, 53.0)], 6.0, lambda k, L, s, i, t: shade(yel, 0.2 + L * 0.75))
+    layer(cv, boom)
+    for off in (-3.5, 3.5):                                                # the hoses along it
+        line(cv, 106, 56.5 + off, 166, 53.2 + off * 0.7, hx('#141218'))
+    fill_capsule(cv, [(122, 55.5), (150, 54.0)], 1.6, barrel)              # the stick's ram on top of it
+    fill_capsule(cv, [(150, 54.0), (166, 53.2)], 1.0, chrome)
+    fill_shape(cv, 171, 53, 3.4, 3.4, lambda u, v, L: shade(yel, 0.2 + L * 0.75))   # the stick's pin
+    fill_shape(cv, 171, 53, 1.2, 1.2, lambda u, v, L: shade(CHROME, 0.4 + L * 0.6))
+    fill_shape(cv, 101, 57.5, 2.0, 2.0, lambda u, v, L: shade(CHROME, 0.4 + L * 0.6))
+    edge = VNoise(W, H, 3, rng)
+    px_paint(cv, 14, 12, 180, 86, lambda x, y, cur: shift(hx('#6a6a70'), rng.randint(-10, 10)) if cur[3] and cur != OUTLINE and cur[0] > 150 and cur[2] < 90 and edge(x, y) > 0.9 and rng.random() < 0.6 else None)   # chipped to grey
+    smudge(cv, rng, 14, (16, 14, 112, 82), (0.6, 1.6), 0.5, hx('#7a4220'))  # rust
+    smudge(cv, rng, 12, (16, 14, 176, 82), (2.0, 6.0), 0.16)
+    return cv
+
+
+def p_dump_truck():
+    """A tipper lorry parked at the works, from above, 7.5 m (facing +x): the long hood of an old American truck with
+    its fenders over the front wheels, the grille and bumper, the cab with its marker lamps, mirrors out on their
+    arms, the exhaust stack and the air cleaner behind it; the steel tipper body with its rim and ribs, the cab guard
+    over the cab, its tailgate, full of earth heaped up to the middle, stones and a slab of asphalt in it; the rear
+    tyres showing under its sides. Red cab, the body gone to rust and dents, mud everywhere low."""
+    W, H = 240, 84
+    cv = Cv(W, H)
+    rng = random.Random(9651)
+    cab = ramp('#c04a1c', 0.5, 0.27, 0.3)
+    body = ramp('#59604e', 0.5, 0.25, 0.3)
+    earth = ramp('#6a5440', 0.5, 0.26, 0.26)
+
+    def wheels(ly):
+        for x in (40.0, 66.0, 222.0):
+            for y in (3.0, H - 3.0):
+                fill_shape(ly, x, y, 8.5, 2.6 if x < 200 else 4.0, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.5), kind='rect', corner=1.5, bevel=1.0)
+    layer(cv, wheels)
+
+    def front(ly):
+        for y in (11.0, H - 11.0):                                         # the fenders
+            fill_shape(ly, 220, y, 12, 5.5, lambda u, v, L: shade(cab, 0.15 + L * 0.75), kind='rect', corner=3.0, bevel=2.5)
+        fill_shape(ly, 221, H / 2, 16, 24, lambda u, v, L: shade(cab, 0.2 + L * 0.75), kind='rect', corner=4.0, bevel=4.0)   # the hood
+        frect(ly, 236, 12, 239.5, H - 12, shade(CHROME, 0.6))              # the bumper
+        fill_shape(ly, 191, H / 2, 15.5, 35, lambda u, v, L: shade(cab, 0.2 + L * 0.72), kind='rect', corner=3.0, bevel=2.5)   # the cab
+    layer(cv, front)
+    for y in range(24, H - 23, 3):                                         # the hood's vents and grille
+        frect(cv, 210, y, 216, y + 1.25, dk(cab[1], 0.4))
+    frect(cv, 234.5, 22, 236, H - 22, shade(CHROME, 0.85))
+    frect(cv, 200.5, 9, 205.5, H - 9, lambda c: shade(GLASS, 0.6) if c[3] else c)   # the windscreen's top
+    for y in range(28, 58, 6):                                             # the marker lamps on the roof
+        frect(cv, 197, y, 198.5, y + 2, hx('#e8901c'))
+    for y, s in ((2.5, 1), (H - 2.5, -1)):                                 # the mirrors on their arms
+        line(cv, 199, y + s * 6.5, 199, y + s * 1.0, shade(STEEL_L, 0.5))
+        frect(cv, 197.5, y - 1.5, 201.5, y + 1.5, SIGN_INK)
+    fill_shape(cv, 178, 10.5, 2.4, 2.4, lambda u, v, L: shade(CHROME, 0.3 + L * 0.7))   # the stack
+    fill_shape(cv, 178, 10.5, 1.2, 1.2, lambda u, v, L: hx('#0c0a10'))
+    fill_shape(cv, 178, H - 10.5, 3.0, 3.0, lambda u, v, L: shade(ramp('#3a3c44', 0.5, 0.25, 0.35), 0.2 + L * 0.8))
+
+    def tipper(ly):
+        fill_shape(ly, 89, H / 2, 85, 38.5, lambda u, v, L: shade(body, 0.25 + L * 0.65), kind='rect', corner=2.0, bevel=3.0)
+        fill_shape(ly, 177, H / 2, 6, 36, lambda u, v, L: shade(body, 0.3 + L * 0.6), kind='rect', corner=1.5, bevel=1.5)   # the cab guard
+    layer(cv, tipper)
+    for x in range(176, 183, 2):
+        frect(cv, x, 8, x + 0.75, H - 8, dk(body[1], 0.25))
+    for x in range(20, 170, 22):                                           # the ribs' tops on the rim
+        for y in (4.5, H - 6.5):
+            frect(cv, x, y, x + 2.5, y + 2, shade(body, 0.85))
+    frect(cv, 4.5, 6, 8, H - 6, shade(body, 0.4))                          # the tailgate
+    rag, lumpy = VNoise(W, H, 5, rng), VNoise(W, H, 3, rng)
+
+    def load(x, y, cur):
+        dx, dy = (x - 88) / 78.0, (y - H / 2) / 33.0
+        d = max(abs(dx) ** 3 + abs(dy) ** 3, 0) ** (1 / 3.0) + (rag(x, y) - 0.5) * 0.12
+        if d > 1.0:
+            return None
+        k = 0.45 - 0.55 * (dx * 0.4 + dy * 0.9) * (1 - d * 0.6) + (lumpy(x, y) - 0.5) * 0.3 + (1 - d) * 0.25
+        return shift(shade(earth, max(0.0, min(1.0, k))), rng.randint(-4, 4))
+    px_paint(cv, 10, 8, 166, H - 8, load)
+    for _ in range(16):
+        x, y = rng.uniform(26, 150), rng.uniform(16, H - 16)
+        fill_shape(cv, x, y, rng.uniform(1.0, 2.2), rng.uniform(0.8, 1.6), lambda u, v, L: shade(ramp('#8a8478', 0.5, 0.25, 0.3), 0.2 + L * 0.8), ang=rng.uniform(0, 3))
+    fill_shape(cv, 112, 30, 8, 5, lambda u, v, L: shade(ramp('#3e4048', 0.45, 0.22, 0.3), 0.3 + L * 0.6), kind='rect', corner=0.8, ang=0.35)   # a slab of asphalt
+    smudge(cv, rng, 18, (6, 4, 172, H - 4), (1.0, 3.0), 0.5, hx('#7a4220'))   # rust
+    smudge(cv, rng, 10, (180, 6, 236, H - 6), (1.5, 4.0), 0.4, earth[1])    # mud on the cab
+    smudge(cv, rng, 10, (4, 2, W - 4, H - 2), (2.0, 5.0), 0.14)
+    return cv
+
+
+def heap(W, H, seed, base, bits, grain=0.0, ol='#20160e'):
+    """A heap tipped at the works, lying on the road: a mound lit on its near side, lumps in it, crumbs round its foot
+    (bits: their colours), grain: a scatter pixel by pixel (millings)."""
+    def make():
+        cv = Cv(W, H)
+        rng = random.Random(seed)
+        r = ramp(base, 0.5, 0.26, 0.26)
+        rag, lump = VNoise(W, H, 6, rng), VNoise(W, H, 3, rng)
+
+        def f(x, y, cur):
+            dx, dy = (x - W / 2) / (W / 2 - 3.0), (y - H / 2) / (H / 2 - 3.0)
+            d = math.hypot(dx, dy) + (rag(x, y) - 0.5) * 0.35
+            if d > 1.0:
+                return None
+            k = 0.5 - 0.4 * (dx * 0.6 + dy * 0.8) * d + (lump(x, y) - 0.5) * 0.35 + (1 - d) * 0.2
+            if grain:
+                k += rng.uniform(-grain, grain)
+            return tone(r, max(0.0, min(1.0, k)))
+        px_paint(cv, 0, 0, W, H, f)
+        for _ in range(int(W * H / 160)):
+            x, y = rng.uniform(4, W - 4), rng.uniform(4, H - 4)
+            if cv.on(x, y):
+                cv.dot(x, y, shift(rng.choice(bits), rng.randint(-8, 8)))
+        for _ in range(18):
+            a, d = rng.uniform(0, 6.28), rng.uniform(1.0, 1.15)
+            cv.dot(W / 2 + math.cos(a) * d * (W / 2 - 3), H / 2 + math.sin(a) * d * (H / 2 - 3), r[rng.randint(0, 2)])
+        cv.outline(hx(ol))
+        return cv
+    return make
+
+
+def p_works_light():
+    """A lighting tower at the works, from above, lit: its trailer (the generator's white canopy with an orange band,
+    louvres, a fuel cap), the drawbar, the wheels under their arches, four outriggers out on their jack pads, the mast
+    head high over the back of it, four floodlights on its bar turned toward +x (the emissive map: their lenses)."""
+    W, H = 96, 72
+    cv, gl = Cv(W, H), Cv(W, H)
+    rng = random.Random(9661)
+    can = ramp('#d8d6cc', 0.45, 0.22, 0.2)
+    leg = ramp('#d8a21c', 0.5, 0.26, 0.3)
+
+    def under(ly):
+        for x in (24.0, 66.0):                                             # the outriggers and their pads
+            for s in (-1, 1):
+                fill_capsule(ly, [(x, H / 2 + s * 12), (x, H / 2 + s * 31)], 1.3, lambda k, L, s_, i, t: shade(leg, L))
+                fill_shape(ly, x, H / 2 + s * 32, 3.2, 2.4, lambda u, v, L: shade(STEEL_L, 0.2 + L * 0.6), kind='rect', corner=0.6)
+        for y in (H / 2 - 13.5, H / 2 + 13.5):
+            fill_shape(ly, 46, y, 6.0, 2.4, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.5), kind='rect', corner=1.2, bevel=0.8)
+        fill_capsule(ly, [(76, H / 2), (W - 3, H / 2)], 1.4, lambda k, L, s, i, t: shade(STEEL_L, L))
+        fill_shape(ly, W - 3.5, H / 2, 2.2, 2.2, lambda u, v, L: shade(STEEL_L, 0.3 + L * 0.7))
+    layer(cv, under)
+
+    def body(ly):
+        fill_shape(ly, 48, H / 2, 29, 12, lambda u, v, L: shade(can, 0.2 + L * 0.72), kind='rect', bevel=3.0, corner=3.0)
+    layer(cv, body)
+    frect(cv, 19.5, H / 2 + 6, 76.5, H / 2 + 8.5, lambda c: mix(c, hx('#e8661c'), 0.85) if c[3] and c != OUTLINE else None)
+    for x in range(50, 72, 3):
+        frect(cv, x, H / 2 - 9, x + 1.5, H / 2 - 5, dk(can[1], 0.35))
+    fill_shape(cv, 70, H / 2 + 2, 1.6, 1.6, lambda u, v, L: shade(RUBBER, 0.4 + L * 0.5))   # the fuel cap
+    frect(cv, 58, H / 2 + 1, 64, H / 2 + 4, SIGN_INK)                      # its control panel's door
+    frect(cv, 58.5, H / 2 + 1.5, 63.5, H / 2 + 2, hx('#e8e4d6'))
+    smudge(cv, rng, 6, (20, H / 2 - 11, 76, H / 2 + 11), (1.5, 4.0), 0.2)
+    m = ramp('#4e5362', 0.5, 0.25, 0.4)
+
+    def head(ly):
+        fill_shape(ly, 30, H / 2, 2.6, 2.6, lambda u, v, L: shade(m, L))   # the mast's top
+        frect(ly, 28.5, 12, 31.5, H - 12, shade(m, 0.55))                  # its bar
+        for y in (16.0, 28.5, 43.5, 56.0):
+            fill_shape(ly, 34, y, 5.5, 5.0, lambda u, v, L: shade(ramp('#2a2c34', 0.45, 0.22, 0.4), 0.25 + L * 0.7), kind='rect', corner=1.0, bevel=1.2)
+    layer(cv, head)
+    for y in (16.0, 28.5, 43.5, 56.0):
+        frect(cv, 37.5, y - 4, 39.5, y + 4, hx('#f4f6ff'))
+        frect(cv, 37.0, y - 4, 37.5, y + 4, hx('#9aa4c0'))
+        frect(gl, 37.0, y - 4, 39.5, y + 4, hx('#ffffff'))
+        px_paint(gl, 39.5, y - 6.5, 46, y + 6.5, lambda x, y_, cur, y=y: alpha(hx('#e6eeff'), int(max(0, 150 - (x - 39.5) * 22 - abs(y_ - y) * 12))) if 150 - (x - 39.5) * 22 - abs(y_ - y) * 12 > 8 else None)
+    return cv, gl
+
+
+def p_site_fence():
+    """A temporary site fence from above, a 3.5 m panel (laid end to end along x), laid back so the mesh shows: the
+    tube frame, the welded mesh, the black rubber feet with their clamp at each end, a KEEP OUT plate wired on."""
+    W, H = 112, 20
+    cv = Cv(W, H)
+    rng = random.Random(9671)
+
+    def feet(ly):
+        for x in (3.0, W - 3.0):
+            fill_shape(ly, x, H / 2, 2.8, 9.0, lambda u, v, L: shade(ramp('#2c2a30', 0.45, 0.22, 0.4), 0.25 + L * 0.65), kind='rect', corner=1.2, bevel=1.2)
+            for y in (5.5, 14.5):
+                fill_shape(ly, x, y, 0.8, 0.8, lambda u, v, L: hx('#0c0a10'))
+    layer(cv, feet)
+
+    def panel(ly):
+        def mesh(x, y, cur):
+            if y < 5.5 or y >= 7.0 + 6.0:
+                return None
+            if y < 6.5 or y >= 12.0 or x < 4.5 or x >= W - 4.5:
+                return shade(ZINC, 0.85 if y < 6.0 or x < 5.0 else 0.4)    # the frame's tube
+            if (x * 2) % 4 < 1 or (y * 2) % 3 < 1:
+                return shade(ZINC, 0.6)
+            return None
+        px_paint(ly, 2.5, 5.5, W - 2.5, 13.0, mesh)
+    layer(cv, panel, hx('#262430'))
+    for x in (2.0, W - 4.0):                                               # the clamps
+        frect(cv, x, 8.0, x + 2.0, 10.5, shade(STEEL_L, 0.6))
+    sign_plate(cv, W / 2 - 14, 6.5, W / 2 + 14, 12.0, '#ece8de', rim=SIGN_RED, r=0.5, border=0.5)
+    words(cv, W / 2, 7.5, 'KEEP OUT', hx('#c8242c'), 0.5, centre=True)
+    smudge(cv, rng, 6, (4, 6, W - 4, 13), (0.6, 1.5), 0.4, hx('#8a4a22'))
+    return cv
+
+
+def p_road_cut():
+    """Where the works milled the road off and cut a trench across it, flat on the ground, 4 m by 2.5 m: the milled
+    band (its grooves along the way the drum ran, a shade paler than the old asphalt, crumbs of millings in them), the
+    step down at its sawn edges (lit on the far sides, in shadow under the near), a fresh trench patch across it,
+    black and still glossy, its tar joint, the surveyor's orange marks for the gas main."""
+    W, H = 128, 80
+    cv = Cv(W, H)
+    rng = random.Random(9681)
+    rag, wave = VNoise(W, H, 4, rng), VNoise(W, H, 8, rng)
+    mill = hx('#5e616b')
+
+    def f(x, y, cur):
+        e = min(x, y, W - x, H - y) + (rag(x, y) - 0.5) * 1.6
+        if e < 0.8:
+            return None
+        if e < 2.2:                                                        # the sawn step down
+            lit = (W - x < min(x, y, H - y)) or (H - y < min(x, y, W - x))
+            return (108, 108, 120, 200) if lit else (16, 14, 22, 190)
+        yy = y + (wave(x, y) - 0.5) * 2.0
+        c = shift(mill, 7 if (yy * 2) % 2 < 1 else -6)                    # the grooves
+        return alpha(shift(c, rng.randint(-5, 5)), 232)
+    px_paint(cv, 0, 0, W, H, f)
+
+    def patch(x, y, cur):
+        if not cur[3]:
+            return None
+        e = min(x - 84, 100 - x, y - 2.5, H - 2.5 - y)
+        if e < 0:
+            return None
+        if e < 1.0:
+            return (22, 20, 30, 240)                                       # the tar joint
+        return alpha(shift(hx('#2a2a34'), rng.randint(-4, 4)), 246) if rng.random() > 0.05 else (74, 80, 98, 240)
+    px_paint(cv, 84, 2, 100, H - 2, patch)
+    orange = alpha(hx('#ea6e24'), 220)
+    for y in range(8, H - 8, 4):
+        frect(cv, 71, y, 72.5, y + 2, orange)                              # the main's line
+    words(cv, 63.5, 10, 'G', orange, 1.0)
+    for _ in range(70):
+        x, y = rng.uniform(4, W - 4), rng.uniform(4, H - 4)
+        if cv.on(x, y) and not 83 < x < 101:
+            cv.dot(x, y, rng.choice(((38, 38, 46, 255), (122, 122, 130, 255), (72, 72, 82, 255))))
+    return cv
+
+
+def arrow_mark(W, H, pts, wid, head, seed, col=ROAD_WHITE):
+    """A painted arrow along the polyline pts (world px), wid px wide, its head (length, half width) at its end, worn
+    as road paint is."""
+    (ax, ay), (bx, by) = pts[-2], pts[-1]
+    n = math.hypot(bx - ax, by - ay)
+    ux, uy = (bx - ax) / n, (by - ay) / n
+    sx, sy = bx - ux * head[0], by - uy * head[0]
+    shaft = list(pts[:-1]) + [(sx + ux, sy + uy)]
+
+    def seg(px, py, a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        t = max(0.0, min(1.0, ((px - a[0]) * dx + (py - a[1]) * dy) / (dx * dx + dy * dy)))
+        return math.hypot(px - a[0] - t * dx, py - a[1] - t * dy)
+
+    def mask(x, y):
+        if min(seg(x, y, shaft[i], shaft[i + 1]) for i in range(len(shaft) - 1)) < wid / 2:
+            return True
+        t = (x - sx) * ux + (y - sy) * uy
+        return 0 <= t < head[0] and abs(-(x - sx) * uy + (y - sy) * ux) < head[1] * (1 - t / head[0])
+    return lambda: road_mark(W, H, mask, seed, col)
+
+
+def mirror_y(pts, H):
+    return [(x, H - y) for (x, y) in pts]
+
+
+# ---- the side street: sheds, loading bays, a yard
+def p_roller_door():
+    """A shed's roller shutter, shut, hung on its wall (the wall at -y) and laid back to be read: the galvanized hood
+    of its drum, the guide rails, the slats with their dents and rust runs, the bottom bar with its lock and handle;
+    sprayed over with a crew's tag in pink and cyan, dripping."""
+    W, H = 96, 16
+    cv = Cv(W, H)
+    rng = random.Random(9691)
+    slat = ramp('#7c8494', 0.5, 0.25, 0.3)
+    dent = VNoise(W, 16, 4, rng)
+
+    def door(x, y, cur):
+        if y < 3.0:
+            return shade(ZINC, 0.85 if y < 1.0 else 0.55 if y < 2.5 else 0.25)   # the hood
+        if x < 2.0 or x >= W - 2.0:
+            return shade(ZINC, 0.7 if x < 1.0 or x >= W - 1.0 else 0.35)   # the guide rails
+        if y >= H - 2.5:
+            return shade(slat, 0.4 if y < H - 1 else 0.2)                  # the bottom bar
+        t = (y - 3.0) % 1.5
+        c = shade(slat, 0.8 if t < 0.5 else 0.6 if t < 1.0 else 0.35)
+        return dk(c, 0.18) if dent(x, y) > 0.72 else c
+    px_paint(cv, 0, 0, W, H, door)
+    for (x, y0) in ((14.0, 3.5), (52.0, 4.0), (77.0, 3.5)):                 # rust runs from the hood
+        for k in range(12):
+            cv.dot(x + 0.25 * (k % 2), y0 + k * 0.5, alpha(hx('#8a4a22'), 210 - k * 14))
+    fill_shape(cv, W / 2, H - 1.5, 2.0, 1.0, lambda u, v, L: shade(CHROME, 0.3 + L * 0.6), kind='rect', corner=0.4)   # the lock
+    frect(cv, 30, H - 2.0, 36, H - 1.0, shade(STEEL_L, 0.55))              # the handle
+    pink, cyan = hx('#ff3a8a'), hx('#2ae0f0')
+    trng = random.Random(9692)
+    for (col, x0, n) in ((cyan, 20.0, 6), (pink, 22.0, 6), (pink, 58.0, 4)):   # the tag
+        pts, x, y = [], x0, trng.uniform(6, 10)
+        for _ in range(n):
+            pts.append((x, y))
+            x, y = x + trng.uniform(2.5, 5.0), max(5.0, min(H - 4.5, y + trng.uniform(-3.5, 3.5)))
+        fill_capsule(cv, pts, 0.9, lambda k, L, s, i, t, col=col: col if k < 0.75 else mix(col, hx('#ffffff'), 0.3))
+        for (px, py) in pts[1::2]:
+            for k in range(trng.randint(2, 5)):
+                cv.dot(px, py + 1 + k * 0.5, col)                           # drips
+    cv.outline()
+    return cv
+
+
+def p_loading_dock():
+    """A loading bay's edge from above, 4 m: the concrete apron worn by pallets, the dock leveller's chequer plate on
+    its hinge, the steel nosing painted in yellow and black stripes, two laminated rubber bumpers standing out from
+    it (+y), oil and tyre black on the ground in front."""
+    W, H = 128, 28
+    cv = Cv(W, H)
+    rng = random.Random(9701)
+    grit = VNoise(W, 28, 3, rng)
+
+    def apron(x, y, cur):
+        if y >= 21:
+            return None
+        if y >= 18.5:
+            return SIGN_INK if int((x + y) // 3) % 2 else hx('#e0b020')     # the nosing
+        if 34 <= x < 94 and 1.5 <= y < 17.5:
+            if y < 2.5:
+                return shade(STEEL_L, 0.3)                                 # the leveller's hinge
+            u, v = (x + y) * 0.7071, (x - y) * 0.7071
+            st = ramp('#5a5e68', 0.45, 0.22, 0.35)
+            return lt(st[2], 0.12) if (u % 4 < 0.9 and v % 4 < 2.2) or (v % 4 < 0.9 and (u + 2) % 4 < 2.2) else st[2]
+        return shift(shade(CONCRETE, 0.62 if y > 1 else 0.9), int((grit(x, y) - 0.5) * 20))
+    px_paint(cv, 0, 0, W, H, apron)
+    for x in (34.0, 93.5):
+        frect(cv, x, 1.5, x + 0.5, 17.5, hx('#16141c'))
+    for x in (22.0, 106.0):                                                # the bumpers
+        fill_shape(cv, x, 23.5, 5.5, 4.0, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.5), kind='rect', corner=0.8, bevel=1.0)
+        for k in range(-4, 5, 2):
+            frect(cv, x + k - 0.25, 20.5, x + k + 0.25, 27, RUBBER[0])
+        for y in (20.5, 26.5):
+            frect(cv, x - 5.5, y, x + 5.5, y + 0.75, shade(STEEL_L, 0.5))
+    smudge(cv, rng, 8, (2, 2, W - 2, 18), (1.5, 4.0), 0.18)
+    smudge(cv, rng, 5, (36, 3, 92, 17), (1.0, 3.0), 0.4, hx('#6a3e22'))
+    cv.outline()
+    return cv
+
+
+def p_chainlink_gate():
+    """A yard's double gate of chain link, shut, from above (laid back so the mesh shows), 4 m: two leaves in their
+    galvanized frames meeting in the middle, the chain and padlock round them, the drop rod, the round posts they hang
+    on, two strands of barbed wire along the top, a PRIVATE plate."""
+    W, H = 128, 16
+    cv = Cv(W, H)
+    rng = random.Random(9711)
+
+    def leaves(ly):
+        def f(x, y, cur):
+            if not 3 <= y < 13:
+                return None
+            u = x - 4 if x < W / 2 else x - W / 2 - 0.5
+            if y < 4 or y >= 12 or u < 1.2 or u >= W / 2 - 4.7:
+                return shade(ZINC, 0.85 if y < 3.6 else 0.4)               # the frames
+            if abs((x + y * 1.4) % 3 - 1.5) < 0.3 or abs((x - y * 1.4) % 3 - 1.5) < 0.3:
+                return shade(ZINC, 0.62)                                   # the diamonds
+            return None
+        px_paint(ly, 4, 3, W - 4, 13, f)
+    layer(cv, leaves, hx('#262430'))
+    for y in (1.0, 2.2):                                                   # the barbed wire
+        line(cv, 3, y, W - 3, y, shade(ZINC, 0.55))
+        for x in range(6, W - 4, 5):
+            cv.dot(x + (y > 1.5) * 2, y - 0.5, shade(ZINC, 0.75))
+            cv.dot(x + (y > 1.5) * 2, y + 0.5, shade(ZINC, 0.3))
+    for x in (2.5, W - 2.5):
+        fill_shape(cv, x, 8, 2.4, 2.4, lambda u, v, L: shade(ZINC, 0.2 + L * 0.8))   # the posts
+    for k in range(7):                                                     # the chain
+        fill_shape(cv, W / 2, 6.0 + k * 0.9, 0.7, 0.45, lambda u, v, L: shade(STEEL_L, 0.4 + L * 0.6))
+    fill_shape(cv, W / 2 + 1.0, 12.6, 1.4, 1.2, lambda u, v, L: shade(ramp('#b88a2a', 0.5, 0.25, 0.35), 0.3 + L * 0.7), kind='rect', corner=0.4)
+    frect(cv, W / 2 - 4.0, 12.5, W / 2 - 3.0, 15.5, shade(STEEL_L, 0.45))   # the drop rod
+    sign_plate(cv, 30, 6.0, 52, 11.5, '#ece8de', rim=SIGN_RED, r=0.5, border=0.5)
+    words(cv, 41, 7.0, 'PRIVATE', hx('#c8242c'), 0.5, centre=True)
+    smudge(cv, rng, 6, (4, 3, W - 4, 13), (0.6, 1.5), 0.4, hx('#8a4a22'))
+    return cv
+
+
+def p_pallet_stack():
+    """A stack of empty pallets left by a loading bay, from above, 1.2 m by 1 m: the top one's deck boards (one new and
+    pale, the rest grey, one broken out to the pallet under it), the stringers seen between them, nail heads, the
+    heat-treatment stamp; the ones under it stacked askew, their edges showing."""
+    W, H = 40, 34
+    cv = Cv(W, H)
+    rng = random.Random(9721)
+    old, new = ramp('#9a8a72', 0.5, 0.26, 0.24), ramp('#c8a46a', 0.5, 0.26, 0.24)
+
+    def under(ly):
+        fill_shape(ly, 20.5, 17.5, 18.4, 15.6, lambda u, v, L: shade(old, 0.22 + L * 0.3), kind='rect', corner=0.5, ang=0.05)
+    layer(cv, under)
+
+    def deck(ly):
+        for k in range(7):
+            x0 = 2 + k * 5
+            r = new if k == 2 else old
+            if k == 5:
+                frect(ly, x0, 2, x0 + 4, 10.5, shade(r, 0.5))               # broken off short
+                continue
+            wood_fill(ly, x0, 2, x0 + 3, H - 3, r[2], plank=4, rng=random.Random(9722 + k), vertical=True)
+    layer(cv, deck)
+    for y in (4.0, 16.5, H - 5.0):                                         # the stringers between the boards
+        for k in range(6):
+            x = 6.0 + k * 5
+            frect(cv, x, y - 1.5, x + 1.0, y + 1.5, lambda c: shade(old, 0.3) if not c[3] or c == OUTLINE else c)
+    for k in range(7):
+        for y in (4.0, 16.5, H - 5.0):
+            if k != 5 or y < 10:
+                stud(cv, 2.5 + k * 5, y - 0.5, hx('#5a5a62'))
+                stud(cv, 4.5 + k * 5, y + 0.5, hx('#5a5a62'))
+    words(cv, 13.0, 22.0, 'HT', alpha(hx('#2a2420'), 200), 0.5)
+    smudge(cv, rng, 5, (2, 2, W - 2, H - 2), (1.5, 3.5), 0.16)
+    return cv
+
+
+def p_oil_drum():
+    """A 55-gallon drum from above, left in a yard: its lid in dark blue paint gone to rust round the rolled rim, the
+    two bungs, a dent, a black shine of oil where it was spilt filling it."""
+    S = 20
+    c0 = S / 2
+    cv = Cv(S, S)
+    rng = random.Random(9731)
+    blue = ramp('#2a4a8a', 0.5, 0.26, 0.3)
+
+    def lid(dx, dy, d):
+        L = light(dx / 9.0, dy / 9.0)
+        if d > 8.4:
+            return shade(blue, 0.45 + L * 0.5)                             # the rolled rim
+        if d > 7.6:
+            return dk(blue[1], 0.3)
+        return shade(blue, 0.45 + (dx + dy) * -0.012)
+    ring(cv, c0, c0, 0.0, 9.4, lid)
+    for (x, y, r) in ((6.5, 7.5, 1.5), (13.0, 12.5, 1.0)):
+        fill_shape(cv, x, y, r + 0.5, r + 0.5, lambda u, v, L: shade(blue, 0.2 + L * 0.7))
+        fill_shape(cv, x, y, r, r, lambda u, v, L: shade(STEEL_L, 0.3 + L * 0.5))
+    smudge(cv, rng, 3, (5, 9, 15, 16), (2.0, 3.5), 0.55, hx('#0c0c14'))   # spilt oil
+    cv.dot(9.0, 12.0, hx('#7a8aa8'))
+    smudge(cv, rng, 10, (1, 1, S - 1, S - 1), (0.8, 2.2), 0.5, hx('#8a4a22'))
+    fill_shape(cv, 14.5, 5.5, 2.0, 1.4, lambda u, v, L: dk(blue[2], 0.35), ang=0.6)   # a dent
+    cv.outline()
+    return cv
+
+
+def p_sign_stop():
+    """A STOP sign on its post, its face laid back to be read: a red octagon, a white rim, the word."""
+    S = 20
+    cv = Cv(S, S)
+    rng = random.Random(9741)
+    c0 = S / 2
+
+    def octa(x, y, cur):
+        u, v = abs(x - c0), abs(y - c0)
+        d = max(u, v, (u + v) / 1.414)
+        if d > 9.0:
+            return None
+        if d > 8.0:
+            return SIGN_WHITE
+        return hx('#d8303a') if (x - c0) + (y - c0) < -7 else hx('#c8242c')
+    px_paint(cv, 0, 0, S, S, octa)
+    words(cv, c0, 8.25, 'STOP', SIGN_WHITE, 0.5, centre=True)
+    sign_wear(cv, rng, (2, 2, S - 2, S - 2), 3)
+    cv.outline()
+    return cv
+
+
+# ---- the on-ramp and the freeway
+def p_guardrail():
+    """A 4 m length of steel guardrail from above (laid end to end along x, the road on its +y side): the W-beam
+    rail laid back a little so its two ridges show, on its blockouts and two posts, the splice bolts at its end, a
+    reflector tab on a post; zinc gone dull, rust blooming, black and bright where cars have rubbed it."""
+    W, H = 128, 10
+    cv = Cv(W, H)
+    rng = random.Random(9751)
+
+    def posts(ly):
+        for x in (16.0, 80.0):
+            fill_shape(ly, x, 3.0, 2.2, 2.2, lambda u, v, L: shade(ZINC, 0.15 + L * 0.6), kind='rect', corner=0.4, bevel=1.0)
+            frect(ly, x - 1.5, 4.0, x + 1.5, 5.5, shade(ramp('#4a3a2a', 0.5, 0.25, 0.3), 0.5))   # the blockout
+    layer(cv, posts)
+    zinc = VNoise(W, 16, 6, rng)
+
+    def rail(x, y, cur):
+        t = y - 5.0
+        c = shade(ZINC, (0.95, 0.72, 0.36, 0.78, 0.3, 0.55, 0.22)[min(6, int(t / 0.65))])
+        return dk(c, 0.12) if zinc(x, y) > 0.66 else c
+    ly = Cv(W, H, cv.s)
+    px_paint(ly, 0, 5.0, W, 9.5, rail)
+    ly.outline()
+    cv.over(ly)
+    for x in (16.0, 80.0):
+        stud(cv, x - 0.25, 7.0, hx('#5a5e68'))
+    for x in (W - 6.0, W - 2.5):
+        for y in (6.0, 8.0):
+            stud(cv, x, y, hx('#5a5e68'))
+    frect(cv, W - 7.5, 5.0, W - 7.0, 9.5, dk(ZINC[1], 0.3))                # the splice's lap
+    frect(cv, 79.0, 3.5, 81.0, 4.5, hx('#e8e4da'))                          # the reflector tab
+    smudge(cv, rng, 8, (1, 5, W - 1, 9.5), (1.0, 3.0), 0.35, hx('#8a5a32'))
+    for _ in range(3):                                                     # where cars rubbed it
+        x0 = rng.uniform(4, W - 30)
+        px_paint(cv, x0, 7.5, x0 + rng.uniform(10, 24), 9.5, lambda x, y, cur: (mix(cur, hx('#1a1820'), 0.5) if rng.random() < 0.8 else lt(cur, 0.4)) if cur[3] and cur != OUTLINE else None)
+    return cv
+
+
+def p_guardrail_end():
+    """The guardrail's end toward the traffic (-x), from above: the energy-absorbing head the rail runs into (a steel
+    box with its yellow and black striped face), the rail coming in from +x at the height of the guardrail's own, the
+    breakaway wooden post and the steel one, the anchor cable to the first post's foot."""
+    W, H = 64, 18
+    cv = Cv(W, H)
+    rng = random.Random(9761)
+
+    def posts(ly):
+        fill_shape(ly, 34, 7.0, 2.4, 2.4, lambda u, v, L: shade(ramp('#6a4a2e', 0.5, 0.25, 0.3), 0.15 + L * 0.7), kind='rect', corner=0.6, bevel=1.0)
+        fill_shape(ly, 56, 7.0, 2.2, 2.2, lambda u, v, L: shade(ZINC, 0.15 + L * 0.6), kind='rect', corner=0.4, bevel=1.0)
+    layer(cv, posts)
+    line(cv, 8, 15.0, 33, 9.5, shade(STEEL_L, 0.5))                       # the anchor cable
+
+    def rail(x, y, cur):
+        t = y - 9.0
+        return shade(ZINC, (0.95, 0.72, 0.36, 0.78, 0.3, 0.55, 0.22)[min(6, int(t / 0.65))])
+    ly = Cv(W, H, cv.s)
+    px_paint(ly, 18, 9.0, W, 13.5, rail)
+    ly.outline()
+    cv.over(ly)
+
+    def head(ly):
+        fill_shape(ly, 11, 10.5, 9.5, 6.5, lambda u, v, L: shade(ramp('#4e5362', 0.5, 0.25, 0.4), 0.2 + L * 0.7), kind='rect', corner=1.0, bevel=1.5)
+        px_paint(ly, 1.5, 4.5, 6.5, 16.5, lambda x, y, cur: (SIGN_INK if int((x + y) // 2) % 2 else hx('#e8c020')) if cur[3] else None)
+    layer(cv, head)
+    for (x, y) in ((14, 6.5), (14, 14.5), (19, 6.5), (19, 14.5)):
+        stud(cv, x, y, hx('#8a8e98'))
+    smudge(cv, rng, 5, (2, 4, W - 2, 15), (1.0, 3.0), 0.3, hx('#8a5a32'))
+    smudge(cv, rng, 4, (2, 4, 22, 16), (1.0, 2.5), 0.35)
+    return cv
+
+
+def p_crash_cushion():
+    """A crash cushion in front of a pier, from above, 3 m: six sand barrels set one, two, three toward the traffic
+    (-x), yellow plastic with their black lids, the front one wrapped in reflective sheeting, one lid split with the
+    sand showing, dust and tyre black on them."""
+    W, H = 96, 88
+    cv = Cv(W, H)
+    rng = random.Random(9771)
+    yel = ramp('#e8c020', 0.5, 0.26, 0.28)
+    lid = ramp('#2e2c34', 0.45, 0.22, 0.35)
+    for n, (x, y) in enumerate(((16, 44), (44, 30), (44, 58), (72, 16), (72, 44), (72, 72))):
+        def barrel(ly, x=x, y=y, n=n):
+            ring(ly, x, y, 0.0, 13.0, lambda dx, dy, d: shade(yel, 0.3 + light(dx / 13, dy / 13) * 0.7))
+            ring(ly, x, y, 0.0, 10.6, lambda dx, dy, d: shade(lid, 0.45 + light(dx / 12, dy / 12) * 0.35) if d > 9.2 else lid[2])
+            if n == 0:
+                ring(ly, x, y, 11.0, 13.0, lambda dx, dy, d: hx('#f4f2ea') if int((math.atan2(dy, dx) + 3.15) * 3) % 2 else hx('#e8c020'))
+            if n == 4:                                                     # split, the sand in it
+                px_paint(ly, x - 7, y - 3, x + 5, y + 4, lambda x_, y_, cur: shift(hx('#c4a46a'), rng.randint(-10, 10)) if abs(y_ - y - 0.5 * (x_ - x)) < 2.0 else None)
+            fill_shape(ly, x - 2.5, y - 2.5, 1.2, 1.2, lambda u, v, L: shade(lid, 0.9))
+        layer(cv, barrel)
+    smudge(cv, rng, 12, (3, 3, W - 3, H - 3), (1.5, 4.0), 0.22, hx('#c8b896'))
+    smudge(cv, rng, 6, (3, 30, 30, 58), (1.0, 3.0), 0.4)
+    return cv
+
+
+def p_highway_lamp():
+    """A freeway lamp from above (hung high: the pole's top, r 4.5, at the sprite's centre): two arms 2.8 m out along
+    x and -x, a sodium cobra head at each end, their refractors glowing (the emissive map; the pools are the
+    lighting system's)."""
+    W, H = 208, 20
+    cv, gl = Cv(W, H), Cv(W, H)
+    cx, cy = W / 2, H / 2
+    m = ramp('#5a5e6e', 0.5, 0.25, 0.4)
+
+    def arms(ly):
+        for s in (-1, 1):
+            fill_capsule(ly, [(cx + s * 3, cy), (cx + s * 82, cy)], 1.2, lambda k, L, s_, i, t: shade(m, L))
+            fill_capsule(ly, [(cx + s * 3, cy + 0.6), (cx + s * 14, cy + 0.2)], 1.6, lambda k, L, s_, i, t: shade(m, L - 0.05))
+        fill_shape(ly, cx, cy, 4.5, 4.5, lambda u, v, L: shade(m, L))
+    layer(cv, arms)
+    fill_shape(cv, cx - 1, cy - 1, 1.8, 1.8, lambda u, v, L: shade(m, 0.55 + L * 0.5))
+    hot, warm = hx('#fff0c0'), hx('#ffc070')
+    for s in (-1, 1):
+        hx0 = cx + s * 90.0
+
+        def lum(ly, hx0=hx0, s=s):
+            fill_shape(ly, hx0 + s * 0.6, cy, 11.0, 5.6, lambda u, v, L: warm if L < 0.8 else hot, kind='super', p=2.4)
+            fill_shape(ly, hx0 - s * 0.6, cy, 10.0, 4.6, lambda u, v, L: shade(ramp('#6a7066', 0.5, 0.25, 0.4), L), kind='super', p=2.4)
+            line(ly, hx0 - 6.0, cy - 0.5, hx0 + 6.0, cy - 0.5, ramp('#6a7066', 0.5, 0.25, 0.4)[3])
+        layer(cv, lum)
+        px_paint(gl, hx0 - 12, 0, hx0 + 12, H, lambda x, y, cur: (255, 236, 176, 255) if cv.get(x, y)[:3] == hot[:3] else (255, 196, 110, 230) if cv.get(x, y)[:3] == warm[:3] else None)
+    return cv, gl
+
+
+def p_sign_freeway():
+    """The ramp's FREEWAY ENTRANCE sign, laid back to be read: a green plate, its white rim, the route's shield (red
+    crown, blue field, its number) over the two words."""
+    W, H = 64, 48
+    cv = Cv(W, H)
+    rng = random.Random(9781)
+    sign_plate(cv, 2, 1, W - 2, H - 1, SIGN_GREEN, r=2.0, border=1.0)
+    frect(cv, 3.5, 2.5, W - 3.5, 3.0, SIGN_WHITE)
+    c0 = W / 2
+
+    def shield(x, y, cur):
+        u, v = x - c0, y - 11.0
+        half = 8.0 - (max(0.0, v - 2.0) ** 2) * 0.16
+        if v < -7.5 or v > 7.5 or abs(u) > half:
+            return None
+        if abs(u) > half - 0.75 or v < -6.75:
+            return SIGN_WHITE
+        if v < -2.5:
+            return hx('#c8242c') if not (v < -6.0 and abs(u) < 2.0) else SIGN_WHITE
+        return hx('#2a4ea8')
+    px_paint(cv, c0 - 9, 3, c0 + 9, 19, shield)
+    words(cv, c0, 9.0, '9', SIGN_WHITE, 1.0, centre=True)
+    words(cv, c0, 23.0, 'FREEWAY', SIGN_WHITE, 1.0, centre=True)
+    words(cv, c0, 34.0, 'ENTRANCE', SIGN_WHITE, 1.0, centre=True)
+    sign_wear(cv, rng, (3, 3, W - 3, H - 3), 5)
+    cv.outline()
+    return cv
+
+
+def p_sign_wrong_way():
+    """WRONG WAY, laid back to be read: a red plate, its white rim, the words in two lines."""
+    W, H = 38, 26
+    cv = Cv(W, H)
+    rng = random.Random(9791)
+    sign_plate(cv, 1, 1, W - 1, H - 1, SIGN_RED, r=1.0, border=1.0)
+    words(cv, W / 2, 4.0, 'WRONG', SIGN_WHITE, 1.0, centre=True)
+    words(cv, W / 2, 15.0, 'WAY', SIGN_WHITE, 1.0, centre=True)
+    sign_wear(cv, rng, (2, 2, W - 2, H - 2))
+    cv.outline()
+    return cv
+
+
+def p_sign_speed_55():
+    """The freeway's SPEED LIMIT 55 (laid back to be read): a white plate, its black rim, the two small words and
+    the number large."""
+    W, H = 22, 28
+    cv = Cv(W, H)
+    rng = random.Random(9801)
+    sign_plate(cv, 1, 1, W - 1, H - 1, '#ece8de', rim=SIGN_INK, r=1.0, border=0.5)
+    words(cv, W / 2, 3.0, 'SPEED', SIGN_INK, 0.5, centre=True)
+    words(cv, W / 2, 7.5, 'LIMIT', SIGN_INK, 0.5, centre=True)
+    words(cv, W / 2, 13.0, '55', SIGN_INK, 1.5, centre=True)
+    sign_wear(cv, rng, (2, 2, W - 2, H - 2), 3)
+    cv.outline()
+    return cv
+
+
+def p_sign_toll_ahead():
+    """TOLL 1/2 MILE on the ramp (laid back to be read): a green plate, its white rim, TOLL large, the distance under."""
+    W, H = 54, 30
+    cv = Cv(W, H)
+    rng = random.Random(9811)
+    sign_plate(cv, 1, 1, W - 1, H - 1, SIGN_GREEN, r=1.5, border=1.0)
+    words(cv, W / 2, 4.0, 'TOLL', SIGN_WHITE, 1.5, centre=True)
+    words(cv, W / 2, 19.0, '1/2 MILE', SIGN_WHITE, 1.0, centre=True)
+    sign_wear(cv, rng, (2, 2, W - 2, H - 2))
+    cv.outline()
+    return cv
+
+
+def p_reflector_post():
+    """A flexible delineator post by the ramp's edge (laid back): white plastic, its amber reflector near the top,
+    scuffed black where it was run over and stood back up."""
+    W, H = 6, 12
+    cv = Cv(W, H)
+    fill_shape(cv, W / 2, H / 2, 1.6, 5.0, lambda u, v, L: shade(ramp('#e8e4da', 0.45, 0.22, 0.2), 0.3 + L * 0.7), kind='rect', corner=1.2, bevel=1.0)
+    frect(cv, 2.0, 2.5, 4.0, 5.0, hx('#ee9a1c'))
+    cv.dot(2.25, 2.75, hx('#ffe0a0'))
+    frect(cv, 1.5, 9.0, 4.5, 10.5, hx('#3a3840'))
+    cv.outline()
+    return cv
+
+
+def raised_marker(body, refl):
+    """A raised pavement marker (a cat's eye) stuck on the lane line: its moulded body, the reflector facing the
+    traffic (-x)."""
+    def make():
+        W, H = 8, 6
+        cv = Cv(W, H)
+        fill_shape(cv, W / 2, H / 2, 3.0, 2.0, lambda u, v, L: shade(ramp(body, 0.45, 0.22, 0.2), 0.3 + L * 0.7), kind='rect', corner=1.0, bevel=1.2)
+        frect(cv, 1.0, 1.5, 2.0, 4.5, hx(refl))
+        cv.dot(1.25, 1.75, lt(hx(refl), 0.5))
+        cv.outline(hx('#1a1822'))
+        return cv
+    return make
+
+
+def p_rumble_strip():
+    """The shoulder's rumble strip, 3 m (laid end to end along x): grooves milled across it every 30 cm, each a
+    shallow dish (its near wall in shadow, its far lip catching the light), grit in their bottoms."""
+    W, H = 96, 16
+    cv = Cv(W, H)
+    rng = random.Random(9821)
+
+    def f(x, y, cur):
+        c = (x % 10) - 5.0
+        d = (c / 3.2) ** 2 + ((y - H / 2) / 6.5) ** 2
+        if d > 1.0:
+            return None
+        if c < -1.6:
+            return (14, 12, 20, 120)
+        if c > 2.2:
+            return (120, 122, 132, 80)
+        return (30, 28, 38, 92) if rng.random() > 0.08 else (90, 90, 100, 120)
+    px_paint(cv, 0, 0, W, H, f)
+    return cv
+
+
+def plaza_lines(W, H, lines, seed):
+    """Worn white lines painted along the given segments ((x0, y0), (x1, y1)), 4 px wide."""
+    def seg(x, y, a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        t = max(0.0, min(1.0, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)))
+        return math.hypot(x - a[0] - t * dx, y - a[1] - t * dy)
+    return lambda: road_mark(W, H, lambda x, y: any(seg(x, y, a, b) < 2.0 for (a, b) in lines), seed)
+
+
+def p_gore_hatch():
+    """Where the ramp leaves (or joins) the lanes: the gore's white triangle, 8 m, its two edge lines and the
+    chevrons inside pointing back at the traffic (-x)."""
+    W, H = 256, 72
+
+    def mask(x, y):
+        t = (x - 4) / (W - 8)
+        if t < 0 or t > 1:
+            return False
+        half, v = 2.0 + t * (H / 2 - 3.0), abs(y - H / 2)
+        if v > half:
+            return False
+        return v > half - 2.6 or (x > 30 and (x - v * 1.2) % 28 < 3.2)
+    return road_mark(W, H, mask, 9831)
+
+
+# ---- the toll plaza
+def p_toll_island():
+    """A toll island from above, 8 m by 1.5 m (its nose toward the traffic at -x): a raised concrete slab in its kerb,
+    the nose rounded and striped yellow and black, three yellow crash posts filled with concrete on it, the kerbs
+    along both lanes painted yellow; joints across the slab, oil, gum and the dust of a toll lane."""
+    W, H = 256, 48
+    cv = Cv(W, H)
+    rng = random.Random(9841)
+    grit = VNoise(W, H, 4, rng)
+    R, cy = 22.0, H / 2
+
+    def f(x, y, cur):
+        if x < R + 2:
+            dx, dy = x - (R + 2), y - cy
+            e = R - math.hypot(dx, dy)
+            lit = dx * LX + dy * LY > 0
+        else:
+            e = min(y - 2, H - 2 - y, W - 2 - x)
+            lit = e == y - 2
+        if e < 0:
+            return None
+        if e < 2.4:                                                        # the kerb, painted
+            c = hx('#d8b030') if int((x + y) // 5) % 2 or x > 36 else SIGN_INK
+            return lt(c, 0.12) if e < 1.0 and lit else dk(c, 0.3) if e < 1.0 else c
+        if x < 36:
+            return hx('#e0b828') if int((x + y) // 6) % 2 else hx('#1e1c24')   # the nose
+        if x % 48 < 0.5 or abs(y - cy) < 0.25:
+            return dk(CONCRETE[1], 0.2)                                    # the joints
+        return shift(shade(CONCRETE, 0.6), int((grit(x, y) - 0.5) * 18))
+    px_paint(cv, 0, 0, W, H, f)
+    for (x, y) in ((12.0, cy), (22.0, cy - 11.0), (22.0, cy + 11.0)):      # the crash posts
+        fill_shape(cv, x, y, 3.4, 3.4, lambda u, v, L: shade(ramp('#e8c020', 0.5, 0.26, 0.28), 0.25 + L * 0.75))
+        ring(cv, x, y, 1.6, 2.2, lambda dx, dy, d: hx('#8a7016'))
+    smudge(cv, rng, 10, (40, 4, W - 4, H - 4), (1.5, 4.0), 0.2)
+    for _ in range(14):
+        cv.dot(rng.uniform(40, W - 6), rng.uniform(5, H - 5), rng.choice((hx('#5a5860'), hx('#2a2830'), hx('#c8c4ba'))))
+    cv.outline()
+    return cv
+
+
+def p_toll_booth():
+    """A toll booth from above, cut away as the houses are (no roof: what is in it is seen), 2 m by 1.2 m on its
+    plinth, its window toward the lane (+y): steel corners and the sill, glass all round lit warm from inside (the
+    emissive map), the counter with its till, the ticket roll and a coffee cup, the attendant on his stool turned to
+    the window in his cap and uniform shirt, a radio, a heater; the exact change basket on its pedestal ahead of it (-x)."""
+    W, H = 96, 44
+    cv, gl = Cv(W, H), Cv(W, H)
+    rng = random.Random(9851)
+    x0, x1, y0, y1 = 30.0, 92.0, 4.0, 40.0
+
+    def plinth(ly):
+        fill_shape(ly, (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + 2, (y1 - y0) / 2 + 2, lambda u, v, L: shade(CONCRETE, 0.35 + L * 0.4), kind='rect', corner=1.0, bevel=1.5)
+    layer(cv, plinth)
+    frect(cv, x0, y0, x1, y1, hx('#2c2a30'))                                # the rubber floor
+    frect(cv, x0 + 8, y1 - 9, x1 - 4, y1 - 3, shade(ramp('#8a6a4a', 0.5, 0.25, 0.3), 0.7))   # the counter
+    frect(cv, x0 + 8, y1 - 9, x1 - 4, y1 - 8.5, shade(ramp('#8a6a4a', 0.5, 0.25, 0.3), 0.95))
+    fill_shape(cv, 72, y1 - 6, 4.5, 2.2, lambda u, v, L: shade(ramp('#3a3c44', 0.5, 0.25, 0.35), 0.3 + L * 0.6), kind='rect', corner=0.5)   # the till
+    frect(cv, 70, y1 - 7.0, 74, y1 - 6.0, hx('#7ae09a'))                    # its figures
+    fill_shape(cv, 52, y1 - 6.5, 1.8, 1.8, lambda u, v, L: hx('#e8e4d6'))   # the ticket roll
+    fill_shape(cv, 82, y1 - 6.0, 1.3, 1.3, lambda u, v, L: hx('#f4f0e2'))   # the coffee
+    cv.dot(82, y1 - 6.0, hx('#4a2a14'))
+    fill_shape(cv, 40, 10, 4.0, 3.0, lambda u, v, L: shade(ramp('#8a2a22', 0.5, 0.25, 0.3), 0.3 + L * 0.6), kind='rect', corner=0.8)   # the heater
+    for y in (9.0, 10.0, 11.0):
+        frect(cv, 37, y, 43, y + 0.4, hx('#ff8a3a'))
+    fill_shape(cv, 82, 9, 3.0, 1.8, lambda u, v, L: shade(ramp('#3a3a40', 0.5, 0.25, 0.35), 0.3 + L * 0.6), kind='rect', corner=0.5)   # the radio
+    fill_shape(cv, 62, 20, 3.5, 3.5, lambda u, v, L: shade(ramp('#2a2a30', 0.45, 0.22, 0.35), 0.3 + L * 0.6))   # the stool
+
+    def man(ly):
+        fill_shape(ly, 62, 24.0, 7.0, 4.2, lambda u, v, L: shade(ramp('#3a5a8a', 0.5, 0.26, 0.3), 0.2 + L * 0.75), kind='super', p=2.4)   # his shoulders
+        fill_capsule(ly, [(67, 26.0), (70, 30.5)], 1.3, lambda k, L, s, i, t: shade(ramp('#3a5a8a', 0.5, 0.26, 0.3), L))   # his arm to the window
+        fill_shape(ly, 70.5, 31.0, 1.2, 1.2, lambda u, v, L: shade(ramp('#c88a62', 0.5, 0.25, 0.25), 0.3 + L * 0.7))
+        fill_shape(ly, 62, 24.5, 2.8, 2.8, lambda u, v, L: shade(ramp('#1e2a44', 0.45, 0.22, 0.3), 0.3 + L * 0.7))   # his cap
+        fill_shape(ly, 62, 27.6, 2.2, 1.0, lambda u, v, L: hx('#141a2a'))   # its peak, toward the lane
+    layer(cv, man)
+    glass = hx('#9fd8ec')
+    for (a, b, c, d) in ((x0 + 6, y1 - 1.5, x1 - 2, y1), (x0 + 16, y0, x1 - 2, y0 + 1.5), (x0, y0 + 4, x0 + 1.5, y1 - 4), (x1 - 1.5, y0 + 4, x1, y1 - 4)):
+        frect(cv, a, b, c, d, mix(glass, hx('#ffe2a8'), 0.4))
+        frect(gl, a, b, c, d, alpha(hx('#ffe6b0'), 235))
+    frect(cv, x0 + 1.5, y0, x0 + 15, y0 + 1.5, shade(ZINC, 0.5))           # its sliding door
+    for (a, b) in ((x0, y0), (x1 - 2, y0), (x0, y1 - 2), (x1 - 2, y1 - 2)):
+        frect(cv, a, b, a + 2, b + 2, shade(ZINC, 0.75))                  # the steel corners
+    frect(cv, x0 + 3, y1, x1 - 1, y1 + 1.0, shade(ZINC, 0.85))             # the sill
+    px_paint(gl, x0 + 2, y0 + 2, x1 - 2, y1 - 2, lambda x, y, cur: alpha(hx('#ffd890'), max(0, 70 - int(math.hypot(x - 64, y - 22) * 2.2))) if math.hypot(x - 64, y - 22) < 30 else None)
+
+    def basket(ly):
+        fill_shape(ly, 14, 30, 6.0, 6.0, lambda u, v, L: shade(CONCRETE, 0.35 + L * 0.4), kind='rect', corner=1.0, bevel=1.0)
+        ring(ly, 14, 30, 0.0, 5.0, lambda dx, dy, d: shade(CHROME, 0.4 + light(dx / 5, dy / 5) * 0.6) if d > 3.8 else hx('#1a1a22') if (dx + dy) % 1.5 < 0.5 else hx('#2e2e38'))
+    layer(cv, basket)
+    for (dx, dy) in ((-1.0, 0.5), (1.0, -0.5), (0.0, 1.5)):
+        cv.dot(14 + dx, 30 + dy, hx('#dcdce6'))                             # coins
+    smudge(cv, rng, 4, (2, 2, W - 2, H - 2), (1.0, 2.5), 0.15)
+    return cv, gl
+
+
+TOLL_LANES = (104, 248, 392, 536)   # the lanes' middles under the canopy, px from its top edge (the islands between)
+
+
+def p_toll_canopy():
+    """The toll plaza's roof from above (hung high over the lanes: it fades over him as he drives under, as the
+    railway bridge does), 6 m along the road by 20 m across it (along y): four lanes of 3 m under it between five
+    islands of 1.5 m (TOLL_LANES: the lanes' middles; the islands' at 32, 176, 320, 464 and 608 px). Standing-seam
+    sheet steel between deep fascias at both ends (white, a red band), gutters along its sides, two air units, a
+    hatch, a puddle; the lit box sign TOLL on its middle, a lit number over each lane on the fascia the traffic comes
+    in under (-x), the lamps along both fascias (the emissive map: the sign, the numbers, the lamps)."""
+    W, H = 192, 640
+    cv, gl = Cv(W, H), Cv(W, H)
+    rng = random.Random(9861)
+    deck = ramp('#4e5562', 0.45, 0.22, 0.28)
+    streak, rust = VNoise(W, H, 8, rng), VNoise(W, H, 5, rng)
+    fascia = ramp('#e8e4da', 0.45, 0.22, 0.18)
+
+    def roof(x, y, cur):
+        if x < 12 or x >= W - 12:                                          # the fascias
+            u = x if x < 12 else W - x
+            if u < 1.0:
+                return fascia[3]
+            if 4 <= u < 7:
+                return hx('#c02a2a') if u < 6.5 else dk(hx('#c02a2a'), 0.3)
+            return shade(fascia, 0.68 if u < 10.5 else 0.3)
+        if y < 3 or y >= H - 3:                                            # the gutters
+            return shade(ZINC, 0.75 if (y < 1 or y >= H - 3 and y < H - 2) else 0.35)
+        t = y % 8
+        c = shade(deck, 0.82 if t < 0.5 else 0.34 if t < 1.0 else 0.56)    # the seams
+        if streak(x * 0.4, y * 2.0) > 0.7:
+            c = dk(c, 0.07)
+        if rust(x, y) > 0.86 and t >= 1.0:
+            c = mix(c, hx('#7a4a2a'), 0.35)
+        return shift(c, rng.randint(-2, 2))
+    px_paint(cv, 0, 0, W, H, roof)
+    px_paint(cv, 40, 140, 70, 160, lambda x, y, cur: mix(cur, hx('#1c2232'), 0.6) if math.hypot((x - 55) / 15, (y - 150) / 10) < 1 else None)   # a puddle
+    for (ax, ay) in ((60.0, 200.0), (128.0, 470.0)):
+        def unit(ly, ax=ax, ay=ay):
+            fill_shape(ly, ax, ay, 16, 11, lambda u, v, L: shade(ramp('#8a8e98', 0.45, 0.22, 0.3), 0.25 + L * 0.65), kind='rect', corner=1.5, bevel=1.5)
+            ring(ly, ax - 6, ay, 0.0, 6.0, lambda dx, dy, d: hx('#1a1a22') if int(d * 2) % 2 else shade(ramp('#8a8e98', 0.45, 0.22, 0.3), 0.4))
+            frect(ly, ax + 3, ay - 8, ax + 14, ay + 8, shade(ramp('#8a8e98', 0.45, 0.22, 0.3), 0.45))
+        layer(cv, unit)
+        line(cv, ax, ay + 11, ax, 300 if ay < 320 else 340, hx('#2a2c34'))   # conduit to the sign
+    layer(cv, lambda ly: fill_shape(ly, 150, 110, 8, 8, lambda u, v, L: shade(ramp('#6a6e78', 0.45, 0.22, 0.3), 0.25 + L * 0.65), kind='rect', corner=1.0, bevel=1.5))
+    smudge(cv, rng, 30, (14, 4, W - 14, H - 4), (3.0, 9.0), 0.12)
+    for _ in range(40):                                                    # gulls' droppings
+        cv.dot(rng.uniform(14, W - 14), rng.uniform(4, H - 4), hx('#d8d4cc'))
+
+    def sign(ly):
+        fill_shape(ly, W / 2, H / 2, 52, 20, lambda u, v, L: shade(ramp('#2a2a32', 0.45, 0.22, 0.35), 0.3 + L * 0.6), kind='rect', corner=2.0, bevel=2.0)
+        frect(ly, W / 2 - 49, H / 2 - 17, W / 2 + 49, H / 2 + 17, hx('#efe6d8'))
+    layer(cv, sign)
+    words(cv, W / 2 + 0.5, H / 2 - 13.5, 'TOLL', hx('#7a1020'), 4.0, centre=True)   # the letters' returns
+    words(cv, W / 2, H / 2 - 14, 'TOLL', hx('#e8203a'), 4.0, centre=True)
+    words(gl, W / 2, H / 2 - 14, 'TOLL', hx('#ff5a6a'), 4.0, centre=True)
+    px_paint(gl, W / 2 - 49, H / 2 - 17, W / 2 + 49, H / 2 + 17, lambda x, y, cur: cur if cur[3] else alpha(hx('#fff4e8'), 60))
+    for n, y in enumerate(TOLL_LANES):                                     # the lanes' numbers, on the entry fascia
+        fill_shape(cv, 6, y, 5.5, 8.5, lambda u, v, L: SIGN_INK, kind='rect', corner=0.6)
+        words(cv, 6, y - 5.25, str(n + 1), hx('#ffcf6a'), 1.5, centre=True)
+        words(gl, 6, y - 5.25, str(n + 1), hx('#ffe08a'), 1.5, centre=True)
+    for y in range(32, H - 8, 72):                                         # the lamps along both fascias
+        for x in ((9.0, W - 11.0) if (y - 32) % 144 == 0 else (W - 11.0,)):
+            frect(cv, x, y - 2, x + 2, y + 2, hx('#fff4d8'))
+            frect(gl, x, y - 2, x + 2, y + 2, hx('#fff8e8'))
+            ring(gl, x + 1, y, 2.0, 4.5, lambda dx, dy, d: alpha(hx('#ffe8c0'), 110 if d < 3.2 else 46))
+    cv.outline()
+    return cv, gl
+
+
+def gate_arm(x0=None, x1=None, seed=0):
+    """The toll lane's wooden gate arm from above, 3.5 m: its operator's yellow cabinet on the island (-x), the arm
+    reaching out over the lane in red and white bands, two red reflectors, the rubber tip. x0 / x1: a broken piece of
+    it, the arm from x0 to x1 only, its ends splintered."""
+    def make():
+        whole = x0 is None
+        W, H = (112, 12) if whole else (int(x1 - x0) + 4, 6)
+        cv = Cv(W, H)
+        rng = random.Random(9871 + seed)
+        dx = 0 if whole else x0 - 2
+        cy = 6.0 if whole else 3.0
+        red, white = ramp('#d0242c', 0.5, 0.26, 0.3), ramp('#ece8de', 0.4, 0.2, 0.2)
+        a, b = (16.0, 110.0) if whole else (x0, x1)
+        jag = [rng.uniform(-2.5, 2.5) for _ in range(24)]
+
+        def arm(x, y, cur):
+            X = x + dx
+            t = y - cy
+            if abs(t) >= 1.8:
+                return None
+            if not whole:
+                k = int((t + 1.8) * 3)
+                if X < a + jag[k] + 2.5 or X >= b - jag[12 + k] - 2.5:
+                    return None
+            if X >= 108.0:
+                return shade(RUBBER, 0.6 if t < 0 else 0.3)                # the tip
+            r = red if int(X // 12) % 2 == 0 else white
+            return shade(r, 0.86 if t < -1.0 else 0.32 if t > 1.0 else 0.62)
+        px_paint(cv, 0, 0, W, H, arm)
+        for X in (44.0, 92.0):
+            if whole or a < X < b:
+                frect(cv, X - dx - 1.0, cy - 0.75, X - dx + 1.0, cy + 0.75, hx('#ff2a3a'))
+        if whole:
+            def cab(ly):
+                fill_shape(ly, 9, cy, 8.0, 5.0, lambda u, v, L: shade(ramp('#e0b020', 0.5, 0.26, 0.28), 0.2 + L * 0.75), kind='rect', corner=1.0, bevel=1.5)
+                fill_shape(ly, 14, cy, 2.4, 2.4, lambda u, v, L: shade(STEEL_L, 0.3 + L * 0.7))   # the pivot hub
+            layer(cv, cab)
+        smudge(cv, rng, 4, (2, 2, W - 2, H - 2), (0.6, 1.5), 0.4, hx('#8a6a4a'))
+        cv.outline()
+        return cv
+    return make
+
+
+def p_gate_steel():
+    """The toll lane shut for good, from above, 3.5 m: a hydraulic steel boom (box section, red and white reflective
+    bands along its face) out of its armoured housing (hazard stripes), resting in its catch post across the lane, a
+    white plate with a red X bolted to its middle."""
+    W, H = 112, 20
+    cv = Cv(W, H)
+    rng = random.Random(9881)
+    st = ramp('#5a606c', 0.5, 0.25, 0.35)
+
+    def post(ly):
+        fill_shape(ly, W - 4, H / 2, 3.0, 4.5, lambda u, v, L: shade(st, 0.2 + L * 0.7), kind='rect', corner=0.6, bevel=1.2)
+    layer(cv, post)
+
+    def boom(x, y, cur):
+        t = y - H / 2
+        if abs(t) >= 3.0:
+            return None
+        c = shade(st, 0.86 if t < -2.0 else 0.28 if t > 2.0 else 0.58)
+        if -1.0 <= t < 1.5 and int(x // 10) % 2:
+            c = hx('#c8242c') if int(x // 20) % 2 else hx('#e8e4da')       # the reflective bands
+        return c
+    ly = Cv(W, H, cv.s)
+    px_paint(ly, 18, 0, W - 5, H, boom)
+    ly.outline()
+    cv.over(ly)
+
+    def housing(ly):
+        fill_shape(ly, 10, H / 2, 9.0, 8.5, lambda u, v, L: shade(ramp('#3a3e48', 0.5, 0.25, 0.35), 0.2 + L * 0.7), kind='rect', corner=1.2, bevel=2.0)
+        px_paint(ly, 2.5, 2.5, 17.5, 4.5, lambda x, y, cur: hx('#e8c020') if int((x + y) // 2) % 2 else SIGN_INK)
+    layer(cv, housing)
+
+    def plate(ly):
+        sign_plate(ly, W / 2 - 8, 2, W / 2 + 8, H - 2, '#ece8de', rim=SIGN_INK, r=0.8, border=0.5)
+
+        def x_(x, y, cur):
+            u, v = x - W / 2, y - H / 2
+            return hx('#c8242c') if abs(u) < 5.5 and abs(v) < 5.5 and (abs(u - v) < 1.6 or abs(u + v) < 1.6) else None
+        px_paint(ly, W / 2 - 7, 3, W / 2 + 7, H - 3, x_)
+    layer(cv, plate)
+    for (x, y) in ((W / 2 - 6.5, 3.5), (W / 2 + 6.0, 3.5), (W / 2 - 6.5, H - 4.0), (W / 2 + 6.0, H - 4.0)):
+        stud(cv, x, y, hx('#8a8e98'))
+    smudge(cv, rng, 6, (18, 7, W - 6, 13), (0.8, 2.0), 0.4, hx('#8a5a32'))
+    smudge(cv, rng, 4, (2, 2, W - 2, H - 2), (1.5, 3.5), 0.15)
+    return cv
+
+
+def lane_signal(go):
+    """A lane signal over a toll lane (laid back to be read): a black box with its visor, an LED matrix face, lit
+    either as a green arrow down (the lane is open) or a red X (shut); the emissive map holds the lit LEDs."""
+    def make():
+        S = 20
+        cv, gl = Cv(S, S), Cv(S, S)
+        col = hx('#2af08a') if go else hx('#ff2c2c')
+        c0 = S / 2
+        fill_shape(cv, c0, c0, 9.0, 9.0, lambda u, v, L: shade(ramp('#26262e', 0.45, 0.22, 0.35), 0.25 + L * 0.7), kind='rect', corner=2.0, bevel=1.5)
+        frect(cv, 2.0, 1.0, S - 2.0, 2.5, hx('#0c0c10'))                    # the visor's shadow
+        frect(cv, 2.5, 3.0, S - 2.5, S - 2.5, hx('#0c0c12'))
+
+        def sym(u, v):
+            if go:
+                return (abs(u) < 1.3 and -6.0 <= v < 1.0) or (0.0 <= v < 6.0 and abs(u) < (6.0 - v) * 0.95)
+            return abs(u) < 5.6 and abs(v) < 5.6 and (abs(u - v) < 1.5 or abs(u + v) < 1.5)
+
+        def face(x, y, cur):
+            led = (x * 2) % 2 < 1 and (y * 2) % 2 < 1
+            if not led:
+                return None
+            return dk(col, 0.25) if sym(x - c0, y - c0 - 0.25) else hx('#22222a')
+        px_paint(cv, 3, 3.5, S - 3, S - 3, face)
+        px_paint(gl, 2, 2, S - 2, S - 2, lambda x, y, cur: (lt(col, 0.45) if (x * 2) % 2 < 1 and (y * 2) % 2 < 1 else alpha(col, 120)) if sym(x - c0, y - c0 - 0.25) else None)
+        cv.outline()
+        return cv, gl
+    return make
+
+
+def p_sign_exact_change():
+    """EXACT CHANGE over the island's first lane (laid back to be read): a yellow plate, its black rim, two lines."""
+    W, H = 40, 24
+    cv = Cv(W, H)
+    rng = random.Random(9891)
+    sign_plate(cv, 1, 1, W - 1, H - 1, SIGN_YELLOW, rim=SIGN_INK, r=1.0, border=0.75)
+    words(cv, W / 2, 3.5, 'EXACT', SIGN_INK, 1.0, centre=True)
+    words(cv, W / 2, 13.5, 'CHANGE', SIGN_INK, 1.0, centre=True)
+    sign_wear(cv, rng, (2, 2, W - 2, H - 2))
+    cv.outline()
+    return cv
+
+
+_FAN = [((0, 224 + k * 96), (320, 224 + k * 144)) for k in (-1, 0, 1)]   # the plaza's lane lines fanning out: 3 m lanes to 4.5 m
+DETOUR_ARROW = [(2, 11), (48, 11), (60, 15), (66, 26), (66, 46)]
+MERGE_ARROW = [(2, 31), (34, 31), (52, 27), (66, 19), (82, 11)]
+RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, size in world px)
+    road_cut=(p_road_cut, (128, 80)),
+    sand_pile=(heap(72, 52, 9901, '#c4a46a', (hx('#e0c890'), hx('#9a7a48'), hx('#8a8478')), ol='#3a2a14'), (72, 52)),
+    asphalt_pile=(heap(64, 48, 9902, '#3a3a42', (hx('#6a6a74'), hx('#22222a'), hx('#8a8a92')), grain=0.18, ol='#121018'), (64, 48)),
+    detour_arrow_paint=(arrow_mark(96, 48, DETOUR_ARROW, 5.0, (14, 7), 9903, ROAD_YELLOW), (96, 48)),
+    detour_arrow_paint_left=(arrow_mark(96, 48, mirror_y(DETOUR_ARROW, 48), 5.0, (14, 7), 9904, ROAD_YELLOW), (96, 48)),
+    gore_hatch=(p_gore_hatch, (256, 72)),
+    merge_arrow=(arrow_mark(96, 40, MERGE_ARROW, 5.0, (16, 8), 9905), (96, 40)),
+    merge_arrow_s=(arrow_mark(96, 40, mirror_y(MERGE_ARROW, 40), 5.0, (16, 8), 9906), (96, 40)),
+    lane_dash_long=(lambda: road_mark(96, 6, lambda x, y: 1 <= x < 95 and 1 <= y < 5, 9907), (96, 6)),
+    edge_line=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9908, wear=0.8), (96, 6)),
+    edge_line_yellow=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9909, ROAD_YELLOW, wear=0.8), (96, 6)),
+    raised_marker=(raised_marker('#e8e4da', '#f4f4ff'), (8, 6)),
+    raised_marker_yellow=(raised_marker('#d8b030', '#ffb028'), (8, 6)),
+    rumble_strip=(p_rumble_strip, (96, 16)),
+    toll_text=(road_text('TOLL', 9910), (51, 44)),
+    plaza_stripes=(plaza_lines(320, 448, _FAN, 9911), (320, 448)),
+    plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912), (128, 6)),
+)
+for _n in range(1, 5):
+    RAMP_PAINT['toll_lane_%d' % _n] = (road_text(str(_n), 9912 + _n), (12, 44))
+RAMP_PROPS = dict(road_closed=p_road_closed, sign_detour=p_sign_detour(), sign_detour_left=p_sign_detour(True),
+                  jersey_barrier=p_jersey_barrier, water_barrier=p_water_barrier, excavator=p_excavator,
+                  dump_truck=p_dump_truck, works_light=p_works_light, site_fence=p_site_fence,
+                  roller_door=p_roller_door, loading_dock=p_loading_dock, chainlink_gate=p_chainlink_gate,
+                  pallet_stack=p_pallet_stack, oil_drum=p_oil_drum, sign_stop=p_sign_stop,
+                  guardrail=p_guardrail, guardrail_end=p_guardrail_end, crash_cushion=p_crash_cushion,
+                  highway_lamp=p_highway_lamp, sign_freeway=p_sign_freeway, sign_wrong_way=p_sign_wrong_way,
+                  sign_speed_55=p_sign_speed_55, sign_toll_ahead=p_sign_toll_ahead, reflector_post=p_reflector_post,
+                  toll_island=p_toll_island, toll_booth=p_toll_booth, toll_canopy=p_toll_canopy,
+                  gate_arm_wood=gate_arm(), gate_arm_bit_a=gate_arm(20.0, 62.0, 1), gate_arm_bit_b=gate_arm(62.0, 92.0, 2),
+                  gate_arm_bit_c=gate_arm(92.0, 112.0, 3), gate_steel=p_gate_steel,
+                  lane_signal_go=lane_signal(True), lane_signal_stop=lane_signal(False),
+                  sign_exact_change=p_sign_exact_change)
+RAMP_SIZES = dict(road_closed=(128, 24), sign_detour=(42, 28), sign_detour_left=(42, 28), jersey_barrier=(96, 20),
+                  water_barrier=(60, 20), excavator=(192, 96), dump_truck=(240, 84), works_light=(96, 72),
+                  site_fence=(112, 20), roller_door=(96, 16), loading_dock=(128, 28), chainlink_gate=(128, 16),
+                  pallet_stack=(40, 34), oil_drum=(20, 20), sign_stop=(20, 20), guardrail=(128, 10),
+                  guardrail_end=(64, 18), crash_cushion=(96, 88), highway_lamp=(208, 20), sign_freeway=(64, 48),
+                  sign_wrong_way=(38, 26), sign_speed_55=(22, 28), sign_toll_ahead=(54, 30), reflector_post=(6, 12),
+                  toll_island=(256, 48), toll_booth=(96, 44), toll_canopy=(192, 640), gate_arm_wood=(112, 12),
+                  gate_arm_bit_a=(46, 6), gate_arm_bit_b=(34, 6), gate_arm_bit_c=(24, 6), gate_steel=(112, 20),
+                  lane_signal_go=(20, 20), lane_signal_stop=(20, 20), sign_exact_change=(40, 24))
+RAMP_GLOWING = ['road_closed', 'works_light', 'highway_lamp', 'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop']
+RAMP_PROPS.update((n, fn) for n, (fn, _) in RAMP_PAINT.items())
+RAMP_SIZES.update((n, sz) for n, (_, sz) in RAMP_PAINT.items())
+CHASE_PROPS.update(RAMP_PROPS)
+CHASE_SIZES.update(RAMP_SIZES)
+ROAD_GLOWING += RAMP_GLOWING
+
+
 # --------------------------------------------------------------------------
 # The flat of the prologue (tools/build_tutorial.py): a poor man's place, six years of it. What lies on its floors
 # (FLAT_PAINT: floor paint, no body), its furniture and what hangs on its walls (FLAT_PROPS), what stands on its
