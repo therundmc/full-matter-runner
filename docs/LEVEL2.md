@@ -890,6 +890,20 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   in two by the rule, the bridge, an alley mouth) and one over a barricade: four now, every 14 m on alternate sides,
   stuttering, broken, dying. New builder check `check_paint_overlaps(col0, col1)`: no two road markings overlap, none
   on an iron cover or the centre line's dashes (run on cols 0-220). QA 3 min seed 2: PASS, no stall, the end reached.
+- 2026-11-20: 2A'S SPRITES POLISHED (branch polish/2a-sprites; the user: "un rendu realiste ... clean et pro"; no size
+  changed, no builder touched). THE PALMS one family (tools/generate_assets.py PALM_GREENS / PALM_DEAD / PALM_INK,
+  `leaf_over`): royal, young royal, coconut (leaning, the alley's fronds) on palm_crown's feather fronds, sabal and
+  Washingtonia (palm_fan now on the sabal's fan_leaf) on fans; a frond's gaps stay open (its ink only round its
+  outside: no more black hatching), each casts a 1 px shadow down-right on the ones under it, a matte heart (no glossy
+  ball); the dead fronds, standing or fallen, one straw. THE ROAD'S PAINT: one white, one yellow (kerbs and the
+  islands' kerbs too) and one wear (ROAD_WEAR); the lines laid end to end (centre_double, edge lines, lane dashes,
+  plaza_line: ROAD_WEAR_RUN) only thin, their noise wrapping on 3 m: the double yellow no longer reads dashed; no
+  pinholes. Repainted: police_car and car_burnt on the street's sedan (p_car `keep`), the billboards' prints in flat
+  bands with real palm silhouettes (`poster_palm`; SPF 4 fits its label, the radio's line shadowed), the tipper's
+  earth in clods, the hibiscus hedges in the bushes' leaves, the toll's roof darker and calm (no speckle, no striped
+  puddle), its islands on the world's concrete, the puddles a film of water (no ink rim), the swerve's tyre marks, the
+  neon flamingo, the call box's number. The toll roof still blows out under the plaza's floods (lighting, not paint);
+  an overhead crown seen off its grate is the props' parallax (`height`), the sprites are centred.
 - 2026-11-20: THE ALLEY AND LEG 1 POLISHED (branch polish/2a-alley-ramp; the user: "des lignes au sol qui se
   recouvrent ... un rendu realiste, clean et pro"; walked frame by frame at play zoom and as a 1:1 map without the night).
   PAINT: the yellow left edge lay on the kerb under the bank (8 px off it now), then ran onto the gore's own line where
