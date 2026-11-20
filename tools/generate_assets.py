@@ -5016,9 +5016,11 @@ class Veh:
         return self.cv, self.gl
 
 
-def p_car(body=SEDAN_BODY, stripe=None):
+def p_car(body=SEDAN_BODY, stripe=None, keep=None):
     """80s four-door sedan, 4.4 x 1.8 m: boxy, chrome bumpers, quad headlights, thick C pillars. stripe: a colour run
-    down its middle from the trunk to the nose over the panels, under the glass (the pursuers' car, p_pursuer)."""
+    down its middle from the trunk to the nose over the panels, under the glass (the pursuers' car, p_pursuer).
+    keep: a list the painter's Veh is appended to (its mask and glass: the cruiser and the burnt-out car are this
+    sedan repainted)."""
     k = Veh(140, 58, 29, 4401)
     wheels = (30, 112)
     k.shell(body, 1, 138, 26.5, 5, 6, crown=2.2)
@@ -5093,6 +5095,8 @@ def p_car(body=SEDAN_BODY, stripe=None):
     k.line(4, 18, 5, 18, hx('#e8e4dc'), w=2)                  # reverse lights
     plate(k, 3, 23, 28)
     k.mirror(86, 90, body, 90)
+    if keep is not None:
+        keep.append(k)
     return k.done()
 
 
@@ -10197,9 +10201,12 @@ def p_car_grille():
 # lights on their mast arms, a bus shelter, signs on their posts, bollards, trees, the works (an arrow board, a
 # compressor, barricades), the railway over the street, the freeway sign at its end. Every painter has its own
 # random.Random: adding one here repaints nothing else.
-ROAD_WHITE, ROAD_YELLOW = hx('#d4cfc2'), hx('#d2aa3a')
+ROAD_WHITE, ROAD_YELLOW = hx('#d4cfc2'), hx('#d2aa3a')   # THE road paint of every kit (lines, words, kerbs, islands)
+ROAD_WEAR = 0.6     # one wear for all of it (road_mark): the street's lines, arrows and words, the ramp's, the toll's
+ROAD_WEAR_RUN = -0.6   # the long lines laid end to end (centre, edges, lane dashes): the same piece every 3 m, so
+                       # its worn-through holes would repeat as a dash; they only thin (their noise wraps: no seam)
 KERB = ramp('#a3a0a8', 0.5, 0.26, 0.28)
-KERB_RED, KERB_YELLOW = hx('#b23a30'), hx('#d0a428')
+KERB_RED, KERB_YELLOW = hx('#b23a30'), ROAD_YELLOW
 GUTTER = (16, 12, 24)
 _ROAD_TILES = {}
 
@@ -10223,18 +10230,18 @@ def tile_px(name, x, y):
     return t.p[int(math.floor(x * FINE)) % t.pw, int(math.floor(y * FINE)) % t.ph]
 
 
-def road_mark(W, H, mask, seed, col=ROAD_WHITE, wear=1.0):
+def road_mark(W, H, mask, seed, col=ROAD_WHITE, wear=ROAD_WEAR):
     """Paint on the asphalt, worn: mask(x, y) is where the marking is (world px, a pixel's centre). Thermoplastic laid
     on a road: chipped where the aggregate shows through, thinned to grey in slow patches, never a clean decal."""
     cv = Cv(W, H)
     rng = random.Random(seed)
-    slow, quick = VNoise(max(W, 16), max(H, 16), 7, rng), VNoise(max(W, 16), max(H, 16), 2, rng)
+    slow, quick = VNoise(max(W, 16), max(H, 16), 8, rng), VNoise(max(W, 16), max(H, 16), 2, rng)   # cells that divide a 3 m piece: it wraps
 
     def f(x, y, cur):
         if not mask(x, y):
             return None
         w = slow(x, y) * 0.62 + quick(x, y) * 0.38 + 0.07 * (wear - 1.0)
-        if w > 0.73 or rng.random() < 0.01:
+        if w > 0.73:
             return None                                                   # worn through: the asphalt
         c = mix(col, FL_ASPHALT, 0.4) if w > 0.64 else col                # thinned round the holes
         return alpha(shift(c, rng.randint(-3, 3)), 240)
@@ -10376,7 +10383,7 @@ def road_text(word, seed, col=None, ky=6, kx=2):
             return False
         row = FONT_STENCIL[word[n]][int(gy // ky)]
         return row[int((gx - n * step) // kx)] == '#'
-    return lambda: road_mark(W, H, mask, seed, col or ROAD_WHITE, wear=0.3)
+    return lambda: road_mark(W, H, mask, seed, col or ROAD_WHITE)
 
 
 def p_road_arrow():
@@ -11062,10 +11069,10 @@ ROAD_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     kerb_in=(p_kerb_in, (6, 6)),
     kerb_ramp_n=(kerb_ramp('n'), (64, 20)), kerb_ramp_s=(kerb_ramp('s'), (64, 20)),
     zebra_a=(lambda: road_mark(96, 20, lambda x, y: 0.5 <= x < 95.5 and 1 <= y < 19, 9311), (96, 20)),
-    zebra_b=(lambda: road_mark(96, 20, lambda x, y: 0.5 <= x < 95.5 and 1 <= y < 19, 9312, wear=1.5), (96, 20)),
+    zebra_b=(lambda: road_mark(96, 20, lambda x, y: 0.5 <= x < 95.5 and 1 <= y < 19, 9312, wear=ROAD_WEAR + 0.3), (96, 20)),
     stop_line=(lambda: road_mark(14, 80, lambda x, y: 1 <= x < 13 and 1 <= y < 79, 9313), (14, 80)),
-    centre_double=(lambda: road_mark(96, 8, lambda x, y: 0.5 <= y < 3 or 5 <= y < 7.5, 9314, ROAD_YELLOW), (96, 8)),
-    park_tee=(lambda: road_mark(24, 60, lambda x, y: abs(x - 12) < 1.6 or y >= 56.8, 9315, wear=1.2), (24, 60)),
+    centre_double=(lambda: road_mark(96, 8, lambda x, y: 0.5 <= y < 3 or 5 <= y < 7.5, 9314, ROAD_YELLOW, ROAD_WEAR_RUN), (96, 8)),
+    park_tee=(lambda: road_mark(24, 60, lambda x, y: abs(x - 12) < 1.6 or y >= 56.8, 9315), (24, 60)),
     road_arrow=(p_road_arrow, (96, 28)), road_arrow_turn=(p_road_arrow_turn, (66, 40)),
     road_bus=(road_text('BUS', 9321), (38, 44)), road_stop=(road_text('STOP', 9322), (51, 44)),
     road_slow=(road_text('SLOW', 9323), (51, 44)), road_keep=(road_text('KEEP', 9324), (51, 44)),
@@ -11506,7 +11513,14 @@ def p_dump_truck():
         if d > 1.0:
             return None
         k = 0.45 - 0.55 * (dx * 0.4 + dy * 0.9) * (1 - d * 0.6) + (lumpy(x, y) - 0.5) * 0.3 + (1 - d) * 0.25
-        return shift(shade(earth, max(0.0, min(1.0, k))), rng.randint(-4, 4))
+        c = earth[0 if k < 0.26 else 1 if k < 0.48 else 2 if k < 0.74 else 3]   # the ramp's tones: no smooth slope
+        q = clods(x, y)
+        if 0.47 < q < 0.53:
+            c = dk(c, 0.3)                                                 # the cracks between its clods
+        elif 0.53 <= q < 0.57 and k > 0.3:
+            c = lt(c, 0.12)                                                # a clod's lit lip
+        return shift(c, rng.randint(-3, 3))
+    clods = VNoise(W, H, 2, rng)
     px_paint(cv, 10, 8, 166, H - 8, load)
     for _ in range(16):
         x, y = rng.uniform(26, 150), rng.uniform(16, H - 16)
@@ -12176,7 +12190,7 @@ def plaza_lines(W, H, lines, seed, yellow=()):
     def make():
         cv = road_mark(W, H, lambda x, y: any(seg(x, y, a, b) < 2.0 for (i, (a, b)) in enumerate(lines) if i not in yellow), seed)
         if yellow:
-            cv.over(road_mark(W, H, lambda x, y: any(seg(x, y, *lines[i]) < 2.0 for i in yellow), seed + 1, ROAD_YELLOW, wear=0.8))
+            cv.over(road_mark(W, H, lambda x, y: any(seg(x, y, *lines[i]) < 2.0 for i in yellow), seed + 1, ROAD_YELLOW))
         return cv
     return make
 
@@ -12219,18 +12233,19 @@ def p_toll_island():
         if e < 0:
             return None
         if e < 2.4:                                                        # the kerb, painted
-            c = hx('#d8b030') if int((x + y) // 5) % 2 or x > 36 else SIGN_INK
+            c = ROAD_YELLOW if int((x + y) // 5) % 2 or x > 36 else SIGN_INK
             return lt(c, 0.12) if e < 1.0 and lit else dk(c, 0.3) if e < 1.0 else c
         if x < 36:
             return hx('#e0b828') if int((x + y) // 6) % 2 else hx('#1e1c24')   # the nose
+        c = lt(tile_px('concrete', x, y), 0.24)                            # the world's own trowelled concrete, raised
         if x % 48 < 0.5 or abs(y - cy) < 0.25:
-            return dk(CONCRETE[1], 0.2)                                    # the joints
-        return shift(shade(CONCRETE, 0.6), int((grit(x, y) - 0.5) * 18))
+            return dk(c, 0.3)                                              # the joints
+        return lt(c, 0.05) if grit(x, y) > 0.7 else c
     px_paint(cv, 0, 0, W, H, f)
     for (x, y) in ((12.0, cy), (22.0, cy - 11.0), (22.0, cy + 11.0)):      # the crash posts
         fill_shape(cv, x, y, 3.4, 3.4, lambda u, v, L: shade(ramp('#e8c020', 0.5, 0.26, 0.28), 0.25 + L * 0.75))
         ring(cv, x, y, 1.6, 2.2, lambda dx, dy, d: hx('#8a7016'))
-    smudge(cv, rng, 10, (40, 4, W - 4, H - 4), (1.5, 4.0), 0.2)
+    smudge(cv, rng, 5, (40, 4, W - 4, H - 4), (1.5, 3.0), 0.12)
     for _ in range(14):
         cv.dot(rng.uniform(40, W - 6), rng.uniform(5, H - 5), rng.choice((hx('#5a5860'), hx('#2a2830'), hx('#c8c4ba'))))
     cv.outline()
@@ -12371,14 +12386,13 @@ def p_toll_canopy():
     between five islands of 1.5 m (TOLL_LANES, TOLL_ISLES). Art deco in pastel: the fascia the traffic comes in under
     (-x) pink with three teal speed lines and a stepped teal fin over each island, the one it leaves under (+x) teal
     and pink the other way, chrome caps, a neon tube along each (pink in, teal out); the sheet roof pale between them,
-    gutters, two air units, a hatch, a puddle (the sheet a mid slate: seen from above at night, under the plaza's lamps,
-    a pale one read as a white slab); the deco sign on its middle (neon TOLL in pink, SUNSET BAY in teal),
+    gutters, two air units, a hatch, a puddle; the deco sign on its middle (neon TOLL in pink, SUNSET BAY in teal),
     each lane's number in a porthole of teal neon on the fascia in, the lamps along both. The emissive map holds the
     neon, the numbers and the lamps (they buzz: data/props.js `flicker`)."""
     W, H, F = 192, 640, 18
     cv, gl = Cv(W, H), Cv(W, H)
     rng = random.Random(9861)
-    deck = ramp('#7c8490', 0.42, 0.2, 0.18)
+    deck = ramp('#7a808c', 0.42, 0.2, 0.18)        # galvanised sheet, weathered (it sits under the plaza's floods)
     streak, rust = VNoise(W, H, 8, rng), VNoise(W, H, 5, rng)
     pink, teal = ramp(PASTEL_PINK, 0.42, 0.2, 0.22), ramp(PASTEL_TEAL, 0.42, 0.2, 0.22)
 
@@ -12408,12 +12422,12 @@ def p_toll_canopy():
         c = shade(deck, 0.82 if t < 0.5 else 0.34 if t < 1.0 else 0.58)    # the seams
         if streak(x * 0.4, y * 2.0) > 0.7:
             c = dk(c, 0.07)
-        if rust(x, y) > 0.86 and t >= 1.0:
-            c = mix(c, hx('#8a5a3a'), 0.3)
+        if rust(x, y) > 0.88 and t >= 1.0:
+            c = mix(c, hx('#7a5a46'), 0.18)
         return shift(c, rng.randint(-2, 2))
     px_paint(cv, 0, 0, W, H, roof)
     # a puddle on the roof, the pink of the sign in it
-    px_paint(cv, 40, 140, 70, 160, lambda x, y, cur: (mix(cur, hx('#3a2a48'), 0.6) if (x + y * 0.3) % 9 > 2 else mix(cur, DECO_PINK, 0.35)) if math.hypot((x - 55) / 15, (y - 150) / 10) < 1 else None)
+    px_paint(cv, 40, 140, 70, 160, lambda x, y, cur: (mix(cur, hx('#2a2438'), 0.4) if abs(y - 149) > 1.2 or not 46 < x < 62 else mix(cur, DECO_PINK, 0.25)) if math.hypot((x - 55) / 15, (y - 150) / 10) + (streak(x, y) - 0.5) * 0.4 < 1 else None)
     for (ax, ay) in ((60.0, 200.0), (128.0, 470.0)):
         def unit(ly, ax=ax, ay=ay):
             fill_shape(ly, ax, ay, 16, 11, lambda u, v, L: shade(ramp('#9a9ea8', 0.45, 0.22, 0.3), 0.25 + L * 0.65), kind='rect', corner=1.5, bevel=1.5)
@@ -12423,8 +12437,8 @@ def p_toll_canopy():
         line(cv, ax, ay + 11, ax, 296 if ay < 320 else 344, hx('#2a2c34'))   # conduit to the sign
     layer(cv, lambda ly: fill_shape(ly, 150, 110, 8, 8, lambda u, v, L: shade(ramp('#7a7e88', 0.45, 0.22, 0.3), 0.25 + L * 0.65), kind='rect', corner=1.0, bevel=1.5))
     smudge(cv, rng, 30, (F + 2, 4, W - F - 2, H - 4), (3.0, 9.0), 0.12)
-    for _ in range(40):                                                    # gulls' droppings
-        cv.dot(rng.uniform(F + 2, W - F - 2), rng.uniform(4, H - 4), hx('#e8e4dc'))
+    for _ in range(8):                                                     # gulls' droppings
+        cv.dot(rng.uniform(F + 2, W - F - 2), rng.uniform(4, H - 4), hx('#d8d4cc'))
 
     # the deco sign: a stepped pink plate, its teal crest, a dark face with the neon on it
     def sign(ly):
@@ -12632,15 +12646,15 @@ RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     gore_hatch=(p_gore_hatch, (256, 72)),
     merge_arrow=(arrow_mark(96, 40, MERGE_ARROW, 5.0, (16, 8), 9905), (96, 40)),
     merge_arrow_s=(arrow_mark(96, 40, mirror_y(MERGE_ARROW, 40), 5.0, (16, 8), 9906), (96, 40)),
-    lane_dash_long=(lambda: road_mark(96, 6, lambda x, y: 1 <= x < 95 and 1 <= y < 5, 9907), (96, 6)),
-    edge_line=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9908, wear=0.8), (96, 6)),
-    edge_line_yellow=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9909, ROAD_YELLOW, wear=0.8), (96, 6)),
+    lane_dash_long=(lambda: road_mark(96, 6, lambda x, y: 1 <= x < 95 and 1 <= y < 5, 9907, wear=ROAD_WEAR_RUN), (96, 6)),
+    edge_line=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9908, wear=ROAD_WEAR_RUN), (96, 6)),
+    edge_line_yellow=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9909, ROAD_YELLOW, ROAD_WEAR_RUN), (96, 6)),
     raised_marker=(raised_marker('#e8e4da', '#f4f4ff'), (8, 6)),
     raised_marker_yellow=(raised_marker('#d8b030', '#ffb028'), (8, 6)),
     rumble_strip=(p_rumble_strip, (96, 16)),
     toll_text=(road_text('TOLL', 9910), (51, 44)),
     plaza_stripes=(plaza_lines(320, 448, _FAN, 9911), (320, 448)),
-    plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912), (128, 6)),
+    plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912, wear=ROAD_WEAR_RUN), (128, 6)),
     # made to measure for 2A's toll (tools/build_level2a.py): two lanes' edges flaring out to four lanes of 2.5 m
     # (laid turned round past the plaza: the outer two end, the left edge in yellow), and four lanes spreading to the
     # plaza's grid (TOLL_LANES: 4.5 m apart), their lines onto the islands' crash cushions (turned round: the same
@@ -12801,60 +12815,88 @@ CHASE_SIZES.update(FWY_SIZES)
 # for the back road too): nothing here is tied to one spot. FINE density, real sizes (1 m = 32 px), every painter its
 # own random.Random; the art deco's pastels (PASTEL_PINK / PASTEL_TEAL) and its neon (DECO_PINK / DECO_TEAL) are the
 # toll's. DECO_PAINT is floor paint (levelkit FLOOR), DECO_PROPS stand; DECO_GLOWING have an emissive map.
+
+# ---- THE PALMS, one family (royal, coconut, young royal: palm_crown's feather fronds; sabal and Washingtonia:
+# fan_leaf's fans): one ink, one dead straw, the species' greens on the same ramps, every frond / fan laid with
+# leaf_over (its gaps left open on what is under it, its ink only round its outside, a 1 px shadow cast down and
+# right on the leaves under it: light from the top left, as everywhere).
+PALM_INK = hx('#0c1a12')
+PALM_DEAD = ramp('#8e7046', 0.55, 0.3, 0.25)
+PALM_GREENS = dict(royal=(ramp('#2a7438', 0.6, 0.32, 0.26), ramp('#4a9440', 0.55, 0.3, 0.28)),
+                   coconut=(ramp('#3c762e', 0.6, 0.32, 0.26), ramp('#76a23a', 0.55, 0.3, 0.28)),
+                   sabal=(ramp('#2e6438', 0.6, 0.32, 0.26), ramp('#4a8644', 0.55, 0.3, 0.28)),
+                   fan=(ramp('#2e7040', 0.6, 0.32, 0.26), ramp('#5a8e3c', 0.55, 0.3, 0.28)))
+
+
+def leaf_over(cv, ly, ink=PALM_INK, cast=0.3, close=5):
+    """Lay one leaf layer ly on cv: its hull (its alpha closed over the gaps between leaflets / segments) casts a
+    1 world px shadow down and right on what cv already has, the ink goes round the hull's outside only (the gaps
+    inside stay open: the leaves or the ground under them show through, no hatching of ink), then ly over it."""
+    from PIL import ImageFilter
+    a = ly.img.getchannel('A').point(lambda v: 255 if v >= 100 else 0)
+    box = a.getbbox()
+    if not box:
+        return
+    hull = a.filter(ImageFilter.MaxFilter(close)).filter(ImageFilter.MinFilter(close))
+    hp, s = hull.load(), cv.s
+    W, H = cv.pw, cv.ph
+    x0, y0, x1, y1 = max(0, box[0] - 2), max(0, box[1] - 2), min(W, box[2] + s + 2), min(H, box[3] + s + 2)
+    for j in range(y0, y1):
+        for i in range(x0, x1):
+            if cv.p[i, j][3] < 100 or cv.p[i, j] == ink:
+                continue
+            if hp[i, j]:
+                if ly.p[i, j][3] < 100:
+                    cv.p[i, j] = dk(cv.p[i, j], cast * 0.7)               # seen through a gap: in its shade
+                continue
+            if (i >= s and j >= s and hp[i - s, j - s]) or (i >= s - 1 and j >= s and hp[i - s + 1, j - s]):
+                cv.p[i, j] = dk(cv.p[i, j], cast)                         # the shadow it casts on the leaves under it
+    ink_at = []
+    for j in range(y0, y1):
+        for i in range(x0, x1):
+            if hp[i, j] or ly.p[i, j][3] >= 100:
+                continue
+            if any(0 <= i + di < W and 0 <= j + dj < H and ly.p[i + di, j + dj][3] >= 100
+                   for (di, dj) in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                ink_at.append((i, j))
+    for (i, j) in ink_at:
+        ly.p[i, j] = ink
+    cv.over(ly)
+
+
 def palm_fan(seed, reach=1.0):
     """A Washingtonia, the Florida fan palm, from above, about 3 m across (reach: its crown's share of that): a skirt
     of dead fans hanging under the crown, then a ring of green fans on their stalks and a few young ones in the
-    middle, every fan pleated (its ribs catch the lamps), its tips split; the trunk's boss in the middle (the hitbox,
-    r 4.5)."""
+    middle, every fan pleated (fan_leaf, the sabal's: one family), its tips split; the trunk's boss in the middle
+    (the hitbox, r 4.5)."""
     def make():
         S = 96
         cv = Cv(S, S)
         rng = random.Random(seed)
         c0 = S / 2
-        green, olive, dead = ramp('#2f8a4c', 0.55, 0.3, 0.24), ramp('#5f9a3c', 0.55, 0.3, 0.22), ramp('#9a7a46', 0.5, 0.26, 0.24)
+        green, young = PALM_GREENS['fan']
         leaves = []
-        for i in range(11):                                                # the skirt
-            leaves.append((rng.uniform(0, 6.28), rng.uniform(12, 16) * reach, rng.uniform(9, 12) * reach, dead, 0.9))
+        for i in range(10):                                                # the skirt, hanging
+            leaves.append((rng.uniform(0, 6.28), rng.uniform(8, 11) * reach, rng.uniform(10, 13) * reach, PALM_DEAD, 2))
         a0 = rng.uniform(0, 6.28)
         for i in range(12):                                                # the crown
-            leaves.append((a0 + i * 6.28 / 12 + rng.uniform(-0.15, 0.15), rng.uniform(21, 27) * reach, rng.uniform(15, 19) * reach,
-                           green if i % 3 else olive, 1.15))
-        for i in range(6):                                                 # the young fans, upright, in the middle
-            leaves.append((a0 + 0.26 + i * 6.28 / 6 + rng.uniform(-0.2, 0.2), rng.uniform(8, 12) * reach, rng.uniform(10, 13) * reach,
-                           olive, 0.8))
-        for (a, ln, rf, col, half) in leaves:
+            leaves.append((a0 + i * 6.28 / 12 + rng.uniform(-0.15, 0.15), rng.uniform(15, 19) * reach,
+                           rng.uniform(17, 21) * reach, green, 0))
+        for i in range(5):                                                 # the young fans, upright, in the middle
+            leaves.append((a0 + 0.26 + i * 6.28 / 5 + rng.uniform(-0.2, 0.2), rng.uniform(5, 7) * reach,
+                           rng.uniform(10, 12) * reach, young, 1))
+        for (a, r0, R, g, kind) in leaves:
             ly = Cv(S, S)
-            ca, sa = math.cos(a), math.sin(a)
-            fill_capsule(ly, [(c0 + ca * 3, c0 + sa * 3), (c0 + ca * ln, c0 + sa * ln)], 0.8, lambda k, L, s, i, t, col=col: shade(col, 0.25 + L * 0.4))
-            fx, fy = c0 + ca * (ln - 2), c0 + sa * (ln - 2)
-            jag = [rng.uniform(0.82, 1.0) for _ in range(40)]
-
-            def f(x, y, cur, fx=fx, fy=fy, a=a, rf=rf, col=col, half=half, jag=jag):
-                dx, dy = x - fx, y - fy
-                d = math.hypot(dx, dy)
-                if d > rf or d < 0.8:
-                    return None
-                u = (math.atan2(dy, dx) - a + math.pi) % (2 * math.pi) - math.pi
-                if abs(u) > half:
-                    return None
-                k = (u + half) / 0.2
-                seg, fr = int(k), k - int(k)
-                if d > rf * jag[seg % 40]:
-                    return None                                            # its ragged edge
-                if d > rf * 0.72 and 0.42 < fr < 0.58:
-                    return None                                            # the tips split
-                lit = (math.cos(a + u - 1.57) * LX + math.sin(a + u - 1.57) * LY) > 0
-                c = shade(col, (0.78 if lit else 0.5) if fr < 0.5 else (0.56 if lit else 0.3))
-                return dk(c, 0.18) if d < rf * 0.25 else c
-            px_paint(ly, fx - rf - 1, fy - rf - 1, fx + rf + 1, fy + rf + 1, f)
-            ly.outline(hx('#0a1a12'))
-            cv.over(ly)
+            hxc, hyc = c0 + math.cos(a) * r0, c0 + math.sin(a) * r0
+            fan_leaf(ly, hxc, hyc, a, R, g, 1.0 if kind == 2 else 1.3, 8 if kind == 2 else 11, rng, (), kind == 2,
+                     0.55 if kind == 2 else 0.72, 0.62)                    # a Washingtonia's fan is split less deep
+            fill_capsule(ly, [(c0 + math.cos(a) * 3, c0 + math.sin(a) * 3), (hxc, hyc),
+                              (hxc + math.cos(a) * R * 0.3, hyc + math.sin(a) * R * 0.3)],
+                         0.75, lambda k, L, s, i, t, g=g: shade(g, 0.5 + L * 0.35))   # the stalk, its costa into the fan
+            leaf_over(cv, ly)
         trunk = Cv(S, S)
-        fill_shape(trunk, c0, c0, 4.5, 4.5, lambda u, v, L: shade(ramp('#7a5634', 0.5, 0.25, 0.35), L))
-        for (dx, dy) in ((-2.0, 1.4), (1.6, -2.0), (2.0, 1.8)):
-            fill_shape(trunk, c0 + dx, c0 + dy, 1.3, 1.3, lambda u, v, L: shade(ramp('#5a3a1a', 0.45, 0.2, 0.4), L))
-        trunk.outline(hx('#1a0c10'))
-        cv.over(trunk)
+        boots(trunk, c0, 4.5, rng)
+        leaf_over(cv, trunk)
         return cv
     return make
 
@@ -12917,49 +12959,41 @@ def planter_deco(paint, petal, seed):
 
 
 def p_police_car():
-    """A state trooper's cruiser of the eighties from above, parked (lights off, nobody in it), 4.4 m: a white sedan
-    with a pastel teal stripe down each flank and across its hood, the light bar across its roof (two red and two blue
-    lenses, dark), the roof number for the helicopter, a spotlight on the driver's pillar (-y), a push bar, an aerial
-    on the trunk, dark glass; dust on its sills. Its nose to +x."""
+    """A state trooper's cruiser of the eighties from above, parked (lights off, nobody in it), 4.4 m: the street's
+    sedan (p_car: the same body, glass and trim) in white, a pastel teal band across its hood and its trunk lid, the
+    light bar across its roof (two red and two blue lenses, dark), the roof number for
+    the helicopter, a spotlight on the driver's pillar (-y), a push bar on its nose; dust on its sills. Nose to +x."""
     W, H = 140, 58
-    cv = Cv(W, H)
+    ks = []
+    cv, _ = p_car(ramp('#e2e2e6', 0.46, 0.22, 0.12), keep=ks)
+    k = ks[0]
     rng = random.Random(10141)
-    white, teal, glass = ramp('#e6e6ea', 0.46, 0.22, 0.12), ramp(PASTEL_TEAL, 0.45, 0.22, 0.2), ramp('#2a3446', 0.45, 0.22, 0.3)
-
-    def body(ly):
-        fill_shape(ly, W / 2, H / 2, W / 2 - 3, H / 2 - 2, lambda u, v, L: shade(white, 0.3 + L * 0.6), kind='rect', corner=9.0, bevel=5.0)
-    layer(cv, body)
-    for y0 in (5.5, H - 8.5):                                               # the stripes along the flanks
-        frect(cv, 10, y0, W - 12, y0 + 3, lambda c: mix(c, teal[2], 0.85))
-    frect(cv, 104, 9, 108, H - 9, lambda c: mix(c, teal[2], 0.85))          # and across the hood
-    for (x0, x1, L0) in ((84, 98, 0.45), (30, 40, 0.5)):                    # the windscreen, the rear window
-        fill_shape(cv, (x0 + x1) / 2, H / 2, (x1 - x0) / 2, H / 2 - 8, lambda u, v, L, L0=L0: shade(glass, L0 + L * 0.3) if u + v > -6 else lt(glass[3], 0.3), kind='rect', corner=3.0, bevel=2)
-    frect(cv, 40, 9, 84, H - 9, lambda c: shade(white, 0.72))               # the roof
-    frect(cv, 40, 9, 84, 10, lambda c: shade(white, 0.92))
-    for (x0, x1) in ((46, 60), (62, 78)):                                   # the side glass
-        frect(cv, x0, 7.5, x1, 9, glass[1])
-        frect(cv, x0, H - 9, x1, H - 7.5, glass[1])
-    words(cv, 52.0, H / 2 - 5.25, '17', hx('#16141c'), 1.5, centre=True)    # the roof number, read from the air
+    teal = hx(PASTEL_TEAL)
+    s_ = cv.s
+    for (i, j) in sorted(k.mask - k.glass):
+        x, y = (i + 0.5) / s_, (j + 0.5) / s_
+        c = cv.p[i, j]
+        paint = abs(c[0] - c[1]) < 14 and abs(c[1] - c[2]) < 14 and c[0] > 120   # the white paint, not the chrome
+        if not paint:
+            continue
+        if 108 <= x < 113 or 12 <= x < 16:
+            cv.p[i, j] = mix(c, teal, 0.8)                                 # the livery
+    words(cv, 67.0, H / 2 - 5.25, '17', hx('#16141c'), 1.5, centre=True)    # the roof number, read from the air
 
     def bar(ly):
-        fill_shape(ly, 70, H / 2, 3.2, 18.0, lambda u, v, L: shade(CHROME, 0.2 + L * 0.6), kind='rect', corner=1.2, bevel=1.0)
+        fill_shape(ly, 52, H / 2, 3.0, 18.0, lambda u, v, L: shade(CHROME, 0.2 + L * 0.6), kind='rect', corner=1.2, bevel=1.0)
         for (y, col) in ((-13, '#7a1a22'), (-6, '#7a1a22'), (6, '#1a2a6a'), (13, '#1a2a6a')):
-            fill_shape(ly, 70, H / 2 + y, 2.2, 2.6, lambda u, v, L, col=col: shade(ramp(col, 0.4, 0.2, 0.4), 0.2 + L * 0.7))
+            fill_shape(ly, 52, H / 2 + y, 2.0, 2.6, lambda u, v, L, col=col: shade(ramp(col, 0.4, 0.2, 0.4), 0.2 + L * 0.7))
     layer(cv, bar)
-    layer(cv, lambda ly: fill_shape(ly, 84, 7.0, 2.2, 1.6, lambda u, v, L: shade(CHROME, 0.3 + L * 0.7)))   # the spotlight
-    for (x, y) in ((88, 3.0), (88, H - 3.0)):                               # the mirrors
-        fill_shape(cv, x, y, 2.0, 1.4, lambda u, v, L: shade(white, 0.2 + L * 0.6))
-    for y in (8.0, H / 2, H - 8.0):                                         # the push bar
-        frect(cv, W - 4, y - 1.5, W - 1, y + 1.5, hx('#1a1a20'))
-    frect(cv, W - 3, 8, W - 2, H - 8, hx('#26262e'))
-    for (y, col) in ((10, '#fff8e0'), (H - 10, '#fff8e0')):                 # the lamps
-        frect(cv, W - 6, y - 3, W - 4, y + 3, hx(col))
-    for y in (10, H - 10):
-        frect(cv, 3, y - 3, 5, y + 3, hx('#8a1a22'))
-    line(cv, 12, H - 12, 6, H - 22, hx('#2a2a30'))                          # the aerial
-    smudge(cv, rng, 10, (4, 2, W - 4, 7), (1.5, 3.0), 0.18, hx('#8a7a5a'))   # road dust on the sills
-    smudge(cv, rng, 10, (4, H - 7, W - 4, H - 2), (1.5, 3.0), 0.18, hx('#8a7a5a'))
-    cv.outline()
+    layer(cv, lambda ly: fill_shape(ly, 84, 9.0, 2.0, 1.5, lambda u, v, L: shade(CHROME, 0.3 + L * 0.7)))   # the spotlight
+
+    def push(ly):
+        for y in (12.0, H - 12.0):
+            frect(ly, W - 4, y - 1.5, W - 1, y + 1.5, hx('#1a1a20'))
+        frect(ly, W - 2, 10, W - 1, H - 10, hx('#26262e'))
+    layer(cv, push)
+    smudge(cv, rng, 10, (4, 2, W - 4, 7), (1.5, 3.0), 0.16, hx('#8a7a5a'))   # road dust on the sills
+    smudge(cv, rng, 10, (4, H - 7, W - 4, H - 2), (1.5, 3.0), 0.16, hx('#8a7a5a'))
     return cv
 
 
@@ -13059,11 +13093,11 @@ def billboard_ad(head, sub, small, seed, scene='motel'):
         def silhouettes(ly):
             ink = hx('#140a1c')
             if scene == 'motel':
-                for (bx, top, lean) in ((22, 22, -6), (40, 34, 4)):         # two palms
-                    fill_capsule(ly, [(bx, hor + 2), (bx + lean * 0.5, (hor + top) / 2), (bx + lean, top)], 1.6, lambda k, L, s, i, t: ink)
-                    for a in range(7):
-                        b = -2.9 + a * 0.45
-                        fill_capsule(ly, [(bx + lean, top), (bx + lean + math.cos(b) * 13, top + math.sin(b) * 6 + 5)], 1.2, lambda k, L, s, i, t: ink)
+                prng = random.Random(seed + 5)
+                for (bx, top, lean, size) in ((28, 24, -5, 15), (46, 34, 4, 12)):   # two palms
+                    poster_palm(ly, (bx, hor + 2), (bx + lean, top), size, ink, prng)
+                frect(ly, 0, 0, fx0 + 2, H, CLEAR)                          # kept inside the face
+                frect(ly, 0, 0, W, fy0 + 2, CLEAR)
                 fl = hx('#ff6ab0')                                          # the flamingo on one leg
                 fill_shape(ly, 98, hor - 10, 8, 5, lambda u, v, L: fl, ang=-0.3)
                 fill_capsule(ly, [(104, hor - 13), (108, hor - 26), (104, hor - 32), (100, hor - 30)], 1.3, lambda k, L, s, i, t: fl)
@@ -13094,26 +13128,31 @@ def billboard_ad(head, sub, small, seed, scene='motel'):
 
 
 def puddle_neon(W, H, seed):
-    """Rain left standing on the asphalt, from above: a dark sheet of water with a ragged edge, the neon round it
-    (pink, teal) and a lamp's white lying in it as thin flat streaks along the road, a bright lip where it catches
-    the light."""
+    """Rain left standing on the asphalt, from above: a film of water darker than the road (the aggregate still
+    shows through it), a damp ring round it, and what it mirrors broken up by its ripples: the neon round it (pink,
+    teal) and a lamp's warm white as short smeared bands along the road, a few glints on its far edge. Never an ink
+    blot: no outline, the road under it."""
     def make():
         cv = Cv(W, H)
         rng = random.Random(seed)
-        n = VNoise(W, H, 8, rng)
-        streaks = [(rng.uniform(0.15, 0.7) * W, rng.uniform(0.25, 0.75) * H, rng.uniform(0.15, 0.35) * W, c)
-                   for c in (DECO_PINK, DECO_TEAL, hx('#fff0d8'), DECO_PINK, DECO_TEAL)]
+        n, rip = VNoise(W, H, 8, rng), VNoise(W, H, 2, rng)
+        bands = [(rng.uniform(0.12, 0.55) * W, rng.uniform(0.3, 0.7) * H, rng.uniform(0.18, 0.34) * W, rng.uniform(1.2, 2.2), c)
+                 for c in (DECO_PINK, DECO_TEAL, hx('#ffe6c4'), DECO_PINK)]
 
         def f(x, y, cur):
             e = ((x - W / 2) / (W / 2)) ** 2 + ((y - H / 2) / (H / 2)) ** 2 + (n(x, y) - 0.5) * 0.9
-            if e > 0.85:
+            if e > 0.86:
                 return None
-            c = hx('#1a1830', 190) if e < 0.6 else hx('#24223c', 170)
-            for (sx, sy, ln, col) in streaks:
-                if sx <= x < sx + ln and abs(y - sy) < 1.0:
-                    c = mix(c, alpha(col, 200), 0.65 if abs(y - sy) < 0.5 else 0.3)
-            if e > 0.74 and (x - W / 2) * LX + (y - H / 2) * LY < 0:
-                c = hx('#7a7aa8', 190)                                      # its lit lip
+            if e > 0.72:
+                return hx('#0c0a16', 54)                                    # the damp ring
+            c = hx('#100e1e', 96 if e > 0.4 else 112)                       # the water over the road
+            for (sx, sy, ln, hh, col) in bands:
+                dy = abs(y - sy) / hh
+                if sx <= x < sx + ln and dy < 1.0 and rip(x * 0.6, y * 2.5) > 0.38:
+                    k = (1 - dy) * min(1.0, (x - sx) / 4.0, (sx + ln - x) / 4.0)
+                    c = alpha(mix(c, col, 0.55 * k), int(c[3] + (190 - c[3]) * k))
+            if 0.64 < e <= 0.72 and (x - W / 2) * LX + (y - H / 2) * LY > 0 and rip(x * 0.5, y * 0.5) > 0.6:
+                c = hx('#8a8ab8', 120)                                       # a glint on its far edge
             return c
         px_paint(cv, 0, 0, W, H, f)
         return cv
@@ -13613,38 +13652,26 @@ def p_fire_escape():
 
 def p_palm_fronds():
     """A palm's head seen from above where it leans over a wall into the alley, 2.75 m: long fronds out from its
-    crown at the top edge (the trunk behind the wall), their leaflets fanned, two gone yellow, one dead and brown
-    hanging, a cluster of coconuts. Hung high (it fades over him)."""
+    crown at the top edge (the trunk behind the wall), their leaflets combed out (palm_crown: the coconut palm's,
+    one family with the street's), one dead and brown hanging, a cluster of coconuts. Hung high (it fades over him)."""
     W, H = 88, 64
-    cv = Cv(W, H)
+    S = 128
     rng = random.Random(9981)
-    cx, cy = W / 2, 4.0
-    greens = (ramp('#3a8a3a', 0.5, 0.26, 0.3), ramp('#2a6a3a', 0.5, 0.26, 0.3), ramp('#6a9a2a', 0.5, 0.26, 0.3),
-              ramp('#c8a83a', 0.5, 0.26, 0.3), ramp('#7a5a2a', 0.5, 0.26, 0.3))
     fronds = []
     for k in range(11):
-        a = math.pi * (0.05 + 0.9 * k / 10) + rng.uniform(-0.08, 0.08)
-        fronds.append((a, rng.uniform(26, 40), greens[3 if k in (2, 8) else 4 if k == 5 else rng.randint(0, 2)]))
-
-    def frond(ly, a, L, r):
-        n = int(L * 2)
-        for i in range(n):
-            t = i / n
-            x, y = cx + math.cos(a) * L * t, cy + math.sin(a) * L * t + t * t * 6     # it droops
-            span = 6.0 * math.sin(t * math.pi) + 0.5
-            for s in (-1, 1):
-                for k in range(int(span * 2)):
-                    q = k / 2.0
-                    px_, py_ = x + math.cos(a + s * 1.9) * q, y + math.sin(a + s * 1.9) * q + q * 0.3
-                    ly.dot(px_, py_, shade(r, 0.35 + 0.5 * (1 - q / max(span, 1)) * (0.7 if s > 0 else 1.0)))
-            ly.dot(x, y, shade(r, 0.15))                                  # its rib
-    ly = Cv(W, H)
-    for (a, L, r) in fronds:
-        frond(ly, a, L, r)
-    ly.outline(hx('#0c1a10'))
-    cv.over(ly)
-    for (dx, dy) in ((-2.5, 2.0), (0.5, 3.0), (2.5, 1.5)):
-        fill_shape(cv, cx + dx, cy + dy, 1.8, 1.8, lambda u, v, L: shade(ramp('#6a4a2a', 0.45, 0.22, 0.3), L))   # coconuts
+        a = math.pi * (0.04 + 0.92 * k / 10) + rng.uniform(-0.08, 0.08)
+        fronds.append((a, rng.uniform(30, 44), rng.uniform(7.5, 9.0), rng.uniform(-0.3, 0.3), 2 if k == 5 else 0))
+    fronds += [(math.pi * rng.uniform(0.2, 0.8), rng.uniform(16, 20), 6.0, 0.0, 1) for _ in range(3)]
+    crown = palm_crown(S, 9982, fronds, PALM_GREENS['coconut'], PALM_DEAD, None, 4.0)
+    nuts = Cv(S, S)
+    for (dx, dy, col) in ((-3.4, 2.6, '#7a5a22'), (0.2, 4.4, '#5a7a2a'), (3.4, 2.4, '#7a5a22')):
+        fill_shape(nuts, S / 2 + dx, S / 2 + dy, 2.2, 2.2, lambda u, v, L, col=col: shade(ramp(col, 0.5, 0.25, 0.35), 0.15 + L * 0.75))
+    leaf_over(crown, nuts)
+    cv = Cv(W, H)
+    k = cv.s
+    ox, oy = S / 2 - W / 2, S / 2 - 4.0                                    # its heart 4 px under the top edge
+    cv.img.paste(crown.img.crop((int(ox * k), int(oy * k), int((ox + W) * k), int((oy + H) * k))), (0, 0))
+    cv.p = cv.img.load()
     return cv
 
 
@@ -15732,17 +15759,15 @@ def palm_crown(S, seed, fronds, greens, dead_col, shaft, trunk_r):
                     w *= 0.7
                 if d > w or t > 0.985 or t < 0.04:
                     continue
-                q = t * ln * 0.9 - abs(side) * 1.1 + phase
-                f = q / 2.2 - math.floor(q / 2.2)
+                q = t * ln * 0.9 - abs(side) * 1.5 + phase                # the leaflets slant out toward the tip
+                f = q / 3.0 - math.floor(q / 3.0)
                 if abs(side) < 0.55:
                     c = lt(g[2], 0.45) if kind != 2 else lt(g[2], 0.2)    # the rachis, pale
                 else:
-                    if f > (0.48 if kind == 2 else 0.6) and abs(side) > 1.2:
-                        continue                                          # between two leaflets
+                    if f > (0.5 if kind == 2 else 0.62) and abs(side) > max(1.2, w * 0.38):
+                        continue                                          # between two leaflets (open)
                     lit = side * (math.sin(a) * LX - math.cos(a) * LY) > 0
-                    c = g[3] if lit else g[1]
-                    if f < 0.22 and lit:
-                        c = g[2]
+                    c = (g[3] if f < 0.3 else g[2]) if lit else (g[2] if f < 0.2 else g[1])   # each leaflet lit along one edge
                     if abs(side) > w * 0.78:
                         c = dk(c, 0.18)                                   # the leaflets' tips droop
                     if t > 0.72:
@@ -15750,17 +15775,20 @@ def palm_crown(S, seed, fronds, greens, dead_col, shaft, trunk_r):
                     if kind == 2 and rng.random() < 0.12:
                         c = dk(c, 0.25)
                 fr.p[i, j] = c
-        fr.outline(hx('#0a1a14') if kind != 2 else hx('#2a1a10'))
-        cv.over(fr)
+        leaf_over(cv, fr)
     top = Cv(S, S)
     if shaft:
-        fill_shape(top, c0, c0, trunk_r, trunk_r, lambda u, v, L: shade(shaft, 0.2 + L * 0.85))   # the crownshaft, glossy
-        fill_shape(top, c0 - trunk_r * 0.3, c0 - trunk_r * 0.35, trunk_r * 0.28, trunk_r * 0.22, lambda u, v, L: lt(shaft[3], 0.4))
-        line(top, c0, c0, c0 + 1.5, c0 - trunk_r * 0.9, lt(shaft[3], 0.3))  # the spear leaf
+        # the heart of the crown: the fronds' sheaths wrapped round the spear leaf, matte (seen from above, the
+        # crownshaft is hidden under them: no glossy ball), creased where the sheaths overlap
+        fill_shape(top, c0, c0, trunk_r * 0.72, trunk_r * 0.72, lambda u, v, L: shade(shaft, 0.18 + L * 0.6))
+        for k in range(5):
+            aa = k * 2 * math.pi / 5 + 0.4
+            line(top, c0 + math.cos(aa) * 0.6, c0 + math.sin(aa) * 0.6, c0 + math.cos(aa + 0.5) * trunk_r * 0.7,
+                 c0 + math.sin(aa + 0.5) * trunk_r * 0.7, dk(shaft[1], 0.2))
+        line(top, c0 - 0.5, c0 - 0.5, c0 + 1.0, c0 - trunk_r * 0.6, lt(shaft[3], 0.15))   # the spear leaf
     else:
-        fill_shape(top, c0, c0, trunk_r, trunk_r, lambda u, v, L: shade(ramp('#6a4228', 0.5, 0.25, 0.35), L))
-    top.outline(hx('#0a1a14'))
-    cv.over(top)
+        boots(top, c0, trunk_r, random.Random(seed + 7))
+    leaf_over(cv, top)
     return cv
 
 
@@ -15771,7 +15799,7 @@ def royal_palm(seed, n, dead):
         away; `dead` brown ones hanging under them, a few young ones up in the middle."""
         S = 192
         rng = random.Random(seed)
-        greens = [ramp('#2a7a3c', 0.6, 0.32, 0.26), ramp('#4a9a40', 0.55, 0.3, 0.3)]
+        greens = PALM_GREENS['royal']
         fronds = []
         for i in range(n):
             a = i * 2 * math.pi / n + rng.uniform(-0.16, 0.16)
@@ -15782,7 +15810,7 @@ def royal_palm(seed, n, dead):
         for i in range(dead):
             a = rng.uniform(0, 2 * math.pi)
             fronds.append((a, rng.uniform(40.0, 52.0), 9.0, rng.uniform(-0.15, 0.15), 2))
-        return palm_crown(S, seed, fronds, greens, ramp('#8a6a3a', 0.55, 0.3, 0.25), ramp('#3a8a4a', 0.5, 0.26, 0.4), 8.0)
+        return palm_crown(S, seed, fronds, greens, PALM_DEAD, ramp('#3a7a44', 0.5, 0.26, 0.3), 8.0)
     return make
 
 
@@ -15794,19 +15822,24 @@ def hibiscus_hedge(flower, seed):
         W, H = 96, 26
         cv = Cv(W, H)
         rng = random.Random(seed)
-        n1, n2 = VNoise(W, H, 4, rng), VNoise(W, H, 2, rng)
-        leaf = ramp('#1f6a34', 0.6, 0.32, 0.32)
+        leaf = ramp('#2a6a3a', 0.55, 0.3, 0.26)        # hibiscus_into's leaf: the bushes' and the hedges' one family
         fill_shape(cv, W / 2, H / 2 + 1.0, W / 2 - 1.0, H / 2 - 2.0, lambda u, v, L: shade(ramp('#3a2a1c', 0.5, 0.25, 0.3), 0.3 + L * 0.3), kind='rect', corner=4.0)
+        rx, ry = W / 2 - 3.0, H / 2 - 2.5
+
+        def inside(x, y):
+            return (abs(x - W / 2) / rx) ** 3.2 + (abs(y - H / 2) / ry) ** 3.2 <= 1.0
 
         def hedge(ly):
-            def f(u, v, L):
-                x, y = u + W / 2, v + H / 2
-                k = 0.18 + L * 0.62 + (n1(x, y) - 0.5) * 0.55 + (n2(x, y) - 0.5) * 0.35
-                if n2(x * 1.7, y * 1.7) > 0.8:
-                    k += 0.25                                             # a leaf catching the light
-                return shade(leaf, max(0.02, min(0.98, k)))
-            fill_shape(ly, W / 2, H / 2, W / 2 - 3.0, H / 2 - 2.5, f, kind='super', p=3.2)
-        layer(cv, hedge, hx('#0a2010'))
+            fill_shape(ly, W / 2, H / 2, rx, ry, lambda u, v, L: shade(leaf, 0.08 + L * 0.2), kind='super', p=3.2)   # its depth
+            for _ in range(int(W * H / 7)):                               # glossy leaves in clumps, lit from the top left
+                x, y = rng.uniform(2, W - 2), rng.uniform(1.5, H - 1.5)
+                if not inside(x, y):
+                    continue
+                q = rng.uniform(2.0, 3.2)
+                top = 0.15 * (1 - (y - 2) / (H - 4))                         # the hedge's top half nearer the light
+                fill_shape(ly, x, y, q, q * 0.68, lambda u, v, L, top=top: shade(leaf, 0.12 + L * 0.72 + top), ang=rng.uniform(0, 3.14))
+            px_paint(ly, 0, 0, W, H, lambda x, y, c: CLEAR if c[3] and not inside(x, y) else None)
+        layer(cv, hedge, hx('#0c1e14'))
         pet = ramp(flower, 0.45, 0.22, 0.3)
         for _ in range(17):
             x, y = rng.uniform(7, W - 7), rng.uniform(5, H - 5)
@@ -15954,15 +15987,40 @@ def wall_neon(kind):
         else:
             cv, gl = sign_backing(26, 14), Cv(26, 14)
             ne = Neon(26, 14)
-            ne.arc(10.5, 6.5, 3.0, -2.6, 1.4, NEON_PINK)                   # the body
-            ne.line([(13, 6), (15, 4), (16, 2), (17, 2), (18, 3)], NEON_PINK)  # the neck, the head
-            ne.line([(18, 3), (20, 4)], NEON_AMBER)                        # the beak
-            ne.line([(10, 10), (10, 12)], NEON_PINK)                       # the leg, the other tucked
-            ne.line([(10, 9), (12, 10), (11, 11)], NEON_PINK)
+            ne.line([(4, 6), (6, 5), (9, 5), (12, 6), (13, 7), (11, 8), (8, 8), (5, 7), (4, 6)], NEON_PINK)   # the body, closed
+            ne.line([(13, 7), (15, 6), (15, 4), (14, 3), (15, 2), (17, 2), (18, 3)], NEON_PINK)   # the S of the neck, the head
+            ne.line([(18, 3), (19, 4), (19, 5)], NEON_AMBER)               # the beak, bent down
+            ne.line([(9, 8), (9, 12)], NEON_PINK)                          # the leg it stands on
+            ne.line([(10, 8), (12, 10), (10, 10)], NEON_PINK)              # the other folded
             ne.line([(3, 12), (22, 12)], NEON_CYAN)                        # the water it stands in
         ne.render(cv, gl)
         return cv, gl
     return make
+
+
+def poster_palm(cv, base, top, size, ink, rng):
+    """A coconut palm's silhouette as a poster prints it (the billboards'): a trunk tapering and curving from base
+    to top, fronds arching out of its head and drooping, each tapering to its tip with its leaflets hanging under it
+    in short strokes. size: a frond's reach (world px)."""
+    (bx, by), (tx, ty) = base, top
+    mx, my = (bx + tx) / 2 + (tx - bx) * 0.25, (by + ty) / 2
+    pts = curve((bx, by), (mx, my), (tx, ty), 10)
+    for k in range(len(pts) - 1):
+        fill_capsule(cv, [pts[k], pts[k + 1]], size * 0.13 * (1.0 - 0.45 * k / (len(pts) - 1)), lambda *a: ink)
+    for a in (-2.95, -2.45, -1.95, -1.45, -0.95, -0.45, 0.05, 2.75, 0.4):
+        a += rng.uniform(-0.12, 0.12)
+        L = size * rng.uniform(0.85, 1.05)
+        droop = 0.55 if abs(math.sin(a)) < 0.6 else 0.3
+        prev = (tx, ty)
+        for q in range(1, 13):
+            t = q / 12.0
+            p = (tx + math.cos(a) * L * t, ty + math.sin(a) * L * t + droop * L * t * t)
+            fill_capsule(cv, [prev, p], max(0.5, size * 0.08 * (1.0 - 0.8 * t)), lambda *a_: ink)
+            if 0.2 < t < 0.95:
+                lx, ly = p[0] + math.cos(a + 1.6) * size * 0.16 * (1 - t), p[1] + abs(math.sin(a + 1.6)) * size * 0.2 * (1 - t) + size * 0.05
+                line(cv, p[0], p[1], lx, ly, ink)                             # its leaflets hang under it
+            prev = p
+    fill_shape(cv, tx, ty + size * 0.06, size * 0.11, size * 0.09, lambda u, v, L: ink)   # the nuts' cluster
 
 
 def billboard(kind):
@@ -15988,11 +16046,12 @@ def billboard(kind):
             def poster(x, y, cur):
                 t = (y - y0) / (hz - y0)
                 if y >= hz:
-                    w = (y - hz) / (y1 - hz)
-                    c = mix(hx('#2aa0b0'), hx('#165a80'), w)
+                    w = math.floor((y - hz) / (y1 - hz) * 4) / 3.0           # the sea in four flat bands
+                    c = mix(hx('#2aa0b0'), hx('#165a80'), min(1.0, w))
                     if abs(x - 188) < 30 - w * 10 and int(y * 2) % 3 == 0:
                         c = mix(c, hx('#ffd080'), 0.55 - w * 0.4)          # the sun's road on the sea
                     return c
+                t = (math.floor(t * 9) + 0.5) / 9                          # the sky in nine flat bands (a print)
                 for (a, ca), (b, cb) in zip(sky, sky[1:] + [(1.0, hx('#ffd890'))]):
                     if t <= b:
                         return mix(ca, cb, (t - a) / (b - a))
@@ -16005,25 +16064,23 @@ def billboard(kind):
                     return None
                 if y > hz - 16 and int((hz - y) / 2.5) % 2 == 1:
                     return None                                            # the retro bands cut through it
-                return mix(hx('#fff080'), hx('#ff7a3a'), (y - (hz - 28)) / 28)
+                return mix(hx('#fff080'), hx('#ff7a3a'), math.floor((y - (hz - 28)) / 7) / 3.0)   # in flat bands
             px_paint(cv, 160, hz - 30, 218, hz, sun)
-            palm = hx('#3a1a4a')
-            fill_capsule(cv, [(34, y1), (38, 60), (48, 34), (56, 22)], 2.6, lambda k, L, s, i, t: palm)
-            for (ax, ay) in ((30, 18), (36, 30), (60, 10), (78, 22), (72, 34), (44, 14)):
-                fill_capsule(cv, [(56, 22), ((56 + ax) / 2, (22 + ay) / 2 - 4), (ax, ay)], 2.2, lambda k, L, s, i, t: palm)
+            poster_palm(cv, (34, y1), (56, 22), 24, hx('#3a1a4a'), random.Random(9995))
             words(cv, 160 - 66, 10, 'COCOA GOLD', hx('#3a1a4a'), 2.0)      # its shadow, then the words
             words(cv, 160 - 67, 9, 'COCOA GOLD', hx('#fff4e0'), 2.0)
             words(cv, 160 - 30, 28, 'TANNING OIL', hx('#3a1a4a'), 1.0)
             fill_shape(cv, 112, 62, 7.0, 15.0, lambda u, v, L: shade(ramp('#c87a2a', 0.5, 0.26, 0.35), 0.3 + L * 0.7), kind='rect', corner=3.0)
             frect(cv, 109, 44, 115, 48, hx('#f4f0e0'))                    # the bottle: its cap, its label
-            frect(cv, 106.5, 58, 117.5, 68, hx('#fff4e0'))
-            words(cv, 112, 61, 'SPF 2', hx('#c8242c'), 0.5, centre=True)
+            frect(cv, 106.5, 57, 117.5, 69, hx('#fff4e0'))
+            words(cv, 112, 59, 'SPF', hx('#c8242c'), 0.5, centre=True)
+            words(cv, 112, 64, '4', hx('#c8242c'), 0.5, centre=True)
         else:
             hz = 58.0
 
             def poster(x, y, cur):
                 if y < hz:
-                    return mix(hx('#2a1050'), hx('#d0408a'), (y - y0) / (hz - y0))
+                    return mix(hx('#2a1050'), hx('#d0408a'), math.floor((y - y0) / (hz - y0) * 8) / 7.0)   # flat bands
                 w = (y - hz) / (y1 - hz)
                 c = mix(hx('#1a0830'), hx('#2a0a40'), w)
                 gx = (x - W / 2) / (1.0 + w * 4.0)
@@ -16036,10 +16093,11 @@ def billboard(kind):
                 d = math.hypot(x - W / 2, y - hz)
                 if d > 34 or y > hz or (y > hz - 20 and int((hz - y) / 3) % 2 == 1):
                     return None
-                return mix(hx('#ffe060'), hx('#ff3a8a'), (y - (hz - 34)) / 34)
+                return mix(hx('#ffe060'), hx('#ff3a8a'), math.floor((y - (hz - 34)) / 34 * 5) / 4.0)
             px_paint(cv, W / 2 - 36, hz - 36, W / 2 + 36, hz, sun)
             words(cv, W / 2 + 1, 13, 'WAVE 98', hx('#1a0830'), 3.0, centre=True)
             words(cv, W / 2, 12, 'WAVE 98', hx('#fff0f8'), 3.0, centre=True)
+            words(cv, W / 2 + 0.5, 36.5, 'FM  THE HOTTEST HITS', hx('#1a0830'), 1.0, centre=True)   # its shadow: read over the sun
             words(cv, W / 2, 36, 'FM  THE HOTTEST HITS', NEON_CYAN, 1.0, centre=True)
         # paper and weather: the seams of the sheets, a peeled strip, grime down its foot, droppings on its top
         for x in range(x0 + 48, x1, 48):
@@ -16068,49 +16126,54 @@ def billboard(kind):
 
 
 def p_car_burnt():
-    """A car burnt out and left, from above, 4.4 m: no glass, no tyres (the bare rims), the hood gone and the engine
-    bay black, the roof sagged in, the paint burnt off to rust and soot from the front back, a patch of its old
-    aqua left on the trunk lid, the seats' springs bare in the cabin, ash and glass round it."""
+    """A car burnt out and left, from above, 4.4 m: the street's sedan (p_car: the same body, panels and shut lines)
+    after the fire. The paint burnt off to rust and soot from the engine back (the fire started under the hood), a
+    patch of its old aqua left on the trunk lid, no glass (the cabin open: the seats' springs bare, the dashboard's
+    frame), the hood gone and the engine bay black, the roof sagged, the bumpers and lamps blackened, no tyres (the
+    bare rims), ash and glass round it."""
     W, H = 140, 58
-    cv = Cv(W, H)
+    ks = []
+    cv, _ = p_car(ramp('#8c8c90', 0.46, 0.22, 0.12), keep=ks)
+    k = ks[0]
     rng = random.Random(10011)
-    n = VNoise(W, H, 6, rng)
-    rust, soot = ramp('#7a3e22', 0.5, 0.26, 0.3), hx('#1c1418')
-
-    def rims(ly):
-        for x in (34.0, 106.0):
-            for y in (5.0, H - 5.0):
-                fill_shape(ly, x, y, 8.0, 3.5, lambda u, v, L: shade(STEEL_L, 0.15 + L * 0.5), kind='rect', corner=1.5)
-    layer(cv, rims)
-
-    def shell(u, v, L):
-        x = u + W / 2
-        burn = max(0.0, min(1.0, (x - 30) / 90 + (n(x, v + H / 2) - 0.5) * 0.5))
-        c = mix(shade(rust, 0.3 + L * 0.6), soot, burn * 0.75)
-        if x < 30 and v > -6 and v < 10 and n(x * 2, v) > 0.45:
-            c = mix(c, hx('#5ab0b0'), 0.75)                                # its old paint, left on the trunk
-        return shift(c, rng.randint(-4, 4))
-    fill_shape(cv, W / 2, H / 2, W / 2 - 4, H / 2 - 4, shell, kind='rect', corner=9.0, bevel=4.0)
-
-    def bay(x, y, cur):
-        return shift(mix(hx('#121014'), hx('#3a2a24'), n(x * 1.5, y * 1.5)), rng.randint(-3, 3))
-    px_paint(cv, 98, 9, 130, H - 9, bay)                                  # the engine bay, open
-    fill_shape(cv, 112, H / 2, 8.0, 9.0, lambda u, v, L: shade(ramp('#3a3236', 0.5, 0.25, 0.3), 0.2 + L * 0.5), kind='rect', corner=2.0)
-    px_paint(cv, 40, 8, 96, H - 8, lambda x, y, c: mix(hx('#140e12'), hx('#2a2024'), n(x, y)))   # the cabin, its glass gone
-    for (xa, xb) in ((46, 62), (68, 86)):                                  # the seats' springs
-        for x in range(xa, xb, 3):
-            px_paint(cv, x, 12, x + 0.5, H - 12, lambda x_, y_, c: hx('#6a5a50') if int(y_) % 3 else c)
-        for y in range(12, int(H) - 11, 3):
-            px_paint(cv, xa, y, xb, y + 0.5, lambda x_, y_, c: hx('#5a4a42'))
-    for (xa, xb) in ((36, 40), (94, 98)):                                  # the windscreen pillars, buckled
-        px_paint(cv, xa, 7, xb, H - 7, lambda x, y, c: shade(rust, 0.25 + n(x, y) * 0.4))
-    frect(cv, 40, 7, 96, 9, lambda c: shade(rust, 0.3))
-    frect(cv, 40, H - 9, 96, H - 7, lambda c: shade(rust, 0.25))
-    smudge(cv, rng, 14, (6, 6, W - 6, H - 6), (2.0, 5.0), 0.25)
-    smudge(cv, rng, 6, (6, 6, W - 6, H - 6), (1.0, 2.5), 0.4, hx('#9a8a7a'))   # ash
+    n, fine_n = VNoise(W, H, 6, rng), VNoise(W, H, 2, rng)
+    rust, soot, ash = ramp('#7a3e22', 0.5, 0.26, 0.3), ramp('#2a2024', 0.5, 0.26, 0.3), hx('#8a8078')
+    s_ = cv.s
+    for (i, j) in sorted(k.mask):
+        x, y = (i + 0.5) / s_, (j + 0.5) / s_
+        v = y - k.cy
+        c = cv.p[i, j]
+        lum = (c[0] * 0.3 + c[1] * 0.55 + c[2] * 0.15) / 255.0
+        if (i, j) in k.glass or (40.5 < x < 97.5 and abs(v) < 17.5 and not (46 <= x <= 80)):
+            # the glass gone: the cabin open, black, the seats' springs and the dashboard's frame in it
+            c = mix(hx('#120c10'), hx('#2a1e20'), n(x * 1.4, y * 1.4))
+            if 47 < x < 92 and abs(v) < 16 and (int(x * 2) % 5 == 0 or int(y * 2) % 5 == 0) and fine_n(x, y) > 0.35:
+                c = hx('#5a4a44')
+            if 91.5 < x < 94 and abs(v) < 18:
+                c = shade(soot, 0.45)
+        elif x > 98.5 and abs(v) < 19.5 and x < 134:
+            c = mix(hx('#110d10'), hx('#3a2a24'), n(x * 1.5, y * 1.5))     # the hood gone: the engine bay
+        else:
+            burn = max(0.0, min(1.0, (x - 20) / 95 + (n(x, y) - 0.5) * 0.6))
+            c = mix(shade(rust, 0.15 + lum * 0.9), shade(soot, 0.2 + lum * 0.7), burn)
+            if x < 30 and -4 < v < 12 and n(x * 2, y) > 0.5:
+                c = mix(c, hx('#5ab0b0'), 0.7 * min(1.0, lum * 1.3))       # its old paint, left on the trunk
+            elif fine_n(x * 1.5, y * 1.5) > 0.8:
+                c = mix(c, ash, 0.35)                                      # ash lying on it
+            if 46 <= x <= 80 and abs(v) < 17:
+                c = dk(c, 0.25 * (1 - abs(v) / 17.0))                      # the roof sagged in
+        cv.p[i, j] = shift(c, rng.randint(-3, 3))
+    # the engine block in its bay, the radiator's frame
+    fill_shape(cv, 114, H / 2, 9.0, 10.0, lambda u, v, L: shade(ramp('#3a3236', 0.5, 0.25, 0.3), 0.2 + L * 0.5), kind='rect', corner=2.0)
+    frect(cv, 130, 10, 132, H - 10, lambda c: shade(soot, 0.35))
+    # no tyres: the bare rims at the wheels (the rubber burnt away)
+    for wx in (30, 112):
+        for y0 in (1.0, H - 4.0):
+            frect(cv, wx - 7, y0, wx + 7, y0 + 3, lambda c: shade(STEEL_L, 0.25) if c[3] else c)
+    smudge(cv, rng, 10, (6, 6, W - 6, H - 6), (2.0, 5.0), 0.22)
     cv.outline()
     for _ in range(40):                                                    # glass crumbs and ash round it
-        x, y = rng.uniform(2, W - 2), rng.choice((rng.uniform(0.5, 3.5), rng.uniform(H - 3.5, H - 0.5)))
+        x, y = rng.uniform(2, W - 2), rng.choice((rng.uniform(0.5, 2.5), rng.uniform(H - 2.5, H - 0.5)))
         if not cv.on(x, y):
             cv.dot(x, y, rng.choice((hx('#9ac8d8'), hx('#6a6670'), hx('#d8e8ee'))))
     return cv
@@ -16359,36 +16422,44 @@ def p_call_box():
     sign_plate(cv, 2, 6.5, W - 2, H - 1, SIGN_YELLOW, rim=SIGN_INK, r=1.0, border=0.75)
     frect(cv, 3.5, 8.5, W - 3.5, 12.0, hx('#2a4ea8'))
     words(cv, W / 2, 8.8, 'CALL', SIGN_WHITE, 0.5, centre=True)
-    words(cv, W / 2, 14.0, '9-512', SIGN_INK, 0.5, centre=True)
+    words(cv, W / 2, 14.0, '512', SIGN_INK, 0.5, centre=True)              # (its number fits its door)
     sign_wear(cv, rng, (3, 7, W - 3, H - 2), 3)
     cv.outline()
     return cv
 
 
 def p_tyre_marks():
-    """Tyre marks of a car that swerved into the rail (floor paint), 8 m: its four tyres' tracks running straight,
-    then fanning and curving off to +y, scuffed wider where it slid, broken where it bounced, fading where it began."""
+    """Tyre marks of a car that swerved into the rail (floor paint), 8 m: its two sides' tracks (a tyre's width,
+    16 cm) running straight, then curving off to +y, the rear tyres swinging out of the front ones' line as it slid
+    and scrubbing wider, rubber streaked along the way it went, lighter where it bounced, fading in where it began."""
     W, H = 256, 72
     cv = Cv(W, H)
     rng = random.Random(10091)
-    n = VNoise(W, H, 5, rng)
+    n = VNoise(W, H, 12, rng)
+    hops = [(rng.uniform(120, 150), rng.uniform(8, 12)), (rng.uniform(190, 215), rng.uniform(6, 10))]
 
     def path(x):
         k = max(0.0, (x - 70) / (W - 70))
-        return 10.0 + 48.0 * k * k
+        return 10.0 + 44.0 * k * k
 
     def f(x, y, cur):
         k = max(0.0, (x - 70) / (W - 70))
-        slide = 1.0 + k * 3.5
-        best = 99
-        for off in (0.0, 18.0):                                           # the two sides of the car, a tyre a side
-            best = min(best, abs(y - (path(x) + off * (1 - 0.4 * k))))
-        if best > 1.2 * slide:
+        hw = 2.4 + 1.6 * k                                                 # scrubbed wider as it slid
+        best = None
+        for off in (0.0, 16.0 * (1 - 0.3 * k)):                            # the two sides of the car
+            for rear in (0.0, 6.0 * k):                                    # the rear swings out
+                d = y - (path(x) + off + rear)
+                if abs(d) <= hw and (best is None or abs(d) < abs(best)):
+                    best = d
+        if best is None:
             return None
-        a = 120 * min(1.0, x / 60.0) * (0.6 + 0.4 * n(x, y))
-        if n(x * 3, y) > 0.78:
-            return None
-        return (14, 12, 16, int(a))
+        a = 118 * min(1.0, x / 70.0) * (0.7 + 0.3 * n(x, y))
+        if int((best + hw) * 2) % 3 == 0:
+            a *= 0.72                                                      # streaks along the way it went
+        for (hx0, hl) in hops:
+            if hx0 <= x < hx0 + hl:
+                a *= 0.35                                                  # it bounced
+        return (16, 13, 18, int(a))
     px_paint(cv, 0, 0, W, H, f)
     return cv
 
@@ -16621,8 +16692,7 @@ ROAD_GLOWING += MIAMI_GLOWING
 # English and Spanish (invented names, no real brand).
 FONT_STENCIL.setdefault('$', ["..#..", ".####", "#.#..", ".###.", "..#.#", "####.", "..#.."])
 FONT_SHOP.setdefault('Z', ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"])
-SABAL_GREENS = (ramp('#2e6438', 0.6, 0.32, 0.28), ramp('#4a8644', 0.55, 0.3, 0.3))
-STRAW = ramp('#9a7a4a', 0.55, 0.3, 0.25)
+STRAW = PALM_DEAD                                # a dead frond, standing or fallen (the palms' family)
 CREAM = '#efe2c4'
 PLY = ramp('#c8a878', 0.45, 0.22, 0.25)          # weathered plywood
 
@@ -16644,7 +16714,7 @@ def hand_words(cv, x, y, text, col, k=1.0, seed=0, centre=False, wob=0.4):
                 frect(cv, x0, y0, x0 + k, y0 + k, shift(col, tn))
 
 
-def fan_leaf(ly, hxc, hyc, a, R, g, spread, nseg, rng, torn=(), dead=False, droop=0.7):
+def fan_leaf(ly, hxc, hyc, a, R, g, spread, nseg, rng, torn=(), dead=False, droop=0.7, split=0.42):
     """A palmetto's fan leaf from above, opening at (hxc, hyc) toward `a`: its segments fused at the heart, split
     beyond, each folded along its middle (one half lit, the other shaded), their tips split and drooping away (darker),
     the middle ones longest; `torn` segments broken short."""
@@ -16666,8 +16736,8 @@ def fan_leaf(ly, hxc, hyc, a, R, g, spread, nseg, rng, torn=(), dead=False, droo
         if d > reach:
             return None
         t = d / reach
-        if t > 0.42:
-            gap = 0.12 + (t - 0.42) / 0.58 * 0.3                           # the segments narrow to their points
+        if t > split:
+            gap = 0.12 + (t - split) / (1 - split) * 0.3                   # the segments narrow to their points
             if fr < gap or fr > 1 - gap + 0.04:
                 return None                                                # between two segments
         if t > 0.8 and 0.44 < fr < 0.56:
@@ -16713,19 +16783,17 @@ def sabal_palm(S, seed, n, dead, ragged=0.0):
         leaves += [(rng.uniform(0, 2 * math.pi), rng.uniform(6, 9), rng.uniform(12, 16), 1) for _ in range(4)]
         for (a, r0, R, kind) in leaves:
             ly = Cv(S, S)
-            g = STRAW if kind == 2 else SABAL_GREENS[1] if kind == 1 else SABAL_GREENS[0]
+            g = PALM_DEAD if kind == 2 else PALM_GREENS['sabal'][kind]
             hxc, hyc = c0 + math.cos(a) * r0, c0 + math.sin(a) * r0
             torn = {k for k in range(13) if rng.random() < ragged} if kind == 0 else ()
-            fan_leaf(ly, hxc, hyc, a, R, g, 1.1 if kind == 2 else 1.45, 9 if kind == 2 else 13, rng, torn, kind == 2,
+            fan_leaf(ly, hxc, hyc, a, R, g, 1.1 if kind == 2 else 1.45, 8 if kind == 2 else 10, rng, torn, kind == 2,
                      0.5 if kind == 2 else 0.7)
             fill_capsule(ly, [(c0 + math.cos(a) * 3, c0 + math.sin(a) * 3), (hxc, hyc), (hxc + math.cos(a) * R * 0.4, hyc + math.sin(a) * R * 0.4)],
                          0.75, lambda k, L, s, i, t, g=g: shade(g, 0.5 + L * 0.35))   # the stalk, its costa into the fan
-            ly.outline(hx('#2a1a10') if kind == 2 else hx('#0a1a14'))
-            cv.over(ly)
+            leaf_over(cv, ly)
         top = Cv(S, S)
         boots(top, c0, 4.5, rng)
-        top.outline(hx('#1a0c10'))
-        cv.over(top)
+        leaf_over(cv, top)
         return cv
     return make
 
@@ -16757,16 +16825,15 @@ def p_coconut_palm_lean():
         fill_capsule(cv, [(ax, ay), (qx, qy)], r, f)
         run += seg
     cv.outline()
-    greens = [ramp('#3e7a2c', 0.6, 0.32, 0.28), ramp('#7aa83a', 0.55, 0.3, 0.3)]
+    greens = PALM_GREENS['coconut']
     fronds = [(i * 2 * math.pi / 13 + rng.uniform(-0.18, 0.18), rng.uniform(32, 38), rng.uniform(8, 10), rng.uniform(-0.45, 0.45), 0) for i in range(13)]
     fronds += [(rng.uniform(0, 2 * math.pi), rng.uniform(26, 30), 7.0, rng.uniform(-0.2, 0.2), 2) for _ in range(3)]
     fronds += [(rng.uniform(0, 2 * math.pi), rng.uniform(16, 20), 6.0, 0.0, 1) for _ in range(4)]
-    crown = palm_crown(88, 10302, fronds, greens, ramp('#8a6a3a', 0.55, 0.3, 0.25), None, 4.0)
+    crown = palm_crown(88, 10302, fronds, greens, PALM_DEAD, None, 4.0)
     nuts = Cv(88, 88)
     for (dx, dy, col) in ((-4.2, 2.0, '#7a5a22'), (-1.2, 4.6, '#5a7a2a'), (3.2, 3.6, '#7a5a22'), (4.4, -1.4, '#6a8a2a'), (0.2, -4.6, '#7a5a22')):
         fill_shape(nuts, 44 + dx, 44 + dy, 2.4, 2.4, lambda u, v, L, col=col: shade(ramp(col, 0.5, 0.25, 0.35), 0.15 + L * 0.75))
-    nuts.outline(hx('#1a0c10'))
-    crown.over(nuts)
+    leaf_over(crown, nuts)
     cv.over(crown, int(cx - 44), int(cy - 44))
     return cv
 
@@ -16774,12 +16841,12 @@ def p_coconut_palm_lean():
 def p_palm_young():
     """A young royal palm planted in a sidewalk grate, from above (the grate is floor paint, tree_grate; its thin
     trunk is the pole): eight fronds arching out a metre, two young ones up in the middle, one gone brown."""
-    greens = [ramp('#2e7a3c', 0.6, 0.32, 0.26), ramp('#5aa044', 0.55, 0.3, 0.3)]
+    greens = PALM_GREENS['royal']
     rng = random.Random(10311)
     fronds = [(i * 2 * math.pi / 8 + rng.uniform(-0.2, 0.2), rng.uniform(24, 28), rng.uniform(6.5, 7.5), rng.uniform(-0.3, 0.3), 0) for i in range(8)]
     fronds += [(rng.uniform(0, 2 * math.pi), 13.0, 5.0, 0.0, 1) for _ in range(2)]
     fronds += [(rng.uniform(0, 2 * math.pi), 20.0, 5.5, 0.1, 2)]
-    return palm_crown(64, 10312, fronds, greens, ramp('#8a6a3a', 0.55, 0.3, 0.25), ramp('#3a8a4a', 0.5, 0.26, 0.4), 3.2)
+    return palm_crown(64, 10312, fronds, greens, PALM_DEAD, ramp('#3a7a44', 0.5, 0.26, 0.3), 3.2)
 
 
 def p_palm_stump():
