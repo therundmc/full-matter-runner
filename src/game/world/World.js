@@ -230,6 +230,7 @@ export default class World {
     this.decals.dispose();
     this.renderer.dispose();
     this.lighting?.dispose();
+    this.liquids.dispose();
   }
 
   get engine() { return this.physics.engine; }

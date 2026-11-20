@@ -48,11 +48,12 @@ function canvas(w, h, opts) {
 
 // What the floor's and the walls' chunks hold before the level lays anything on them (tiles, the wear of years, grime,
 // the walls' shadow; wall tops, roofs, edges) depends on the level alone: it is kept for a retry, which copies it
-// instead of painting it again (the base painting is then laid on as ever). The last BAKED_KEEP levels are kept, by
+// instead of painting it again (the base painting is then laid on as ever). The last BAKED_KEEP levels are kept (one:
+// the level being played; a long map keeps tens of MB of canvases), by
 // level: { sig (its tiles and the floor's density: a level whose map changed is painted again), floor, walls: chunk
 // x0 -> canvas, gone (let go: never copied from again) }. Only the chunks baked as the level is sealed are kept (a
 // long map's others come and go with the view).
-const BAKED = new Map(), BAKED_KEEP = 2;
+const BAKED = new Map(), BAKED_KEEP = 1;
 export function bakedFor(level, fs) {
   const sig = `${fs}:${hashString((level.tiles || []).join('\n'))}`;
   let e = BAKED.get(level);

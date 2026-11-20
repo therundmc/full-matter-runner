@@ -8,6 +8,8 @@ export const LIQUIDS = {
   rate: 30,                // flow steps per s (at most two a frame)
   dryEvery: 0.25,          // s between two passes of drying
   check: 0.12,             // s between two looks at the doors and the furniture (what holds the liquid)
+  sweep: 2,                // s between two looks for chunks of the grid left dry and still (let go: engine/physics/Shallow.js)
+  slots: 32,               // chunks of 16 x 16 cells the grid's pool starts with (it grows as liquid spreads)
   k: 140,                  // 1/s2: how hard a difference of level drives the flow (it runs at about sqrt(k) cells/s)
   stick: 0.5,              // share of its film a cell keeps wet when a flow has passed (the trail it leaves)
   thin: 1.2,               // a film drags this much more per film of thinness (deep gushes keep running, thin ones stop)
@@ -113,6 +115,7 @@ export const LIQUIDS = {
   look: {
     px: 2,
     gap: 2,
+    margin: 2,               // chunks of the grid kept painted past the view each way (the buffer is a window round it)
     levels: [0.2, 0.34, 0.55, 1.3, 2.3],
     soften: [0.25, 0.125, 0.0625],
     rag: 0.32,
