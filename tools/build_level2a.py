@@ -1060,8 +1060,14 @@ must('hibiscus_hedge_pink', 533.6, R1 + 3.45, on='"')
 must('hibiscus_hedge', 550.0, R1 + 3.45, on='"')
 for c in range(RAMP_X + 5, TOLL_X - 1, 6):
     lv.paint('expansion_joint', c, R0 + 3.0)
-for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (541.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1])):
+for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (541.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1]),
+               (533.0, 39.25), (551.0, 41.75)):
     lv.paint('oil_streak', c, r)
+# the merge's far side (the freeway's lanes coming in: nobody of his is held up there): a load lost off a truck, the
+# rubber of whoever braked for it, the bits of a mirror
+lv.paint('mattress_dumped', 553.4, 40.4, 160)
+lv.paint('tyre_marks', 543.5, 39.0 + 36 / 32 - 0.3)
+lv.paint('crash_debris', 546.6, 41.9, 90)
 
 # ---------------------------------------------------------------- THE TOLL (cols 560 on; docs/LEVEL2.md segment 2)
 # The four lanes side by side the merge leaves (the freeway's two, leg 1's two) spread to the plaza's grid
