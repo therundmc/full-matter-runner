@@ -173,7 +173,7 @@ function drawToll(ctx, S, t, pop = 0) {
           ctx.stroke();
         }
       }
-      if (g === 'wood' && !open) return; // (its arm gone: nothing more to say)
+      if ((g === 'wood' && !open) || (d?.van && d.van.x - d.van.w / 2 > mx)) return; // (its arm gone, or he is past it)
       laneSign(ctx, mx, laneY(P, i, mx), C.sign * (1 + 0.3 * pop), g === 'wood', k * (g === 'wood' ? 1 : 0.75 + 0.25 * beat));
     });
   }

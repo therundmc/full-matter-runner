@@ -129,7 +129,7 @@ export default class ChaseCam {
       b.left = -1;
       b.at = car;
     } else {
-      const T = K[tier];
+      const T = car.tollCrash ? K.toll : K[tier];
       this.open({ kind: 'kill', tier, ...T, at: car });
       S.tier = tier;
       if (tier === 'strong') S.strong = this.now;
@@ -137,7 +137,7 @@ export default class ChaseCam {
     }
     S.beat = this.now;
     // the picture kicked toward it, shaken; the lens and the pad feel a hit
-    const T = K[S.tier], v = w.drive.van, a = Math.atan2(car.y - v.y, car.x - v.x);
+    const T = car.tollCrash ? K.toll : K[S.tier], v = w.drive.van, a = Math.atan2(car.y - v.y, car.x - v.x);
     w.camera?.push(Math.cos(a) * T.push, Math.sin(a) * T.push);
     w.shake?.(T.shake);
     w.events.emit('ride', { beat: 'hit', x: car.x, y: car.y });

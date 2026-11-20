@@ -1126,7 +1126,9 @@ for (k, r) in enumerate(PLAZA):
 
 # its lights (the night section adds them): sodium pools on the fan and the fan back (they were dark), the neon of the
 # roof's fascias on the road (pink in, teal out), each booth's window, the office's sign, the billboards' lamps
-TOLL_LIGHTS = [[c, r, 7, '#ffb46a', 0.22] for (c, r) in ((590, 36.5), (590, 49.5), (598, 43.0), (617, 37.5), (617, 48.5), (624, 43.0))]
+TOLL_LIGHTS = [[c, r, 9, '#ffb46a', 0.3] for (c, r) in ((589, 36.0), (589, 50.0), (595, 43.0), (600, 35.5), (600, 50.5), (614, 35.5),
+                                                       (614, 50.5), (619, 43.0), (624, 37.0), (624, 49.0), (633, 43.0), (642, 39.0),
+                                                       (642, 47.0))]
 TOLL_LIGHTS += [[604.4, r, 5, '#ff4aa6', 0.3] for r in (38.5, 47.5)] + [[611.8, r, 5, '#38f0dc', 0.28] for r in (38.5, 47.5)]
 TOLL_LIGHTS += [[CANOPY_X + 0.3, r + 0.9, 3, '#ffd890', 0.25] for r in ISLANDS[:4]]
 TOLL_LIGHTS += [[591.0, 52.0, 4, '#38f0dc', 0.3], [661.0, 47.6, 6, '#ff8ac8', 0.2], [583.0, 50.4, 6, '#8af0e8', 0.2]]

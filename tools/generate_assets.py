@@ -13050,25 +13050,25 @@ def billboard(head, sub, small, seed, scene='motel'):
 
 def puddle_neon(W, H, seed):
     """Rain left standing on the asphalt, from above: a dark sheet of water with a ragged edge, the neon round it
-    (pink, teal) and a lamp's white lying in it in flat smears, a bright lip where it catches the light."""
+    (pink, teal) and a lamp's white lying in it as thin flat streaks along the road, a bright lip where it catches
+    the light."""
     def make():
         cv = Cv(W, H)
         rng = random.Random(seed)
         n = VNoise(W, H, 8, rng)
-        smears = [(rng.uniform(0.2, 0.8) * W, rng.uniform(0.25, 0.75) * H, rng.uniform(0.12, 0.3) * W, rng.uniform(0.08, 0.16) * H, c)
-                  for c in (DECO_PINK, DECO_TEAL, hx('#fff0d8'), DECO_PINK)]
+        streaks = [(rng.uniform(0.15, 0.7) * W, rng.uniform(0.25, 0.75) * H, rng.uniform(0.15, 0.35) * W, c)
+                   for c in (DECO_PINK, DECO_TEAL, hx('#fff0d8'), DECO_PINK, DECO_TEAL)]
 
         def f(x, y, cur):
             e = ((x - W / 2) / (W / 2)) ** 2 + ((y - H / 2) / (H / 2)) ** 2 + (n(x, y) - 0.5) * 0.9
             if e > 0.85:
                 return None
-            c = hx('#16122a', 210)
-            for (sx, sy, rx, ry, col) in smears:
-                d = ((x - sx) / rx) ** 2 + ((y - sy) / ry) ** 2
-                if d < 1:
-                    c = mix(c, alpha(col, 210), 0.55 if d < 0.35 else 0.3)
-            if e > 0.72 and (x - W / 2) * LX + (y - H / 2) * LY < 0:
-                c = hx('#8a8ab8', 200)                                      # its lit lip
+            c = hx('#1a1830', 190) if e < 0.6 else hx('#24223c', 170)
+            for (sx, sy, ln, col) in streaks:
+                if sx <= x < sx + ln and abs(y - sy) < 1.0:
+                    c = mix(c, alpha(col, 200), 0.65 if abs(y - sy) < 0.5 else 0.3)
+            if e > 0.74 and (x - W / 2) * LX + (y - H / 2) * LY < 0:
+                c = hx('#7a7aa8', 190)                                      # its lit lip
             return c
         px_paint(cv, 0, 0, W, H, f)
         return cv

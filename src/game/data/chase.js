@@ -348,7 +348,7 @@ export const CHASE = {
     tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, follow: -240, lateral: 0.14, steer: 5, every: 46, run: 110, from: 70, fade: 0.15,
     pop: 1.5, sign: 30,
     beat: { slow: 0.4, in: 0.04, hold: 0.2, out: 0.18, push: 5, shake: 0.22 },
-    arm: { splinters: 22, chips: 30, speed: 280, flash: [90, '#ffe2b0', 0.12], duck: 1.8 },
+    arm: { splinters: 40, chips: 44, speed: 320, flash: [110, '#ffe2b0', 0.14], duck: 1.8 },
     crash: { back: 2.6, across: 3.2, spin: 0.2, fly: 0.9, dents: 14, parts: 4, shake: 0.55, sparks: 70, bits: 10 },
     kerb: { chips: 30 },
     coins: { r: 26, n: 26 },
@@ -404,10 +404,13 @@ export const CHASE = {
     //   of the last beat
     //   double: a second car stopped within `double` s of the last: the beat under way is held `more` s longer and
     //   `deep` deeper (one beat for the two; after a light one, the strong one)
+    //   toll: one crashed on a toll's steel boom (systems/Toll.js THE CRASH): this beat whatever the cooldown, the view
+    //   cut out and drawn back toward it (SHOTS tollCrash)
     kill: {
       again: 7, gap: 0.45, double: 1.6, more: 0.3, deep: 0.05,
       strong: { slow: 0.25, in: 0.05, hold: 0.55, out: 0.12, stop: 0.05, push: 7, shake: 0.35, shot: 'chaseKill' },
       light: { slow: 0.55, in: 0.04, hold: 0.16, out: 0.1, stop: 0, push: 4, shake: 0.15, shot: null },
+      toll: { slow: 0.2, in: 0.05, hold: 0.85, out: 0.15, stop: 0.07, push: 8, shake: 0.5, shot: 'tollCrash' },
     },
     // the lorry across his road (systems/Lorries.js): once a lorry, as it is told, backing or out, his car on a
     // collision course with where it will stand and `lead` s (game time, at his speed) or less from its flank: the
@@ -424,7 +427,7 @@ export const CHASE = {
     // further (as the lorry's), until he is COMMITTED (in the fan, on a wooden lane's line within `commit` px, going
     // across at `still` px/step at most), `last` s (game, at his speed) before the lanes' mouths (the islands' noses:
     // from there it is his to make at full speed), past the gates, dead, or `cap` real s have gone
-    choose: { lead: 1.3, slow: 0.3, in: 0.1, out: 0.22, cap: 2.8, last: 0.45, wheel: 1.45, commit: 16, still: 1.2, ahead: 0.2, shot: 'tollChoose' },
+    choose: { lead: 1.3, slow: 0.3, in: 0.1, out: 0.22, cap: 2.8, last: 0.45, wheel: 1.45, commit: 16, still: 1.2, ahead: 0.25, shot: 'tollChoose' },
     // a pursuer's side swipe landing on his car (Pursuit ram): a short kick of slow motion, the picture thrown
     // away from it, sparks off the two flanks; once a swipe, none within `gap` s of the last
     rammed: { slow: 0.5, in: 0.03, hold: 0.12, out: 0.1, push: 6, shake: 0.3, sparks: 14, gap: 1.5 },

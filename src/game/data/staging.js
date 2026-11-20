@@ -51,8 +51,11 @@ export const SHOTS = {
   lorryGap: { zoom: 1, ease: 7, pull: 0.3, look: 0, ahead: true },
   // a toll's plaza as he chooses his lane (CHASE.cinema.choose): a cut OUT to the next even whole zoom (2 px a world px
   // at 1080 and 900, 2 at 1440, 4 at 2160; at 720 it is already the least: no cut), the view drawn on ahead to the
-  // gates (ChaseCam.shot: its point is the whole of where the view goes)
-  tollChoose: { zoom: 0.67, ease: 7, pull: 1, look: 0, ahead: true, even: true },
+  // gates (ChaseCam.shot: its point is the whole of where the view goes); `snap`: it lets go in one cut (Direction.set)
+  tollChoose: { zoom: 0.67, ease: 7, pull: 1, look: 0, ahead: true, even: true, snap: true },
+  // one of theirs crashed on a toll's steel boom (systems/Toll.js THE CRASH, a car's length or so behind him): the
+  // same cut out, the view drawn back toward the crash (this once: it is the show), let go in one cut
+  tollCrash: { zoom: 0.67, ease: 7, pull: 0.45, look: 0, even: true, snap: true },
   // a throw of his (systems/ThrowBeat.js): the thing in flight followed over its last stretch to the man on its line,
   // then a punch-in on where it struck him, he in the picture
   throwFollow: { zoom: 1.15, ease: 8, pull: 0.45, look: 0.3, keep: 0.8 },
