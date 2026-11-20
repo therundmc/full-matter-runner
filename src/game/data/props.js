@@ -390,13 +390,16 @@ export const PROPS = {
   // arm is torn off (its pieces, gate_arm_bit_*, are loose bits to throw), the steel one kills; the lane lights
   toll_island: { static: true, lasting: true, material: 'stone', w: 254, h: 46, hp: 99, chips: '#d8b030', sound: 'stone', blocksPath: true },
   toll_booth: { static: true, lasting: true, material: 'metal', glass: true, w: 92, h: 38, hp: 99, chips: '#d8d4c8', sound: 'metal', blocksPath: true,
-    light: { r: 70, color: '#ffe2a8', intensity: 0.6, x: 13 } },
+    light: { r: 50, color: '#ffe2a8', intensity: 0.2, x: 13 } },   // (under the roof: a stronger one burnt a blob on its sheet)
   toll_canopy: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 188, h: 636, hp: 99, chips: '#4e5562', sound: 'metal',
-    light: [{ r: 150, color: '#e8f0ff', intensity: 0.6, y: -216, flicker: 'buzz' }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: -72 },
-      { r: 150, color: '#e8f0ff', intensity: 0.6, y: 72 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: 216 },
-      // its neon: pink along the fascia the traffic comes in under, teal along the one it leaves under
-      { r: 120, color: '#ff4aa6', intensity: 0.4, x: -88, y: -150 }, { r: 120, color: '#ff4aa6', intensity: 0.4, x: -88, y: 150 },
-      { r: 120, color: '#38f0dc', intensity: 0.35, x: 88, y: -150 }, { r: 120, color: '#38f0dc', intensity: 0.35, x: 88, y: 150 }] },
+    // its floods under it (the light map lies over the roof too: at 0.6 they burnt its sheet white; the level's own
+    // floods at the lanes' mouths and past the gates light the plaza's ends)
+    light: [{ r: 150, color: '#e8f0ff', intensity: 0.28, y: -216, flicker: 'buzz' }, { r: 150, color: '#e8f0ff', intensity: 0.28, y: -72 },
+      { r: 150, color: '#e8f0ff', intensity: 0.28, y: 72 }, { r: 150, color: '#e8f0ff', intensity: 0.28, y: 216 },
+      // its neon: pink along the fascia the traffic comes in under, teal along the one it leaves under (on the road
+      // outside its edges)
+      { r: 100, color: '#ff4aa6', intensity: 0.32, x: -110, y: -150 }, { r: 100, color: '#ff4aa6', intensity: 0.32, x: -110, y: 150 },
+      { r: 100, color: '#38f0dc', intensity: 0.28, x: 110, y: -150 }, { r: 100, color: '#38f0dc', intensity: 0.28, x: 110, y: 150 }] },
   // (`cost`: the share of his speed a car loses tearing it off, Drive.react; in its own pieces: data/destruction.js)
   gate_arm_wood: { static: true, material: 'wood', w: 110, h: 4, hp: 3, chips: '#d0242c', sound: 'wood', cost: 0.1 },
   gate_arm_bit_a: { material: 'wood', w: 42, h: 4, hp: 2, kg: 3, mu: 0.5, chips: '#d0242c', sound: 'wood' },

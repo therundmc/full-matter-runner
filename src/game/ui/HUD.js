@@ -10,6 +10,7 @@ import { drawIndicators } from './Indicators.js';
 import { drawPrompts } from './Glyphs.js';
 import { keyLabel } from '../data/controls.js';
 import { clamp } from '../../engine/math.js';
+import { CHASE } from '../data/chase.js';
 
 // how much of the HUD is there (1 but while it comes in: level 2A's opening has none, it fades in as the car pulls
 // away, Drive `hud`); every alpha set below is a share of it
@@ -214,14 +215,14 @@ function drawHunters(ctx, game, s, t, pad) {
 // What is about to shut the road ahead, off the picture (a lorry backing out: systems/Lorries.js): three red
 // chevrons on the screen's edge toward where its tail will be, beating with its beeper, and two bone ones toward the
 // way round it. A toll told (systems/Toll.js): each lane's own signal (a green arrow, a red X: render/PursuitArt.js
-// laneSign) on the screen's right edge at its height, while its mouth is still ahead of the picture (on it, the
-// world's own sign over the mouth says it)
+// laneSign) on the screen's right edge at its height, while the world's own sign over its mouth is still ahead of the
+// picture (the two never drawn one over the other)
 function drawWarnings(ctx, game, s, t, pad) {
   const W = game.canvas.width, H = game.canvas.height, cam = game.camera, sz = 26 * s;
   for (const { P, k } of game.world.toll?.told() || []) {
-    const mx = mouthX(P);
+    const mx = mouthX(P), edge = mx - CHASE.toll.sign * 1.65;   // (the world's sign's near edge, at its biggest)
     P.gates.forEach((g, i) => {
-      const sp = cam.worldToScreen(mx, laneY(P, i, mx));
+      const sp = cam.worldToScreen(edge, laneY(P, i, mx));
       if (sp.x <= W) return;
       const y = clamp(sp.y, pad + 46 * s + sz, H - pad - sz);
       laneSign(ctx, W - pad - sz / 2, y, sz, g === 'wood', FADE * k * (g === 'wood' ? 1 : 0.75 + 0.25 * Math.sin(t * 14)));

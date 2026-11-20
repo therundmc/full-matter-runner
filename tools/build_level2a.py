@@ -739,7 +739,7 @@ YARD_S = (468, 471)          # the opening of the yard gate south of it (cols)
 # its beam in line with its end's
 EDGE_N, EDGE_RAMP = R0 + 0.25, R0
 LANE_AT = 444
-EDGE_S, RUMBLE_S, RAIL_S = R1 + 1.0, R1 + 1.33, R1 + 2.15 + 4.5 / 32
+EDGE_S, RUMBLE_S, RAIL_S = R1 + 1.0, R1 + 1.33, R1 + 2.15
 lv.area('part two: the ground')
 for (x0, y0, x1, y1, t) in (
         (WS, 8, DEAD - 1, 10, 's'), (WS, 11, DEAD - 1, 15, '='), (WS, 16, DEAD - 1, 17, 's'),   # the street, on under the works
@@ -989,8 +989,8 @@ solid('edge_line_yellow', RAMP_X, M0, EDGE_RAMP)
 dashes(LEG1_W, TOLL_X, R0 + 2.5, 9, at=LANE_AT)
 for c in list(range(LEG1_W, S0 - 2 - 3, 4)) + list(range(S1 + 3, RAMP_X - 3, 4)):   # the kerb under the bank
     lv.paint('kerb_s_4', c + 2.0, R0 - 1 / 32)
-for (kind, c, r, deg) in (('road_patch_c', 457.5, 44.3, 0), ('road_crack_a', 463.0, 46.9, 0), ('manhole_sq', 478.2, 44.5, 0),
-                          ('road_patch_b', 481.0, 46.6, 0), ('road_crack_b', 489.5, 44.0, 90), ('drain', 466.5, R1 + 1 - 8 / 32, 0),
+for (kind, c, r, deg) in (('road_patch_c', 457.5, 44.3, 0), ('road_crack_a', 467.0, 46.9, 0), ('manhole_sq', 478.2, 44.5, 0),
+                          ('road_patch_b', 481.0, 46.6, 0), ('road_crack_b', 489.5, 44.3, 90), ('drain', 466.5, R1 + 1 - 8 / 32, 0),
                           ('drain', 490.5, R1 + 1 - 8 / 32, 0), ('oil_stain_b', 458.0, 48.9, 0), ('oil_stain_a', 461.5, 49.2, 0),
                           ('road_arrow', 462.0, LANES1[0], 0), ('road_arrow', 462.0, LANES1[1], 0)):
     lv.paint(kind, c, r, deg)
@@ -1040,8 +1040,8 @@ for (kind, c, r) in (('ac_unit', 430.6, 52.6), ('vent', 437.2, 51.8), ('duct', 4
 lv.area('part two: the on-ramp')
 solid('edge_line', RAMP_X + 0.25, TOLL_X, EDGE_S)                        # (clear of the sidewalk's last kerb)
 solid('rumble_strip', RAMP_X + 1, TOLL_X, RUMBLE_S)
-must('guardrail_end', RAMP_X + 1.0, R1 + 2.15, 0, on='"')                # its head on the bank
-rail('guardrail', RAMP_X + 2, TOLL_X, RAIL_S, 180)                          # (its beam in line with the end's)
+must('guardrail_end', RAMP_X, RAIL_S - 4.5 / 32, 0, on='"s')               # (its beam in line with the rail's: it stood
+rail('guardrail', RAMP_X + 1, TOLL_X, RAIL_S, 180)                         # 4 px off it; the rail goes on into the toll's)
 for c in range(RAMP_X + 2, TOLL_X - 2, 4):
     put('reflector_post', c + 0.5, R1 + 1.86, on='=')
 for c in range(RAMP_X + 2, M0 - 1, 4):
@@ -1133,9 +1133,9 @@ for c in range(LOT_S[0], LOT_S[1] + 1):                                  # its k
 lv.area('miami: the ramp (an old crash, a call box, palms and hibiscus on its bank, its slabs)')
 lv.props[:] = [p for p in lv.props if not (p[1] == 'guardrail' and abs(p[3] - RAIL_S) < 0.01 and 526.5 < p[2] < 531.5)]
 boxes[:] = [b for b in boxes if not (abs((b[1] + b[3]) / 2 - RAIL_S) < 0.05 and 526.5 < (b[0] + b[2]) / 2 < 531.5)]
-end_to_end('guardrail_dented', 530.0, RAIL_S, 180)
-lv.paint('tyre_marks', 527.0, 47.73)
-lv.paint('crash_debris', 532.6, R1 + 1.45)
+end_to_end('guardrail_dented', 529.0, RAIL_S, 180)
+lv.paint('tyre_marks', 526.0, 46.75)                                      # (to the edge line: none on the strip)
+lv.paint('crash_debris', 532.5, R1 + 0.15)                                # (in the lane by it, off the shoulder's strip)
 must('call_box', 538.5, R1 + 1.7, 0, on='=')
 # the gantry over the gore's nose, where the two roads run side by side a lane apart: each panel over the middle of
 # its own (at the gore's tip they meet: the far panel stood over the freeway's left edge)
@@ -1144,11 +1144,8 @@ for (kind, c) in (('royal_palm_b', 507.5), ('royal_palm', 525.0), ('royal_palm_b
     must(kind, c, R1 + 3.6, on='"')
 must('hibiscus_hedge_pink', 533.6, R1 + 3.45, on='"')
 must('hibiscus_hedge', 550.0, R1 + 3.45, on='"')
-for c in range(M0 + 3, TOLL_X, 6):                                      # the freeway's concrete slabs from the gore on (the
-    for r in (39.5, 45.5):                                               # ramp is asphalt): a joint every 6 m right across,
-        lv.paint('expansion_joint', c, r)                                # in step with the toll approach's
 for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (544.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1]),
-               (533.0, 39.25), (551.0, 41.75)):
+               (531.0, 37.6), (551.0, 41.75)):
     lv.paint('oil_streak', c, r)
 # the merge's far side (the freeway's lanes coming in: nobody of his is held up there): a load lost off a truck, the
 # rubber of whoever braked for it, the bits of a mirror
@@ -1163,17 +1160,25 @@ lv.paint('crash_debris', 549.8, 41.75, 90)                                # (pas
 # told by its lane's signal over the island (a green arrow, a red X), the gates themselves, and by the chase (systems/
 # Toll.js: bone arrows down the wooden lanes, red chevrons at the edge for the steel ones, 1.5 s out). Past the
 # plaza they spread back to 2.5 m, the outer two merge in, and the freeway starts on the middle two. A freeway:
-# no sidewalks, no kerbs; paved shoulders, guardrails along the grass verges, tall lamps.
+# no sidewalks, no kerbs; paved shoulders, guardrails along the grass verges, tall lamps. Painted as a highway is (the
+# polish pass, 2026-11-20): the left edge line yellow, the right one white; the plaza's channelizing lines white, from
+# the approach's lane lines onto the noses of the islands' crash cushions (and from the planters' tails past the gates
+# back to the lanes); lettering and numbers centred in their lanes; the outer two lanes end as a lane drop does (merge
+# arrows, then the edge tapering in); nothing painted over anything else (check_paint_overlaps).
 TOLL0 = TOLL_X              # the toll's ground from this column on (what leg 1 had there is taken away)
 FAN = (587, 603)            # the four spread to the plaza's grid, the outer edges out to the outer islands' noses
+FAN_L = 424 / 32            # the fan's paint (plaza_fan): its lines end on the cushions' noses (col 600.25)
 NOSE = 603.0                # the islands' noses (8 m long: to col 611); a crash cushion before each
 CANOPY_X = 608.0            # the roof's middle (6 m along the road: cols 605-611)
 GATE_X = 611.1              # the gates, at the islands' ends (the roof's exit)
-AFTER = (611, 627)          # the four lanes spread back to 2.5 m (the fan turned round)
+PLANTER_X = GATE_X + 1.2    # an art deco planter at each island's end past its gate; the fan back starts at their tails
+TAIL = PLANTER_X + 0.7
+AFTER = (611, 627)          # the four lanes spread back to 2.5 m (the fan turned round: its paint to col 626.25)
 PLAZA_TO = 613              # the plaza's leg ends just past the gates (CHASE.toll.past: theirs go for their slots)
-DROP = (640, 652)           # the outer two end: merge arrows before, a hatched gore over each
-RAIL = (35.88, 50.12)       # the guardrails' rows: along the four lanes, the plaza's wide shoulders, the freeway's two
-RAIL_PLAZA = (30.88, 55.12)
+DROP = (640, 652)           # the outer two end: merge arrows before, the edge tapering in over 12 m
+RAIL_IN = (33.88, 49.15)    # the guardrails' rows: the approach (leg 1's cross-section carried on: the freeway's 4 m
+RAIL = (35.88, 50.12)       # shoulder north, the ramp's south one), the four lanes past the plaza, the plaza's wide
+RAIL_PLAZA = (30.88, 55.12)  # shoulders, the freeway's two
 RAIL_FWY = (38.88, 47.12)
 MID = 43.0                  # the road's middle row all the way (the four lanes' at col 559)
 TOLL_CRUISE = 13.3          # px/step: 90 km/h
@@ -1191,22 +1196,37 @@ lv.area('the toll: its ground (a freeway: paved shoulders, grass verges)')
 lv.props[:] = [p for p in lv.props if p[2] < TOLL0 - 0.5]         # (leg 1's lamps carried on past it: the toll's now)
 lv.floor[:] = [f for f in lv.floor if f[1] < TOLL0]
 lv.fill(TOLL0, 27, W - 1, H - 2, '"')
-for (x0, x1, r0, r1) in ((TOLL0, FAN[0] - 1, 36, 49), (FAN[0], AFTER[1] - 1, 31, 54), (AFTER[1], DROP[1] - 1, 36, 49),
+for (x0, x1, r0, r1) in ((TOLL0, FAN[0] - 1, 34, 48), (FAN[0], AFTER[1] - 1, 31, 54), (AFTER[1], DROP[1] - 1, 36, 49),
                          (DROP[1], W - 1, 39, 46)):
     lv.fill(x0, r0, x1, r1, '=')
+# the plaza's wide shoulders planted along their rails (its palms, hibiscus and deco lamps grow there, not out of the
+# asphalt), the office's lawn; the office and the trooper's car stand on the asphalt between
+for (x0, x1, r0, r1) in ((FAN[0], AFTER[1] - 1, 31, 32), (600, AFTER[1] - 1, 53, 54), (FAN[0], FAN[0] + 1, 52, 54)):
+    lv.fill(x0, r0, x1, r1, '"')
 for (x, y) in ((566, 32), (574, 52), (591, 28), (633, 52), (659, 35), (684, 49), (618, 57)):   # the verge worn bare in patches
     lv.fill(x, y, x + 2, y + 1, '~')
 
 lv.area('the toll: the paint (the lanes spreading to the plaza and back, merging)')
-lv.paint('plaza_fan', FAN[0] + 8.0, MID)                              # 2.5 m lanes to the plaza's 4.5 m, edges to the islands
-lv.paint('plaza_fan', AFTER[0] + 8.0, MID, 180)                       # and back
-lv.paint('lane_taper', DROP[0] + 6.0, MID, 180)                       # the outer two end
-for (a, b, rows) in ((TOLL0, FAN[0], (38.0, 48.0)), (AFTER[1], DROP[0], (38.0, 48.0)), (DROP[1], W - 1, (40.5, 45.5))):
-    for c in range(a, b - 2, 3):                                      # the edge lines, solid
-        for r in rows:
-            lv.paint('edge_line', c + 1.5, r)
-for (a, b, rows) in ((TOLL0, FAN[0], (40.5, MID, 45.5)), (AFTER[1], DROP[0], (40.5, MID, 45.5)), (DROP[1], W - 1, (MID,))):
-    for c in range(a + 1, b - 3, 9):                                  # the lane lines: dashes of 3 m every 9
+lv.paint('plaza_fan', FAN[0] + FAN_L / 2, MID)                        # 2.5 m lanes to the plaza's 4.5 m, onto the cushions
+lv.paint('plaza_fan', TAIL + FAN_L / 2, MID, 180)                     # and back, off the planters' tails
+lv.paint('lane_taper', DROP[0] + 6.0, MID, 180)                       # the outer two end (its left edge yellow)
+
+
+def line_run(kind, c0, c1, row):
+    """A solid line from c0 to c1 on `row` in lengths of 3 m, the last one laid flush with c1 (over the one before)."""
+    c = c0
+    while c + 3.0 <= c1 + 0.01:
+        lv.paint(kind, c + 1.5, row)
+        c += 3.0
+    if c < c1 - 0.01:
+        lv.paint(kind, c1 - 1.5, row)
+
+
+for (a, b, top, bottom) in ((TOLL0, FAN[0], 38.0, 48.0), (TAIL + FAN_L, DROP[0], 38.0, 48.0), (DROP[1], W - 1, 40.5, 45.5)):
+    line_run('edge_line_yellow', a, b, top)                           # the edge lines, solid: the left one yellow
+    line_run('edge_line', a, b, bottom)
+for (a, b, rows) in ((TOLL0, FAN[0], (40.5, MID, 45.5)), (AFTER[1], DROP[0], (40.5, 45.5)), (AFTER[1], W - 1, (MID,))):
+    for c in range(a + 1, b - 3, 9):                                  # the lane lines: dashes of 3 m every 9 (the middle one on through the drop)
         for r in rows:
             lv.paint('lane_dash_long', c + 1.5, r)
             if c + 6 < b - 1:
@@ -1217,11 +1237,9 @@ for (k, r) in enumerate(APPROACH):
 for c in range(TOLL0, FAN[0] - 2, 3):                                 # the shoulders' rumble strips
     lv.paint('rumble_strip', c + 1.5, 37.67)
     lv.paint('rumble_strip', c + 1.5, 48.33)
-lv.paint('merge_arrow_s', 633.5, APPROACH[0])                         # the outer two: merge in
+lv.paint('merge_arrow_s', 633.5, APPROACH[0])                         # the outer two: merge in, before the taper
 lv.paint('merge_arrow', 633.5, APPROACH[3])
-lv.paint('gore_hatch', DROP[1] - 4.0, APPROACH[0], 180)
-lv.paint('gore_hatch', DROP[1] - 4.0, APPROACH[3], 180)
-for (c, r) in ((566.5, 43.6), (584.0, 41.1), (597.0, 46.8), (608.5, 41.5), (621.0, 44.7), (645.0, 42.1), (663.0, 43.8)):
+for (c, r) in ((566.5, 43.6), (584.0, 41.1), (595.5, 46.2), (608.5, 41.5), (621.0, 44.7), (645.0, 42.1), (663.0, 44.25)):
     lv.paint(('oil_stain_a', 'oil_stain_b', 'road_patch_a', 'oil_stain_b', 'road_crack_b', 'road_patch_c', 'oil_stain_a')[int(c) % 7], c, r)
 
 lv.area('the toll: the plaza (islands, their cushions, the booths, the lane signals, the gates, the roof)')
@@ -1244,25 +1262,32 @@ lv.prop('toll_canopy', CANOPY_X, MID)
 lv.patron('civ2', CANOPY_X + 1.2, 54.05, 270, 'smoke')               # one of the staff on the shoulder, on his break
 
 lv.area('the toll: guardrails, lamps, signs')
-# each run of rail starts with its end toward who comes; where the road narrows (past the plaza, at the lane drop) a
-# car still out wide meets that end: there it is a crash cushion (it bursts, the rail's thin end behind it only
-# clips him: never a death nobody told), not the terminal (`lasting`, as wide as a car's nose would need: the crash)
-for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], *RAIL, False), (FAN[0], AFTER[1], *RAIL_PLAZA, False),
+# each run of rail starts with its end toward who comes and ends with one turned away; where the road narrows (past
+# the plaza, at the lane drop) a car still out wide meets that end: there it is a crash cushion (it bursts, the rail's
+# thin end behind it only clips him: never a death nobody told), not the terminal (`lasting`, as wide as a car's nose
+# would need: the crash)
+for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], *RAIL_IN, False), (FAN[0], AFTER[1], *RAIL_PLAZA, False),
                                      (AFTER[1], DROP[1], *RAIL, True), (DROP[1], W - 1, *RAIL_FWY, True)):
     for r in (top, bottom):
+        on = a == TOLL0 and r == RAIL_IN[1]                           # (the ramp's rail carried on, in its step)
         if cushion:
             lv.prop('crash_cushion', a + 84 / 64 + 0.05, r + (0.55 if r > MID else -0.55))
-        else:
+        elif not on:
             lv.prop('guardrail_end', a + 30 / 32, r)
-        for c in range(a + (3 if cushion else 2), b - 3, 4):
+        cs = range(RAMP_X + 1 + 4 * ((a - RAMP_X - 1) // 4) if on else a + (3 if cushion else 2), b - (5 if b < W - 1 else 3), 4)
+        for c in cs:
             lv.prop('guardrail', c + 2.0, r)
+        if b < W - 1:
+            lv.prop('guardrail_end', cs[-1] + 4 + 30 / 32, r, 180)    # (its trailing end, short of where the road widens)
     for c in range(a + 3, b - 1, 6):
         lv.prop('reflector_post', c + 0.5, top - 0.35)
         lv.prop('reflector_post', c + 0.5, bottom + 0.35)
-for (c, r) in ((563.5, 34.95), (579.5, 51.05), (594.5, 30.0), (598.5, 56.0), (633.5, 34.95), (648.5, 51.05),
+# the tall lamps behind the rails, a side in turn about every 16 m (the plaza's south one clear of the trooper's car,
+# the approach's of the billboard)
+for (c, r) in ((563.5, 33.0), (577.5, 51.05), (594.5, 30.0), (600.0, 56.5), (633.5, 34.95), (648.5, 51.05),
                (664.5, 37.95), (680.5, 48.05), (695.5, 37.95)):
     lv.prop('highway_lamp', c, r, 90)                                 # its heads out over the road and the verge
-for (kind, c, r) in (('sign_toll_ahead', 562.6, 51.0), ('sign_speed_55', 568.6, 35.2), ('sign_freeway', 656.6, 48.2),
+for (kind, c, r) in (('sign_toll_ahead', 562.6, 51.0), ('sign_speed_55', 568.6, 33.2), ('sign_freeway', 656.6, 48.2),
                      ('sign_speed_55', 670.6, 38.2)):
     lv.prop(kind, c, r)
 
@@ -1275,36 +1300,39 @@ lv.area('the toll: Sunset Bay, 1985 (palms, hibiscus, the deco office and its tr
 # Motel (level 3) over the freeway's verge and the ramp's suntan one on the approach's, rain standing in puddles with
 # the neon in them, oil under each booth, rubber before each gate.
 for (i, r) in enumerate(ISLANDS):
-    lv.prop('planter_deco_pink' if i % 2 else 'planter_deco_teal', GATE_X + 1.2, r)
-for (c, r, kind) in ((589.5, 32.3, 'palm_fan'), (597.0, 31.9, 'palm_fan_small'), (615.5, 32.2, 'palm_fan'),
-                     (623.0, 32.6, 'palm_fan_small'), (603.2, 54.3, 'palm_fan_small'), (614.5, 53.7, 'palm_fan'),
-                     (622.0, 54.1, 'palm_fan_small'), (567.0, 34.3, 'palm_fan'), (573.0, 51.8, 'palm_fan_small'),
-                     (585.0, 34.2, 'palm_fan_small'), (631.0, 34.3, 'palm_fan'), (639.0, 51.8, 'palm_fan'),
+    lv.prop('planter_deco_pink' if i % 2 else 'planter_deco_teal', PLANTER_X, r)
+for (c, r, kind) in ((589.5, 31.9, 'palm_fan'), (597.0, 31.9, 'palm_fan_small'), (615.5, 31.9, 'palm_fan'),
+                     (623.0, 32.0, 'palm_fan_small'), (603.2, 54.3, 'palm_fan_small'), (614.5, 53.9, 'palm_fan'),
+                     (622.0, 54.1, 'palm_fan_small'), (567.0, 31.6, 'palm_fan'), (573.0, 51.8, 'palm_fan_small'),
+                     (584.6, 31.5, 'palm_fan_small'), (631.0, 34.3, 'palm_fan'), (639.0, 51.8, 'palm_fan'),
                      (647.0, 34.4, 'palm_fan_small'), (657.0, 37.2, 'palm_fan'), (667.0, 48.7, 'palm_fan_small')):
     lv.prop(kind, c, r)
-    inside = 588 <= c < 627                                            # (on the plaza's shoulder: toward its road, off the rail)
+    inside = 588 <= c < 627                                            # (in the plaza's beds: toward its road, off the rail)
     lv.prop('hibiscus_bush' if int(c) % 2 else 'hibiscus_bush_red', c + 0.9, r + (0.5 if r > MID else -0.5) * (-1.2 if inside else 1))
-for (c, r) in ((604.6, 32.7), (606.0, 53.4), (612.6, 32.7)):
+for (c, r) in ((604.6, 32.4), (606.0, 53.6), (612.6, 32.4)):
     lv.prop('deco_lamp', c, r)
 lv.prop('deco_office_pink', 591.0, 53.5)                               # its sign to the road
 lv.prop('police_car', 597.2, 53.9)                                     # nobody in it, lights off
-lv.prop('hibiscus_bush', 588.0, 51.9)
+lv.prop('hibiscus_bush', 587.7, 52.7)                                  # (on its lawn)
 lv.prop('billboard_motel', 661.0, 48.9)                                # hung over the verge, read from the freeway
-lv.prop('billboard_tan', 583.0, 51.6)
-for (kind, c, r) in (('puddle_neon', 604.0, 41.4), ('puddle_neon_b', 613.6, 46.6), ('puddle_neon_b', 596.0, 37.8),
-                     ('puddle_neon', 619.0, 39.9), ('puddle_neon_b', 590.5, 45.8), ('puddle_neon', 600.5, 52.6)):
+lv.prop('billboard_tan', 583.2, 52.0)                                  # (clear of the rail and the lamp)
+for (kind, c, r) in (('puddle_neon', 604.0, 41.4), ('puddle_neon_b', 615.5, 45.0), ('puddle_neon_b', 596.0, 37.2),
+                     ('puddle_neon', 619.0, 41.2), ('puddle_neon_b', 590.5, 44.5), ('puddle_neon_b', 592.0, 51.6)):
     lv.paint(kind, c, r)
 for (k, r) in enumerate(PLAZA):
     lv.paint('oil_stain_b' if k % 2 else 'oil_stain_a', CANOPY_X - 0.4 + (k % 2) * 0.9, r + 0.2)   # under each booth's lane
     lv.paint('skid_marks', GATE_X - 2.4 - (k % 2) * 0.8, r + (0.15 if k % 2 else -0.2))             # rubber before its gate
 
 # its lights (the night section adds them): sodium pools on the fan and the fan back (they were dark), the neon of the
-# roof's fascias on the road (pink in, teal out), each booth's window, the office's sign, the billboards' lamps
-TOLL_LIGHTS = [[c, r, 9, '#ffb46a', 0.3] for (c, r) in ((589, 36.0), (589, 50.0), (595, 43.0), (600, 35.5), (600, 50.5), (614, 35.5),
-                                                       (614, 50.5), (619, 43.0), (624, 37.0), (624, 49.0), (633, 43.0), (642, 39.0),
+# roof's fascias on the road (pink in, teal out), the office's sign, the billboards' lamps. NOTHING CENTRED ON THE ROOF
+# (it is drawn under the light map: a pool on it burnt its sheet white): the plaza's floods stand at the lanes' mouths
+# and past the gates, the sodium pools and the fascias' neon just outside its edges; under it, faded over him, the
+# road is lit from both ends and by the booths' own windows (their glow maps)
+TOLL_LIGHTS = [[c, r, 8, '#ffb46a', 0.3] for (c, r) in ((589, 36.0), (589, 50.0), (594, 43.0), (598, 35.5), (598, 50.5), (617, 35.5),
+                                                       (617, 50.5), (620, 43.0), (624, 37.0), (624, 49.0), (633, 43.0), (642, 39.0),
                                                        (642, 47.0))]
-TOLL_LIGHTS += [[604.4, r, 5, '#ff4aa6', 0.3] for r in (38.5, 47.5)] + [[611.8, r, 5, '#38f0dc', 0.28] for r in (38.5, 47.5)]
-TOLL_LIGHTS += [[CANOPY_X + 0.3, r + 0.9, 3, '#ffd890', 0.25] for r in ISLANDS[:4]]
+TOLL_LIGHTS += [[601.8, r, 6, '#e8f0ff', 0.18] for r in (37.0, 43.0, 49.0)] + [[614.2, r, 6, '#e8f0ff', 0.16] for r in (37.0, 43.0, 49.0)]
+TOLL_LIGHTS += [[603.9, r, 3, '#ff4aa6', 0.3] for r in (38.5, 47.5)] + [[612.2, r, 3, '#38f0dc', 0.28] for r in (38.5, 47.5)]
 TOLL_LIGHTS += [[591.0, 52.0, 4, '#38f0dc', 0.3], [661.0, 47.6, 6, '#ff8ac8', 0.2], [583.0, 50.4, 6, '#8af0e8', 0.2]]
 
 
@@ -1598,14 +1626,12 @@ if drop(lambda k, c, r: k == 'crash_cushion_hit'):
 # ramp's slabs carried on (a joint every 6 m, oil down the lanes), rubber, rain standing with the plaza's neon in it,
 # sodium between the tall lamps
 lv.area('harmony: the toll\'s approach, the freeway\'s start')
-for c in range(TOLL0 + 3, FAN[0] - 1, 6):
-    for r in (39.5, 45.5):                                                # (6 m each: the four lanes across)
-        lv.paint('expansion_joint', c, r)
-for (kind, c, r, deg) in (('oil_streak', 564.0, 44.25, 0), ('oil_streak', 571.0, 41.75, 0), ('oil_streak', 583.5, 46.75, 0), ('oil_streak', 567.5, 39.25, 0),
-                          ('tyre_marks', 569.0, 45.6, 0), ('puddle_neon_b', 573.4, 47.4, 0), ('puddle_neon', 585.0, 38.4, 0),
-                          ('crash_debris', 579.6, 48.6, 0), ('litter_a', 565.0, 48.5, 0),
-                          ('oil_streak', 646.0, 44.25, 0), ('oil_streak', 656.0, 41.75, 0), ('puddle_neon', 650.5, 45.4, 0),
-                          ('tyre_marks', 634.0, 40.6, 0), ('puddle_neon_b', 662.0, 42.6, 0), ('litter_b', 644.0, 39.6, 0)):
+# (no slab joints: the toll's road is asphalt, and joints across all four lanes ran through the dashes and the lettering)
+for (kind, c, r, deg) in (('oil_streak', 571.0, 41.75, 0), ('oil_streak', 566.0, 46.75, 0), ('oil_streak', 567.5, 39.25, 0),
+                          ('tyre_marks', 569.0, 44.25, 0), ('puddle_neon_b', 573.4, 47.0, 0), ('puddle_neon', 585.0, 39.25, 0),
+                          ('crash_debris', 579.0, 35.6, 0), ('litter_a', 565.5, 35.0, 0),
+                          ('oil_streak', 646.0, 44.25, 0), ('oil_streak', 656.0, 41.75, 0), ('puddle_neon', 648.5, 41.6, 0),
+                          ('tyre_marks', 657.0, 44.3, 0), ('puddle_neon_b', 667.5, 42.0, 0), ('litter_b', 645.0, 37.0, 0)):
     lv.paint(kind, c, r, deg)
 HARMONY_LIGHTS += [[568.0, 43.0, 9, '#ffb46a', 0.24], [575.5, 39.5, 8, '#ffa860', 0.2], [582.0, 46.5, 8, '#ffb46a', 0.24],
                    [585.5, 40.0, 5, '#ff4aa6', 0.16], [648.0, 43.0, 9, '#ffb46a', 0.22], [660.0, 43.0, 9, '#ffa860', 0.2]]
@@ -1800,8 +1826,7 @@ lights += [[x, 39.0, 9, '#ffb46a', 0.22] for x in range(462, TOLL_X, 30)]       
 lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   # the ramp's
 lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
 lights += [[x, MID, 10, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in range(TOLL0 + 4, W, 30)]   # the freeway's
-lights += [[CANOPY_X, MID + d, 9, '#e8f0ff', 0.22] for d in (-6, 0, 6)]  # the plaza under its lit roof
-lights += TOLL_LIGHTS                                                    # (the toll's block: its neon, pools, windows)
+lights += TOLL_LIGHTS                                                    # (the toll's block: its floods, neon, pools)
 # leg 1 in 1985 (the neon, the billboards, the drum's fire and the lot are their props' own lights): the palms lit
 # from their feet, pink and cyan in turn, the green signs from below, more sodium over the merge (it was the dark end)
 lights += [[c, r, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5] for (k, (c, r)) in enumerate(((466.9, 48.8), (468.0, 42.3), (493.6, 42.1), (507.5, 50.3), (525.0, 50.3), (541.5, 50.3), (556.0, 50.3)))]
@@ -1837,7 +1862,7 @@ LEGS = [
     {'from': LEG1, 'to': TOLL0, 'lanes': list(LANES1), 'mid': 44.5, 'cruise': 10.4,
      'kerbs': [ROAD1[0], ROAD1[1] + 1],
      'across': [[LEG1, TOLL_X - 1, ROAD1[0] - 0.4, H], [DOCK_S[0] - 2, DOCK_S[1] + 1, 0, ROAD1[1] + 2.2],
-                [RAMP_X - 1, TOLL_X - 1, 0, ROAD1[1] + 1.9]]},
+                [RAMP_X - 1, TOLL_X - 1, 0, ROAD1[1] + 1.9], [RAMP_X - 1, RAMP_X + 1, 0, ROAD1[1] + 1.7]]},   # (the rail's end)
     # THE TOLL: no bend, the legs follow one another by column (the car goes on in its row from one to the next:
     # Drive's framing eased across). The approach (the four lanes side by side the merge left: the freeway's two and
     # leg 1's), the plaza from the fan to just past the gates (its four lanes under the roof; the camera follows him
@@ -1846,11 +1871,11 @@ LEGS = [
     # ones) from where the outer two start to end. The wheel is held inside the guardrails (`across`), and brought in
     # ahead of where the road narrows (Drive.fronts looks C.frontAhead tiles on): the rail's thin end is never nose-on
     {'from': TOLL0, 'to': FAN[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE,
-     'across': [[TOLL0, FAN[0] - 1, RAIL[0] + 0.22, RAIL[1] - 0.22]]},
+     'across': [[TOLL0, FAN[0] - 1, RAIL[0] + 0.22, RAIL_IN[1] - 0.22]]},
     {'from': FAN[0], 'to': PLAZA_TO, 'lanes': list(PLAZA), 'mid': MID, 'cruise': TOLL_CRUISE, 'track': 0.7,
-     'across': [[FAN[0], PLAZA_TO - 1, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22], [FAN[0], 600, 0, 51.9]]},   # (off the office)
+     'across': [[FAN[0], PLAZA_TO - 1, 33.1, 52.9], [FAN[0], 600, 0, 51.9]]},   # (off the beds and the office)
     {'from': PLAZA_TO, 'to': DROP[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE,
-     'across': [[PLAZA_TO, AFTER[1] - 3, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22],
+     'across': [[PLAZA_TO, AFTER[1] - 3, 33.1, 52.9],
                 [AFTER[1] - 2, DROP[0] - 1, RAIL[0] + 0.22, RAIL[1] - 0.22]]},
     {'from': DROP[0], 'to': W, 'lanes': list(FREEWAY), 'mid': MID, 'cruise': TOLL_CRUISE,
      'across': [[c, c + 3, RAIL[0] + 0.22 + k, RAIL[1] - 0.22 - k] for (k, c) in enumerate(range(DROP[0], DROP[1], 4))]
@@ -1951,8 +1976,16 @@ def check_lanes():
 LINE_PAINT = {'zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_arrow', 'road_arrow_turn', 'road_bus',
               'road_stop', 'road_slow', 'road_keep', 'road_clear', 'road_only', 'hatch_bay', 'hatch_yard', 'edge_line',
               'edge_line_yellow', 'lane_dash_long', 'detour_arrow_paint', 'detour_arrow_paint_left', 'merge_arrow',
-              'merge_arrow_s', 'gore_hatch', 'toll_text', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4'}
+              'merge_arrow_s', 'gore_hatch', 'toll_text', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
+              'rumble_strip', 'raised_marker', 'raised_marker_yellow'}
 COVERS = {'drain', 'manhole_sq', 'valve_cap'}
+# what lies on the road and is no marking (rain, oil, rubber, a patch, a joint, litter): never over a marking either
+# (they may lie on one another); the lines painted slanted across a big sprite (a toll's fan, a taper) are told by their
+# pixels, not their box
+STAINS = {'puddle_neon', 'puddle_neon_b', 'oil_stain_a', 'oil_stain_b', 'oil_streak', 'road_patch_a', 'road_patch_b',
+          'road_patch_c', 'road_crack_a', 'road_crack_b', 'tyre_marks', 'skid_marks', 'crash_debris', 'litter_a', 'litter_b',
+          'litter_bottles', 'expansion_joint'}
+SLANTED = {'plaza_fan', 'lane_taper', 'gore_taper'}
 SPRITES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'sprites', 'props')
 
 
@@ -1963,10 +1996,40 @@ def paint_size(kind):
     return w / 64, h / 64
 
 
-def check_paint_overlaps(col0, col1, eps=0.03):
+def opaque(kind, deg):
+    """A road paint's opaque pixels (alpha over 40) at the world's density, turned by deg as the game draws it (Pillow)."""
+    from PIL import Image
+    im = Image.open(os.path.join(SPRITES, kind + '.png')).getchannel('A')
+    im = im.resize((im.width // 2, im.height // 2), Image.BOX).point(lambda v: 255 if v > 40 else 0)
+    return im.rotate(-deg, expand=True, resample=Image.NEAREST) if deg % 360 else im
+
+
+def check_stains(col0, col1, marks, eps=0.03):
+    """No stain (STAINS) between col0 and col1 on a marking's box, nor on a pixel of a slanted line."""
+    for (kind, x, y, deg) in lv.floor:
+        if kind not in STAINS or not col0 <= x < col1:
+            continue
+        m = opaque(kind, deg)
+        bx = m.getbbox()
+        s = (x - m.width / 64 + bx[0] / 32, y - m.height / 64 + bx[1] / 32, x - m.width / 64 + bx[2] / 32, y - m.height / 64 + bx[3] / 32)
+        for (kb, xb, yb, b, _) in marks:
+            assert not (s[0] < b[2] - eps and b[0] < s[2] - eps and s[1] < b[3] - eps and b[1] < s[3] - eps), \
+                f'{kind} at {x:.2f},{y:.2f} lies on {kb} at {xb:.2f},{yb:.2f}'
+        for (kb, xb, yb, db) in lv.floor:
+            if kb not in SLANTED or abs(xb - x) > 20:
+                continue
+            L = opaque(kb, db)
+            ox, oy = (xb - L.width / 64) * 32, (yb - L.height / 64) * 32
+            box = tuple(round(v) for v in (s[0] * 32 - ox, s[1] * 32 - oy, s[2] * 32 - ox, s[3] * 32 - oy))
+            hit = L.crop(box).getbbox() if box[2] > 0 and box[3] > 0 and box[0] < L.width and box[1] < L.height else None
+            assert not hit, f'{kind} at {x:.2f},{y:.2f} lies on a line of {kb} at {xb:.2f},{yb:.2f}'
+
+
+def check_paint_overlaps(col0, col1, eps=0.03, stains=False):
     """Between columns col0 and col1 no two road markings overlap (two lines, a line on a crossing's bars, lettering on
     a line...), none lies on an iron cover, and none on the centre line's dashes (the tiles '-'); lengths of one line
-    laid end to end only touch (or lie back over each other, on one row or one slant). A marking's box is its sprite's."""
+    laid end to end only touch (or lie back over each other, on one row or one slant). A marking's box is its sprite's.
+    `stains`: nor does a stain lie on one (check_stains)."""
     marks = []
     for (kind, x, y, deg) in lv.floor:
         if (kind in LINE_PAINT or kind in COVERS) and col0 <= x < col1:
@@ -1980,10 +2043,12 @@ def check_paint_overlaps(col0, col1, eps=0.03):
         for (kb, xb, yb, b, db) in marks[i + 1:]:
             if ka == kb == 'centre dash' or (ka in COVERS and kb in COVERS):
                 continue
-            if ka == kb and da == db and (da % 180 or abs(ya - yb) < 0.01):
+            if ka == kb and da == db and (da % 180 or abs(ya - yb) < 1e-6):
                 continue                  # (lengths of one line: laid back over each other to end on a column, or on a slant)
             assert not (a[0] < b[2] - eps and b[0] < a[2] - eps and a[1] < b[3] - eps and b[1] < a[3] - eps), \
                 f'{ka} at {xa:.2f},{ya:.2f} overlaps {kb} at {xb:.2f},{yb:.2f}'
+    if stains:
+        check_stains(col0, col1, marks, eps)
 
 
 if __name__ == '__main__':
@@ -1991,9 +2056,10 @@ if __name__ == '__main__':
     check_lanes()
     check_paint_overlaps(0, 220)          # (the street's start to the dark stretch)
     check_paint_overlaps(220, 455)        # (the dark stretch on to the works and the detour's mouth)
+    check_paint_overlaps(TOLL0, W, stains=True)   # (the toll: its rain, oil and rubber too)
     for B in BENDS:
         check_bend(B['path'], B['radius'])
-    check_paint_overlaps(LEG1, TOLL_X)    # (the alley and leg 1: polished)
+    check_paint_overlaps(LEG1, TOLL_X, stains=True)   # (the alley and leg 1: their oil, cracks and rubber too)
     lv.check(guards=0)
     lv.write('level2a', name='THE CHASE', subtitle='SUNSET BAY  -  MARCH 16TH 1986  -  1:40 AM',
              lights=lights, ambient=ambient, chase=chase, header=[

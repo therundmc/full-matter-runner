@@ -10368,11 +10368,11 @@ def kerb_ramp(side):
     return make
 
 
-def road_text(word, seed, col=None, ky=6):
+def road_text(word, seed, col=None, ky=6, kx=2):
     """A word stencilled on the lane, its letters drawn out long as they are on a road (read by who drives over it:
     the builder turns it). col: its paint (white unless told); ky: px a row of the stencil (4: a word painted in a
-    parking bay, read from the sidewalk, not drawn out)."""
-    kx, gap = 2, 3
+    parking bay, read from the sidewalk, not drawn out); kx: px a column (3: a lane's number, bold enough to read)."""
+    gap = 3
     step = 5 * kx + gap
     W, H = len(word) * step - gap + 2, 7 * ky + 2
 
@@ -12179,13 +12179,20 @@ def p_rumble_strip():
     return cv
 
 
-def plaza_lines(W, H, lines, seed):
-    """Worn white lines painted along the given segments ((x0, y0), (x1, y1)), 4 px wide."""
+def plaza_lines(W, H, lines, seed, yellow=()):
+    """Worn white lines painted along the given segments ((x0, y0), (x1, y1)), 4 px wide; those whose index is in
+    `yellow` in the road's yellow (a left edge)."""
     def seg(x, y, a, b):
         dx, dy = b[0] - a[0], b[1] - a[1]
         t = max(0.0, min(1.0, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)))
         return math.hypot(x - a[0] - t * dx, y - a[1] - t * dy)
-    return lambda: road_mark(W, H, lambda x, y: any(seg(x, y, a, b) < 2.0 for (a, b) in lines), seed)
+
+    def make():
+        cv = road_mark(W, H, lambda x, y: any(seg(x, y, a, b) < 2.0 for (i, (a, b)) in enumerate(lines) if i not in yellow), seed)
+        if yellow:
+            cv.over(road_mark(W, H, lambda x, y: any(seg(x, y, *lines[i]) < 2.0 for i in yellow), seed + 1, ROAD_YELLOW))
+        return cv
+    return make
 
 
 def p_gore_hatch():
@@ -12580,7 +12587,8 @@ def gate_steel(bent=False):
 
 def lane_signal(go):
     """A lane signal over a toll lane (laid back to be read): a black box with its visor, an LED matrix face, lit
-    either as a green arrow down (the lane is open) or a red X (shut); the emissive map holds the lit LEDs."""
+    either as a green arrow on along the road (+x: the lane is open, as the chase's tells draw it, render/LaneSign.js)
+    or a red X (shut); the emissive map holds the lit LEDs."""
     def make():
         S = 20
         cv, gl = Cv(S, S), Cv(S, S)
@@ -12592,7 +12600,7 @@ def lane_signal(go):
 
         def sym(u, v):
             if go:
-                return (abs(u) < 1.3 and -6.0 <= v < 1.0) or (0.0 <= v < 6.0 and abs(u) < (6.0 - v) * 0.95)
+                return (abs(v) < 1.3 and -6.0 <= u < 1.0) or (0.0 <= u < 6.0 and abs(v) < (6.0 - u) * 0.95)
             return abs(u) < 5.6 and abs(v) < 5.6 and (abs(u - v) < 1.5 or abs(u + v) < 1.5)
 
         def face(x, y, cur):
@@ -12622,7 +12630,11 @@ def p_sign_exact_change():
 
 _FAN = [((0, 224 + k * 96), (320, 224 + k * 144)) for k in (-1, 0, 1)]   # the plaza's lane lines fanning out: 3 m lanes to 4.5 m
 _TAPER = [((0, 168 + k * 80), (384, 168 + k * 160)) for k in (-1, 1)]    # 2 lanes of 2.5 m to 4: the edges, 12 m
-_TOLL_FAN = [((0, 296 + k * a), (512, 296 + k * b)) for (a, b) in ((80, 144), (160, 288)) for k in (-1, 1)] + [((0, 296), (512, 296))]
+# the four lanes' lines spreading over 13.25 m from 2.5 m apart to the islands' 4.5 m, each ending on the nose of the
+# island's crash cushion (on its middle), the edges out to the outer two: turned round, the same from the planters past
+# the gates
+TOLL_FAN_L = 424
+_TOLL_FAN = [((0, 296 + k * a), (TOLL_FAN_L, 296 + k * b)) for (a, b) in ((80, 144), (160, 288)) for k in (-1, 1)] + [((0, 296), (TOLL_FAN_L, 296))]
 DETOUR_ARROW = [(2, 11), (48, 11), (60, 15), (66, 26), (66, 46)]
 MERGE_ARROW = [(2, 31), (34, 31), (52, 27), (66, 19), (82, 11)]
 RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, size in world px)
@@ -12644,13 +12656,14 @@ RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     plaza_stripes=(plaza_lines(320, 448, _FAN, 9911), (320, 448)),
     plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912, wear=ROAD_WEAR_RUN), (128, 6)),
     # made to measure for 2A's toll (tools/build_level2a.py): two lanes' edges flaring out to four lanes of 2.5 m
-    # (laid turned round past the plaza: the outer two end), and four lanes spreading to the plaza's grid (TOLL_LANES:
-    # 4.5 m apart), their edges out to the outer islands' noses (turned round: the same after it)
-    lane_taper=(plaza_lines(384, 336, _TAPER, 9921), (384, 336)),
-    plaza_fan=(plaza_lines(512, 592, _TOLL_FAN, 9922), (512, 592)),
+    # (laid turned round past the plaza: the outer two end, the left edge in yellow), and four lanes spreading to the
+    # plaza's grid (TOLL_LANES: 4.5 m apart), their lines onto the islands' crash cushions (turned round: the same
+    # from the planters past the gates)
+    lane_taper=(plaza_lines(384, 336, _TAPER, 9921, yellow=(1,)), (384, 336)),
+    plaza_fan=(plaza_lines(TOLL_FAN_L, 592, _TOLL_FAN, 9922), (TOLL_FAN_L, 592)),
 )
-for _n in range(1, 5):
-    RAMP_PAINT['toll_lane_%d' % _n] = (road_text(str(_n), 9912 + _n), (12, 44))
+for _n in range(1, 5):   # (bold: a lane's number reads from the wheel)
+    RAMP_PAINT['toll_lane_%d' % _n] = (road_text(str(_n), 9912 + _n, kx=3), (17, 44))
 RAMP_PROPS = dict(road_closed=p_road_closed, sign_detour=p_sign_detour(), sign_detour_left=p_sign_detour(True),
                   jersey_barrier=p_jersey_barrier, water_barrier=p_water_barrier, excavator=p_excavator,
                   dump_truck=p_dump_truck, works_light=p_works_light, site_fence=p_site_fence,

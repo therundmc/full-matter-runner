@@ -159,7 +159,8 @@ function drawLorries(ctx, S, t) {
 
 // A toll told (systems/Toll.js, CHASE.toll): bone arrows running down each wooden lane toward its arm, along the
 // lane's line as it spreads to the plaza (from just ahead of his car to the gate; none once the arm is gone), and each
-// lane's own signal big over its mouth (laneSign: a green arrow, a red X); all of it `pop` times bigger as the
+// lane's own signal big over its mouth (laneSign: a green arrow, a red X), gone as his nose comes up to them (never
+// drawn over his car: the gates and the islands' own signals say it by then); all of it `pop` times bigger as the
 // choosing's slow motion takes hold (ChaseCam.choosing). No more than that: the gates and their lights say the rest
 function drawToll(ctx, S, t, pop = 0) {
   const C = CHASE.toll, beat = 0.5 + 0.5 * Math.sin(t * 14), z = 1 + (C.pop - 1) * pop;
@@ -168,6 +169,7 @@ function drawToll(ctx, S, t, pop = 0) {
   ctx.lineJoin = 'round';
   for (const { P, k, d } of S.told()) {
     const x0 = d?.van ? d.van.x + C.from : P.x - 600, mx = mouthX(P) - C.sign;
+    const near = d?.van ? clamp((mx - C.sign - d.van.x - d.van.w / 2) / (2 * C.sign), 0, 1) : 1;
     P.gates.forEach((g, i) => {
       const gate = P.props[i], open = g === 'wood' && gate && !gate.dead && !gate.dying;
       if (open) {
@@ -185,8 +187,8 @@ function drawToll(ctx, S, t, pop = 0) {
           ctx.stroke();
         }
       }
-      if ((g === 'wood' && !open) || (d?.van && d.van.x - d.van.w / 2 > mx)) return; // (its arm gone, or he is past it)
-      laneSign(ctx, mx, laneY(P, i, mx), C.sign * (1 + 0.3 * pop), g === 'wood', k * (g === 'wood' ? 1 : 0.75 + 0.25 * beat));
+      if ((g === 'wood' && !open) || near <= 0) return; // (its arm gone, or he is at the mouths)
+      laneSign(ctx, mx, laneY(P, i, mx), C.sign * (1 + 0.3 * pop), g === 'wood', near * k * (g === 'wood' ? 1 : 0.75 + 0.25 * beat));
     });
   }
   ctx.restore();
