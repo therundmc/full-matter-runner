@@ -954,3 +954,19 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   between its poles (two crossed the coupe); the camp's cardboard bed off the mattress and the tarp. LIGHT: the T at the
   alley's foot was a dark hole: a sodium lamp (445) and ONE WAY across from the alley; TOLL 1/2 MILE before the gantry's 1/4. QA 3 min
   seed 2 (god): PASS, 4 sessions, no death, 3 clears, no stall (THE ON-RAMP reached 3 times), the known `slow` only.
+- 2026-11-20: 2A'S POLISH, THE LEFTOVERS (branch polish/2a-final). PAINT: `check_paint_overlaps` now runs ONCE over the
+  whole level with its stains (tools/build_level2a.py __main__) and also keeps every marking and cover off a kerb's
+  rounded corner, bend, ramp or inner stone and off a palm's grate (KERB_ENDS); what it found: four cracks on the centre
+  line (cols 92.5, 181, 284 -> 287.2 in a gap, 413 -> 414.4 off the double and the arrow), bottles on a manhole (79), a
+  manhole under a royal palm's grate (407 -> 405.6) and the south row's first tee on Coral Street's bulb-out (64, its
+  meter with it, as at 278). Checked and clean: the dash before Coral's double, the tee at 88, zebras and drains, stop
+  lines on the kerbs (they end on the kerb's face), the plaza's fan onto the cushions. SIGNS: TOLL 1 MILE (the street's
+  gantry, 416) -> TOLL 1/2 MILE (the ramp, 502.5) -> the gantry's 1/4 (526.5) -> EXACT CHANGE on the approach (562.6,
+  was a second TOLL 1/2 MILE) -> the plaza. CIV-STUCK: a pursuer's wreck on its exit (Pursuit.exit, driven by hand
+  onto the roadside) pushed a runner on the sidewalk into the fronts and stayed on him: it now runs down whom it hits at
+  CHASE.run px/step or more (thrown, as his car does), crushes one it holds against what stopped it, shoves one it only
+  brushes off its flank (Pursuit.runDown; tests/pursuit.test.mjs). PUDDLES: water and rain are a film on the asphalt
+  as the toll's puddle_neon is (data/liquids.js): the floor's darker tone, a damp fringe a texel wide, a flat body, a
+  grey glint here and there on the lit edge (`rimAt`, render/LiquidArt.js), a calmer edge (`rag` per kind), no blue
+  rim, no glint inside, no sky of their own (only the lights mirrored); blood, beer and petrol unchanged. QA 3 min
+  level2a seeds 1, 2, 11 and level1 seed 1: PASS, no civ-stuck.

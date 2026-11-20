@@ -109,7 +109,12 @@ export const LIQUIDS = {
   // render/BloodArt.js (RAMPS: wet, then tacky; set, it is painted dry), `blood` = the shade of each step. `glint`:
   // a pale pixel in the deep (`glint` here: the odds of one); `foam` on a fresh flow's edge and in clumps (beer);
   // `sheen`: a petrol's rainbow bands (`stripe`: the share of each band that shows); `ring`: the ripples; `mirror`: how
-  // much of the lights it mirrors (Lighting.post), `matte` once aged; `sky` (rain): the night sky it mirrors too.
+  // much of the lights it mirrors (Lighting.post), `matte` once aged; `sky`: a colour it mirrors everywhere; a kind's
+  // own `rag`: the share of the still noise on its edge (1 unless told); `rimAt`: its rim only where that noise is
+  // over this (in shares of `rag`: a glint here and there along the lit edge, never a line round it).
+  // Water and rain are a film on the floor as the toll's painted puddles are (puddle_neon): the floor's own darker
+  // tone, a damp fringe a texel wide round a flat body barely darker inside, a few grey glints on the lit edge, no
+  // glint inside, no sky of their own (only the lights mirrored in them), a calmer edge than a spill's
   // `gap`: px of floor left dry along what holds it (a wall, a window, a shut door, standing furniture): it never
   // reads as painted over them (blood set into a stain keeps BLOOD_EDGE.floor, data/wounds.js)
   look: {
@@ -125,12 +130,12 @@ export const LIQUIDS = {
     mix: [0.1, 0.24, 0.4],    // share of a second kind from which it tints the first (a quarter, a third, half)
     kinds: {
       water: {
-        ramp: ['rgba(4,8,18,0.4)', 'rgba(10,16,34,0.18)', 'rgba(8,14,30,0.24)', 'rgba(6,10,24,0.31)', 'rgba(4,8,20,0.38)'],
-        rim: 'rgba(170,205,245,0.4)', glint: 'rgba(188,216,255,0.6)', ring: 'rgba(170,210,255,0.35)', mirror: 0.5,
+        ramp: ['rgba(12,10,22,0.2)', 'rgba(16,14,30,0.3)', 'rgba(16,14,30,0.34)', 'rgba(15,13,29,0.38)', 'rgba(14,12,28,0.41)'],
+        rim: 'rgba(138,138,184,0.42)', rimAt: 0.3, ring: 'rgba(200,200,220,0.3)', mirror: 0.75, rag: 0.55,
       },
       rain: {
-        ramp: ['rgba(4,8,20,0.4)', 'rgba(8,12,30,0.26)', 'rgba(6,10,26,0.34)', 'rgba(4,8,22,0.42)', 'rgba(3,6,18,0.48)'],
-        rim: 'rgba(180,205,250,0.36)', glint: 'rgba(212,230,255,0.55)', ring: 'rgba(170,210,255,0.28)', mirror: 1, sky: 'rgba(30,38,74,0.26)',
+        ramp: ['rgba(12,10,22,0.21)', 'rgba(16,14,30,0.36)', 'rgba(16,14,30,0.39)', 'rgba(15,13,29,0.42)', 'rgba(14,12,28,0.44)'],
+        rim: 'rgba(138,138,184,0.42)', rimAt: 0.3, ring: 'rgba(200,200,220,0.26)', mirror: 1, rag: 0.55,
       },
       beer: {
         ramp: ['rgba(70,38,6,0.7)', 'rgba(176,112,24,0.45)', 'rgba(196,128,30,0.55)', 'rgba(186,116,22,0.65)', 'rgba(168,100,18,0.72)'],
