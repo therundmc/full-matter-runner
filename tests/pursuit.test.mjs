@@ -517,6 +517,43 @@ test('pursuit: a car wrecked alongside him (above, below) or ahead in his lane l
   }
 }));
 
+// a passer-by standing at (x, y): a body as a man's (CAT.CHAR, 10 px), killed for good
+function passerBy(w, x, y) {
+  const body = Bodies.circle(x, y, 10, { frictionAir: 0.2, collisionFilter: { category: CAT.CHAR, mask: MASK.CHAR } });
+  setMaterial(body, 75, 0.6);
+  const c = {
+    body, alive: true, isCivilian: true, hidden: false, radius: 10, death: null,
+    get x() { return body.position.x; }, get y() { return body.position.y; },
+    kill(a, cause, killer) { this.alive = false; this.death = { a, cause, killer }; w.physics.remove(body); },
+  };
+  body.entity = c;
+  w.physics.add(body);
+  w.chars.push(c);
+  return c;
+}
+
+test('pursuit: a wreck skidding out onto the sidewalk runs down the people it hits there, never pins one alive against the fronts', () => calm(() => {
+  const s = start();
+  const car = s.P.spawn(s.v.x, NORTH, 0, 'chase', 8.9);
+  run(s, 0.4);
+  // a row of them along the north sidewalk, against the fronts, where its exit (away from him) takes it
+  const men = [];
+  for (let x = car.v.x - 40; x < car.v.x + 420; x += 36) men.push(passerBy(s.w, x, 8.5 * TILE));
+  const touched = new Set();
+  s.P.wreck(car);
+  run(s, 3, null, () => {
+    for (const m of men) if (m.alive && Matter.Collision.collides(car.v.body, m.body)?.collided) touched.add(m);
+    return false;
+  });
+  assert.ok(touched.size > 0, 'it reached the sidewalk');
+  for (const m of touched) {
+    assert.ok(!m.alive, `the one at ${Math.round(m.x)} is run down, not pinned (${Math.round(car.v.x)}, ${Math.round(car.v.y)})`);
+    assert.equal(m.death.cause, 'vehicle');
+    assert.equal(m.death.killer, car.v);
+  }
+  for (const m of men) if (m.alive) assert.ok(!Matter.Collision.collides(car.v.body, m.body)?.collided, `nobody alive under it (${Math.round(m.x)})`);
+}));
+
 test('pursuit: a rear tyre shot, the car ahead of him in his lane limps out of it, never slowing him', () => calm(() => {
   const s = start();
   const car = s.P.spawn(s.v.x + CHASE.pursuit.slots.ahead[0], SOUTH, 0, 'chase', 8.9);

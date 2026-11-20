@@ -37,7 +37,7 @@
 // lanes and the tracers.
 import { TILE, CAT, MASK } from '../Config.js';
 import { clamp, angDiff, approachAngle, rand, chance } from '../../engine/math.js';
-import { wake, kgOf } from '../../engine/physics/Body.js';
+import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import { CHASE } from '../data/chase.js';
 import { WEAPONS } from '../data/weapons.js';
 import Vehicle from '../entities/Vehicle.js';
@@ -46,7 +46,7 @@ import { sprite, sw } from '../../engine/Assets.js';
 import { seatOf, slideStep, smashSpeed, bursts } from './Drive.js';
 import { routeOf, legAt, bandOf, bendStep, enterBend, nearestLane, project } from './Route.js';
 
-const { Body, Sleeping } = Matter;
+const { Body, Sleeping, Query } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
 const DRIVEN = new Set(['cross', 'chase', 'limp']);
 const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']); // what goes through a windscreen into a driver
@@ -929,6 +929,7 @@ export default class Pursuit {
       b.flyUntil = this.world.time + CHASE.fly;
       o.y0 = v.y;
       this.exitFx(car, dt);
+      this.runDown(car);
       return;
     }
     o.t += dt;
@@ -943,6 +944,37 @@ export default class Pursuit {
     b.flyUntil = this.world.time + CHASE.fly;
     v.steer = o.side * 0.5;
     this.exitFx(car, dt);
+    this.runDown(car);
+  }
+
+  // Who is in its way out (a passer-by on the sidewalk it skids onto, one of theirs): two tonnes of wreck at CHASE.run
+  // px/step or more run him down, thrown as his car throws one (Drive); slower, held against what stopped it, it
+  // crushes him there; slower still and free, he is shoved off its flank. Never pinned alive under it (it was: a
+  // runner held against a front by a burning wreck, the QA's civ-stuck)
+  runDown(car) {
+    const w = this.world, v = car.v, b = v.body, vel = Body.getVelocity(b), speed = Math.hypot(vel.x, vel.y);
+    const reach = v.w / 2 + 16, a = speed > 0.1 ? Math.atan2(vel.y, vel.x) : b.angle;
+    for (const ch of [...w.chars]) {
+      if (!ch.alive || ch.isPlayer || ch.hidden || ch.riding || !ch.body || Math.abs(ch.x - v.x) > reach || Math.abs(ch.y - v.y) > reach) continue;
+      const hit = Query.collides(b, [ch.body])[0];
+      if (!hit) continue;
+      // (off the side of its long axis he is on)
+      const side = Math.sign(-(ch.x - v.x) * Math.sin(b.angle) + (ch.y - v.y) * Math.cos(b.angle)) || 1;
+      if (speed < CHASE.run && !car.out?.hit) {
+        Body.setVelocity(ch.body, { x: -Math.sin(b.angle) * side * CHASE.run, y: Math.cos(b.angle) * side * CHASE.run });
+        continue;
+      }
+      const before = w.corpses.length, throwA = a + side * 0.5;
+      ch.kill(throwA, 'vehicle', v);
+      for (const corpse of w.corpses.slice(before)) {
+        for (const part of corpse.parts || [{ body: corpse.body }]) {
+          impulse(part.body, throwA, kgOf(part.body) * speed * CHASE.throw * rand(0.8, 1.2), rand(-0.3, 0.3), 14);
+          part.body.flyUntil = w.time + 0.25;
+        }
+      }
+      w.decals?.stampBlood?.(ch.x, ch.y, 6, 8);
+      w.sound('carHit', ch.x, ch.y, 1);
+    }
   }
 
   // ---------------------------------------------------------------- his rounds

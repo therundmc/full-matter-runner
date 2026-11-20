@@ -130,12 +130,16 @@ export default class LiquidArt {
     this.mlut = new Uint32Array(n * 6);
     this.flags = new Uint8Array(n); // 1: foam, 2: sheen
     this.stripe = new Float32Array(n); // share of a sheen band that shows
+    this.rag = new Float32Array(n); // share of the still noise on its edge (its dominant kind's)
+    this.rimAt = new Float32Array(n); // its lit edge only where the still noise is over this (broken: a glint here and there)
     for (let d = 0; d < K; d++) {
       for (let s = 0; s < K; s++) {
         for (let m = 0; m < 3; m++) {
           for (let a = 0; a < 2; a++) {
             const key = ((d * K + s) * 3 + m) * 2 + a, o = key * SLOTS, wt = s === d ? 0 : shares[m + 1];
             const Ld = kindLook[d], Ls = kindLook[s];
+            this.rag[key] = Ld.rag ?? 1;
+            this.rimAt[key] = Ld.rimAt ?? -Infinity;
             for (let q = 1; q <= 5; q++) this.lut[o + q] = pack(lerp(col(d, q, a), col(s, q, a), wt));
             this.lut[o + 6] = pack(lerp(glint(d, a), glint(s, a), wt));
             if (Ld.foam && !a) { this.lut[o + 7] = pack(parse(Ld.foam)); this.flags[key] |= 1; }
@@ -227,20 +231,20 @@ export default class LiquidArt {
         const ax = Math.floor((wx - G) / cell) - cx0 + 1, bx = Math.floor((wx + G) / cell) - cx0 + 1;
         const ay = (Math.floor((wy - G) / cell) - cy0 + 1) * L, by = (Math.floor((wy + G) / cell) - cy0 + 1) * L;
         if (sol[ay + ax] || sol[ay + bx] || sol[by + ax] || sol[by + bx]) { col[o] = 0; mir[o] = 0; continue; }
-        const g = grain[(ty % GRAIN) * GRAIN + (tx % GRAIN)];
-        const v = (a + (b - a) * sx) * (1 - sy) + (c2 + (d2 - c2) * sx) * sy + g;
-        if (v < T0) { col[o] = 0; mir[o] = 0; continue; }
-        const q = v < T1 ? 1 : v < T2 ? 2 : v < T3 ? 3 : v < T4 ? 4 : 5;
         let kc = key[own];
         if (kc < 0) {
           let best = -1;
           for (const n of [j, j + 1, j + L, j + L + 1]) if (lv[n] > best && key[n] >= 0) { best = lv[n]; kc = key[n]; }
           if (kc < 0) { col[o] = 0; mir[o] = 0; continue; }
         }
+        const g0 = grain[(ty % GRAIN) * GRAIN + (tx % GRAIN)], g = g0 * this.rag[kc];
+        const v = (a + (b - a) * sx) * (1 - sy) + (c2 + (d2 - c2) * sx) * sy + g;
+        if (v < T0) { col[o] = 0; mir[o] = 0; continue; }
+        const q = v < T1 ? 1 : v < T2 ? 2 : v < T3 ? 3 : v < T4 ? 4 : 5;
         const base = kc * SLOTS, f = flags[kc], h2 = hash(tx, ty, 2);
         let out = lut[base + q];
         // the edge facing the light (the depth grows toward the bottom right there) catches it
-        if (q === 1 && (b - a) * (1 - sy) + (d2 - c2) * sy + (c2 - a) * (1 - sx) + (d2 - b) * sx > 0) out = lut[base + 12];
+        if (q === 1 && g0 > this.rimAt[kc] * look.rag && (b - a) * (1 - sy) + (d2 - c2) * sy + (c2 - a) * (1 - sx) + (d2 - b) * sx > 0) out = lut[base + 12];
         else if (q >= 4 && h2 < gl) out = lut[base + 6];
         else if ((f & 1) && (q === 1 ? g > fe : g > fd)) out = lut[base + 7];
         else if ((f & 2) && q >= 2 && q <= 3) {

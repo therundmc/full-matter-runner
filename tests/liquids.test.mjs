@@ -250,6 +250,40 @@ test('liquids: a pool of blood against a wall is drawn short of it (LIQUIDS.look
   } finally { delete globalThis.document; }
 });
 
+test('liquids: a pool of water is a film on the floor (puddle_neon): its fringe in a dark tone, a glint here and there on its lit edge, never a pale line round it', async () => {
+  const { default: LiquidArt } = await load('game/render/LiquidArt.js');
+  const ctx = { createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }), putImageData() {}, drawImage() {} };
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+  try {
+    const { world, liquids } = stub();
+    world.events.emit('spill', { x: 5 * TILE, y: 5 * TILE, kind: 'water', area: 9000 });
+    run(liquids, 2);
+    const S = liquids.sim, art = new LiquidArt(world);
+    art.setup(S);
+    const seen = new Map();
+    for (let c = 0; c < S.cw * S.ch; c++) {
+      const [, , w, h] = art.fill(c), P = art.patch;
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = P.color.px[j * P.w + i]; if (v) seen.set(v, (seen.get(v) || 0) + 1); }
+    }
+    const rgba = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) / 255];
+    const L = LIQUIDS.look.kinds.water, rim = L.rim.match(/[\d.]+/g).map(Number), isRim = (c) => c[0] === rim[0] && c[2] === rim[2];
+    let rims = 0, all = 0;
+    for (const [v, n] of seen) {
+      const c = rgba(v);
+      all += n;
+      if (isRim(c)) { rims += n; continue; }
+      assert.ok(c[0] + c[1] + c[2] < 3 * 40, `only dark tones on the floor (${c})`);
+    }
+    assert.ok(all > 0 && rims > 0, 'some glints on its lit edge');
+    assert.ok(rims < all * 0.05, `a glint here and there, not a line round it (${rims} of ${all})`);
+    for (const kind of ['water', 'rain']) {
+      const K = LIQUIDS.look.kinds[kind];
+      assert.ok(!K.sky && !K.glint && K.rimAt > 0 && K.rag < 1, `${kind}: no sky, no glint inside, a broken rim, a calm edge`);
+    }
+    for (const kind of ['blood', 'beer', 'petrol']) assert.ok(LIQUIDS.look.kinds[kind].rag === undefined && LIQUIDS.look.kinds[kind].rimAt === undefined, `${kind} keeps its look`);
+  } finally { delete globalThis.document; }
+});
+
 test('liquids: the wet floor is painted into a window round the view, not a map-sized buffer; it follows the view', async () => {
   const { default: LiquidArt } = await load('game/render/LiquidArt.js');
   const puts = [];
