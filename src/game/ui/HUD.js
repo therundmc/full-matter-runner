@@ -91,6 +91,7 @@ function paintHUD(ctx, game, t) {
   if (w.drive?.on) {
     drawDrive(ctx, w.drive, pad, H - pad, s, t);
     drawRoad(ctx, w, W, pad, s);
+    drawPart(ctx, w.checkpoints?.view, W, pad, s, t);
     if (p.alive && game.state === 'play') { drawHunters(ctx, game, s, t); drawWarnings(ctx, game, s, t); }
   }
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
@@ -161,6 +162,19 @@ function drawRoad(ctx, w, W, pad, s) {
   ctx.beginPath(); ctx.moveTo(mx - 6 * s, by - 10 * s); ctx.lineTo(mx + 6 * s, by - 10 * s); ctx.lineTo(mx, by - 2 * s); ctx.fill();
   const left = Math.max(0, Math.round((pr.total - pr.s) / TILE));
   text(ctx, `${left} M`, W / 2, by + 16 * s, 12 * s, PALETTE.white, { alpha: 0.75 });
+}
+
+// A checkpoint reached (systems/Checkpoints.js): the part's name stamped under the road's bar a moment, a little
+// crooked like the level's card and TO BE CONTINUED, a pink rule drawn out under it
+function drawPart(ctx, v, W, pad, s, t) {
+  if (!v) return;
+  const ease = (k) => 1 - (1 - k) ** 3, k = ease(v.k), y = pad + 62 * s, a = FADE * v.a;
+  text(ctx, 'CHECKPOINT', W / 2, y - 18 * s, 11 * s, PALETTE.pink, { alpha: a * k * 0.9 });
+  text(ctx, v.name, W / 2, y, 26 * s * (1 + (1 - k) * 0.6), PALETTE.white, { alpha: a * clamp(v.k * 2, 0, 1), rot: -0.035 });
+  ctx.fillStyle = PALETTE.pink;
+  ctx.globalAlpha = a * (0.85 + 0.15 * Math.sin(t * 5));
+  ctx.fillRect(W / 2 - 150 * s * k, y + 20 * s, 300 * s * k, 3 * s);
+  ctx.globalAlpha = FADE;
 }
 
 // Pursuers behind him or beside him off the picture: a small red chevron on the screen's edge toward each

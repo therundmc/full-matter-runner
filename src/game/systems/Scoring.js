@@ -259,6 +259,18 @@ export default class Scoring {
     if (this.combo > 0 && this.world.time >= this.comboEnd) this.endChain();
   }
 
+  // what the run has earned so far, as plain data (a chase's checkpoint keeps it: systems/Checkpoints.js); restore
+  // gives it back to a new run (the chain under way is not kept)
+  snapshot() {
+    const { points, kills, maxCombo, shots, hits, alerts, civilians } = this;
+    return { points, kills, maxCombo, shots, hits, alerts, civilians, methods: [...this.methods], styled: { ...this.styled } };
+  }
+  restore(s) {
+    Object.assign(this, { points: s.points, kills: s.kills, maxCombo: s.maxCombo, shots: s.shots, hits: s.hits, alerts: s.alerts, civilians: s.civilians });
+    this.methods = new Set(s.methods);
+    this.styled = { ...s.styled };
+  }
+
   // level: { par, grades } (data/scoring.js); defaults to the generic per-guard scale
   tally(level = levelScoring(null, this.world.totalEnemies)) {
     return tally({

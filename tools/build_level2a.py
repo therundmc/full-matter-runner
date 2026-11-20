@@ -1415,6 +1415,13 @@ chase = {
     # how it opens, the first time: the car standing, he finishes his cigarette and flicks it out, then the engine
     # and the grab (systems/LastDrag.js, CHASE.intro)
     'intro': 'drag',
+    # THE CHECKPOINTS (systems/Checkpoints.js; the user's call: 2A alone keeps them, one a part as the road was cut: the user's two, the street and
+    # from the detour on; a part added later brings its own):
+    # the car's middle at `at` records it; a death after it restarts there, on its leg's lane (ours), rolling
+    'checkpoints': [
+        {'at': 0, 'name': 'THE STREET'},                      # part 1: the start
+        {'at': SIDE_X + 16, 'name': 'THE ON-RAMP'},           # part 2: just out of the detour's turns, on leg 1
+    ],
 }
 
 

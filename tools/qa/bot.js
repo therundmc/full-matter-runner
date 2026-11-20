@@ -144,8 +144,9 @@
       plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0, envTakedowns: {},
       // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls (and
       // how long the longest one lasted, s: from the crawl to the car running again, a crash or a restart), the farthest
-      // down the route he got (m along its legs and bends: Drive.progress)
-      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0, stallMost: 0, far: 0 },
+      // down the route he got (m along its legs and bends: Drive.progress); the chase's checkpoints reached (by name)
+      // and the retries that started at one after a death (systems/Checkpoints.js: R once dead, Game.retry)
+      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0, stallMost: 0, far: 0, checkpoints: {}, resumed: {} },
       // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
       // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
       // the stage they reached, drivers held up at gunpoint
@@ -212,6 +213,8 @@
     S.inWall.clear();
     const p = w.player;
     if (opts.god) p.invulnerable = true;
+    if (w.checkpoints?.from) { bump(S.stats.drive.resumed, w.checkpoints.from.name); act(`retry at the checkpoint ${w.checkpoints.from.name}`); }
+    w.events.on('checkpoint', ({ name }) => { bump(S.stats.drive.checkpoints, name); act(`checkpoint ${name}`); });
     // game hooks, wrapped from the outside on this world's instances
     const unstick = p.unstick;
     p.unstick = function () {
