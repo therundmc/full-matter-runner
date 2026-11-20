@@ -124,6 +124,7 @@ export function buildLevel(world, level) {
   // ({ legs, bends }: systems/Route.js); { pursuer: true } = a pursuer's car parked with
   // its gunman, telling his shot now and then (the lab); { backs: tiles } = a lorry that backs out across the way (the lab);
   // { worn: share } = a vehicle that has already lost that share of its hp (its engine smokes: systems/CarFx.js; the lab)
+  // { snare: true } = a car parked by a bend's line: the first pursuer that scrapes it there is wrecked on it
   // { seep: name } = it drips, fumes or slops over (data/seeps.js SEEPS, systems/Seeps.js: one washer of a row, one keg)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
@@ -140,6 +141,7 @@ export function buildLevel(world, level) {
     if (opt?.route && p.isVehicle) p.route = opt.route; // ... along the level's `routes[name]` (legs, bends: the lab)
     if (opt?.pursuer && p.isVehicle) p.pursuer = true; // the lab's pursuer dummy (systems/Pursuit.js)
     if (opt?.worn && p.isVehicle) p.hp = p.m.hp * (1 - opt.worn);
+    if (opt?.snare && p.isVehicle) p.snare = true; // the first pursuer to scrape it in a bend is wrecked on it (Pursuit.smash)
     if (opt?.backs) p.backs = opt.backs; // a lorry that backs out that many tiles when a car comes (systems/Lorries.js)
     if (opt?.phase) p.phase = opt.phase; // s into its lamps' cycle (a traffic light: systems/Signals.js)
     world.props.push(p);

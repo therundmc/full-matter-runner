@@ -471,6 +471,39 @@ export const DESTRUCTION = {
   mailboxes: { height: 1.4, material: 'metal', floats: ['paper', 6], parts: [{ cut: 'grid', cols: 5, rows: 1 }], contents: [{ bit: 'sheet', n: 4, on: 'break' }] },
   propane: { height: 1.2, material: 'metal', parts: [{ cut: 'wedges', n: 6, centre: true }] },
   calendar: { height: 1.5, floats: ['paper', 3], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  // ---- MIAMI, 1986 (data/props.js): what a car ploughs through in an alley bursts into what it held
+  produce_crates: {
+    height: 0.6, parts: [{ cut: 'planks', n: 4, axis: 'long', snap: true }],
+    contents: [{ bit: 'fruit', n: 22, on: 'break' }, { bit: 'fruit', n: 2, on: 'hit', perHit: 1 }],
+  },
+  box_stack: { height: 0.8, parts: [{ cut: 'grid', cols: 3, rows: 2 }], floats: ['paper', 12], contents: [{ bit: 'can', n: 3, on: 'break' }] },
+  fruit_cart: {
+    height: 1, parts: [{ cut: 'planks', n: 5, axis: 'long', snap: true }],
+    contents: [{ bit: 'fruit', n: 34, on: 'break' }, { bit: 'fruit', n: 3, on: 'hit', perHit: 1 }],
+  },
+  news_stand: {
+    height: 1.1, floats: ['paper', 26], parts: [{ cut: 'grid', cols: 3, rows: 1 }],
+    contents: [{ bit: 'sheet', n: 10, on: 'break' }, { bit: 'sheet', n: 1, on: 'hit', perHit: 1 }],
+  },
+  neon_box_pink: { height: 0.9, electric: true, parts: [{ cut: 'wedges', n: 6 }] },
+  neon_box_cyan: { height: 0.9, electric: true, parts: [{ cut: 'wedges', n: 6 }] },
+  scooter_mint: { height: 1, parts: [{ cut: 'grid', cols: 3, rows: 2 }] },
+  scooter_pink: { height: 1, parts: [{ cut: 'grid', cols: 3, rows: 2 }] },
+  domino_table: {
+    height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.06, color: '#3a3a44' },
+    contents: [{ bit: 'chip', n: 14, on: 'break', colors: ['#f2ead2', '#f2ead2', '#1a1a1a'] }, { bit: 'bottle', n: 1, on: 'break' }],
+  },
+  dumpster_mint: { height: 1.2, parts: [{ cut: 'panel', rect: [0, 0, 1, 0.5], name: 'lid', fly: 2.2 }, { cut: 'grid', cols: 2, rows: 1 }], floats: ['paper', 12], contents: [{ bit: 'bag', n: 3, on: 'break' }, { bit: 'can', n: 4, on: 'break' }] },
+  dumpster_pink: { height: 1.2, parts: [{ cut: 'panel', rect: [0, 0, 1, 0.5], name: 'lid', fly: 2.2 }, { cut: 'grid', cols: 2, rows: 1 }], floats: ['paper', 12], contents: [{ bit: 'bag', n: 3, on: 'break' }, { bit: 'can', n: 4, on: 'break' }] },
+  dumpster_aqua: { height: 1.2, parts: [{ cut: 'panel', rect: [0, 0, 1, 0.5], name: 'lid', fly: 2.2 }, { cut: 'grid', cols: 2, rows: 1 }], floats: ['paper', 12], contents: [{ bit: 'bag', n: 3, on: 'break' }, { bit: 'can', n: 4, on: 'break' }] },
+  ac_drip: { height: 2.2, drop: true, electric: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  neon_sign_botanica: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },
+  neon_sign_cocktail: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },
+  // the washing comes down off its lines and flies (props laundry_shirt / _towel / _sheet), the lines in lengths
+  laundry_line: {
+    height: 2.8, drop: true, pieces: [['laundry_shirt', 0.04, 0.3, 1.3], ['laundry_towel', 0.36, 0.62, 1.5], ['laundry_sheet', 0.66, 0.96, 1.1]],
+    parts: [{ cut: 'grid', cols: 4, rows: 1 }],
+  },
 };
 
 // Material-based defaults for props without a recipe, and the per-material hit response.

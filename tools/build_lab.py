@@ -185,7 +185,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    takes the wheel (W / S do nothing, the gun is still his): it brakes, turns right down the side
                    street, the tail out, smoke and rubber off the rear tyres, a breath of slow motion at each turn,
                    the camera following it down and round, then left onto the lower road, its lane, and the wheel
-                   is his again. The lower road runs on east to 37's toll
+                   is his again. The turn is a short smash alley (CHASE.bend.smash): crates, a hydrant, boxes, a bin and
+                   bags, a fruit cart, washing across the side street, then a scooter, a wheeled dumpster and crates on
+                   the lower road: torn, thrown and burst on his line, the first crates slowing the world (ChaseCam
+                   'smash'). The lower road runs on east to 37's toll
     37 TOLL        a toll's two gates (systems/Toll.js, CHASE.toll; level 2A's event 3), at the lower road's east end:
                    a convertible parked on it (E at its door; 36's car comes out on it too). The road opens round
                    three islands, a crash cushion at each nose, a lit booth on two; the north lane shut by a wooden arm
@@ -699,6 +702,13 @@ for x in (70.5, 86.5):
     lv.prop('wall_lamp', x, 32.08, 0)
 for x in (112.5, 136.5):
     lv.prop('streetlight', x, 44.72, 90)
+# the turn is a short smash alley (CHASE.bend.smash, level 2A's alley): what stands on the bend's line is torn off,
+# thrown and burst; washing across the side street is torn down over him; the first crates slow the world
+for (kind, c, r, deg) in (('produce_crates', 98.6, 38.9, 40), ('hydrant', 99.75, 40.9, 0), ('box_stack', 100.2, 42.6, 0),
+                          ('trash_can', 99.6, 43.8, 0), ('bin_bag', 100.6, 44.0, 0), ('fruit_cart', 101.7, 46.6, 45),
+                          ('scooter_mint', 104.2, 48.4, 0), ('dumpster_pink', 108.5, 48.9, 0), ('produce_crates', 112.0, 48.6, 0)):
+    lv.prop(kind, c, r, deg)
+lv.prop('laundry_line', 100.0, 41.2)
 
 lv.area('37 toll: the lower road opens round three islands, a wooden arm on the north lane, a steel boom on the south one')
 # (systems/Toll.js: the route's `toll`; its lanes 4.5 m apart round the middle island, as on level 2A's plaza)

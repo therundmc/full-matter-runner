@@ -20,7 +20,9 @@ export const ON_WALL = new Set(['wall_lamp', 'tube_light', 'neon_tube_pink', 'ne
   'towel_dispenser', 'neon_sign_beer', 'neon_sign_bay', 'poster_pinup', 'poster_revue', 'mirror_strip', 'neon_sign_lips',
   'conduit', 'flyers', 'neon_sign_diner', 'neon_sign_cafe', 'security_mirror', 'cig_rack', 'price_board', 'tape_rack',
   'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'wall_clock', 'cleaning_rack', 'boiler', 'mirror_cracked',
-  'mailboxes', 'calendar', 'roller_door', 'neon_sign_motel', 'neon_sign_vacancy', 'neon_sign_flamingo']);
+  'mailboxes', 'calendar', 'roller_door', 'neon_sign_motel', 'neon_sign_vacancy', 'neon_sign_flamingo',
+  'stucco_trim_pink', 'stucco_trim_mint', 'stucco_trim_peach', 'ac_drip', 'graffiti_neon_a', 'graffiti_neon_b',
+  'neon_sign_botanica', 'neon_sign_cocktail']);
 
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
@@ -479,4 +481,36 @@ export const PROPS = {
   propane: { static: true, material: 'metal', r: 8, hp: 6, chips: '#d0402a', explosive: true, blast: 118, sound: 'metal', blocksPath: true,
     gas: { fuse: [1.4, 2.2] } },
   calendar: { static: true, material: 'fabric', w: 7, h: 3, hp: 1, chips: '#ece8dc', sound: 'wood' },
+  // ---- MIAMI, 1986 (tools/generate_assets.py ALLEY_PROPS / ALLEY_NEON): the city's own, generic, first in level 2A's
+  // alley. What a car ploughs through: crates and boxes, a fruit cart, a news rack, a scooter, a domino table, a
+  // wheeled dumpster (loose, heavy: a bend's smash throws it, CHASE.bend.smash), lit box signs; on a wall face: stucco
+  // trims, an AC unit dripping, graffiti in neon paint, two neon signs; overhead: washing on its lines (torn down by a
+  // car under it: `canopy`), a fire escape's landing, a palm's fronds over a wall
+  produce_crates: { material: 'wood', w: 38, h: 28, hp: 4, kg: 28, mu: 0.5, chips: '#c09060', sound: 'wood' },
+  box_stack: { material: 'fabric', w: 32, h: 26, hp: 3, kg: 10, mu: 0.6, chips: '#b88a52', sound: 'wood' },
+  fruit_cart: { material: 'wood', w: 56, h: 30, hp: 6, kg: 90, mu: 0.5, chips: '#a86a3a', sound: 'wood' },
+  news_stand: { static: true, material: 'metal', w: 34, h: 14, hp: 5, chips: '#2a7a5a', sound: 'metal' },
+  neon_box_pink: { static: true, material: 'plastic', w: 34, h: 10, hp: 3, chips: '#f0a0bc', glass: true, sparks: true, sound: 'glass',
+    light: { r: 56, color: '#ff7ab0', intensity: 0.55, flicker: 'buzz' } },
+  neon_box_cyan: { static: true, material: 'plastic', w: 34, h: 10, hp: 3, chips: '#6ad0e0', glass: true, sparks: true, sound: 'glass',
+    light: { r: 56, color: '#6ae8ff', intensity: 0.55, flicker: 'buzz' } },
+  scooter_mint: { material: 'metal', w: 54, h: 18, hp: 6, kg: 95, mu: 0.3, chips: '#8ad8c0', sound: 'metal' },
+  scooter_pink: { material: 'metal', w: 54, h: 18, hp: 6, kg: 95, mu: 0.3, chips: '#f0a0bc', sound: 'metal' },
+  domino_table: { static: true, vault: true, material: 'wood', w: 28, h: 28, hp: 5, chips: '#8a5a32', sound: 'wood' },
+  dumpster_mint: { vault: true, material: 'metal', w: 58, h: 34, hp: 30, kg: 240, mu: 0.3, chips: '#8ad8c0', sound: 'metal' },
+  dumpster_pink: { vault: true, material: 'metal', w: 58, h: 34, hp: 30, kg: 240, mu: 0.3, chips: '#f0a0bc', sound: 'metal' },
+  dumpster_aqua: { vault: true, material: 'metal', w: 58, h: 34, hp: 30, kg: 240, mu: 0.3, chips: '#6ad0e0', sound: 'metal' },
+  stucco_trim_pink: { static: true, lasting: true, material: 'stone', w: 96, h: 3, hp: 99, chips: '#f0a0bc', sound: 'stone' },
+  stucco_trim_mint: { static: true, lasting: true, material: 'stone', w: 96, h: 3, hp: 99, chips: '#8ad8c0', sound: 'stone' },
+  stucco_trim_peach: { static: true, lasting: true, material: 'stone', w: 96, h: 3, hp: 99, chips: '#f4b896', sound: 'stone' },
+  ac_drip: { drip: true, seep: 'aircon', static: true, material: 'metal', w: 24, h: 8, hp: 6, chips: '#d8ccb0', sparks: true, sound: 'metal' },
+  graffiti_neon_a: { static: true, lasting: true, material: 'stone', w: 62, h: 2, hp: 99, chips: '#8a8e96', sound: 'stone' },
+  graffiti_neon_b: { static: true, lasting: true, material: 'stone', w: 62, h: 2, hp: 99, chips: '#8a8e96', sound: 'stone' },
+  neon_sign_botanica: { hum: 'neon', material: 'glass', w: 60, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+    light: { r: 130, color: '#4ae8ff', intensity: 0.9, flicker: 'buzz' } },
+  neon_sign_cocktail: { hum: 'neon', material: 'glass', w: 64, h: 6, hp: 4, static: true, chips: '#b44aff', sparks: true, glass: true, sound: 'glass',
+    light: { r: 130, color: '#c060ff', intensity: 0.9, flicker: 'buzz' } },
+  laundry_line: { canopy: true, hung: true, overhead: true, height: 0.05, static: true, material: 'fabric', w: 160, h: 30, hp: 3, chips: '#f0a0bc', sound: 'wood' },
+  fire_escape: { hung: true, lasting: true, overhead: true, height: 0.06, static: true, material: 'metal', w: 96, h: 44, hp: 99, chips: '#2a2a34', sound: 'metal' },
+  palm_fronds: { hung: true, lasting: true, overhead: true, height: 0.08, static: true, material: 'wood', w: 88, h: 64, hp: 99, chips: '#3a8a3a', sound: 'wood' },
 };

@@ -11,6 +11,9 @@
 //   rammed  a pursuer's side swipe landing on his car (Pursuit's 'pursuerRam'): a short kick
 //   bend    a scripted corner of the route (systems/Drive.js 'chaseBend', each turn as it begins): a breath of slow
 //           motion (CHASE.bend.apex), never cutting into another beat
+//   smash   the first thing he smashes in a scripted bend (systems/Drive.js 'chaseSmash': the alley's crates going up
+//           round him): the world at x0.35 for 0.6 s real, snapping back (CHASE.bend.smash.beat); it takes over a
+//           bend's breath, never another beat
 //   toll    his car through a toll's wooden arm (systems/Toll.js 'tollGate'): a breath of slow motion, the picture
 //           kicked on (CHASE.toll.beat), never cutting into another beat
 // A beat is a time scale (`scale`: eased down over its `in`, held, back over its `out`; Game runs the world at it as
@@ -69,6 +72,7 @@ export default class ChaseCam {
     world.events.on('pursuerRam', (e) => this.onRam(e));
     world.events.on('chaseBend', (e) => this.onBend(e));
     world.events.on('tollGate', (e) => this.onToll(e));
+    world.events.on('chaseSmash', (e) => this.onSmash(e));
   }
 
   // may a beat open, or go on?
@@ -134,6 +138,17 @@ export default class ChaseCam {
     if (phase !== 'turn' || !A || !this.live || this.beat) return;
     this.open({ kind: 'bend', tier: 'light', ...A, shot: null, at: null });
     this.world.events.emit('chaseBeat', { kind: 'bend', tier: 'light', x, y });
+  }
+
+  // the first thing smashed in a bend ({ x, y }): the slow motion of the alley (over a bend's breath under way)
+  onSmash({ x, y }) {
+    const B = CHASE.bend.smash.beat, w = this.world, v = w.drive?.van;
+    if (!B || !this.live || (this.beat && this.beat.kind !== 'bend')) return;
+    this.open({ kind: 'smash', tier: 'strong', ...B, shot: null, at: null });
+    if (v) { const a = Math.atan2(y - v.y, x - v.x); w.camera?.push(Math.cos(a) * B.push, Math.sin(a) * B.push); }
+    w.shake?.(B.shake);
+    w.events.emit('ride', { beat: 'hit', x, y });
+    w.events.emit('chaseBeat', { kind: 'smash', tier: 'strong', x, y });
   }
 
   // his car through a toll's wooden arm ({ his, x, y }): the arm flies, the world slows a breath

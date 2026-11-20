@@ -681,11 +681,11 @@ export default class Vehicle {
 
   // One of its real pieces torn off at (x, y) and thrown along a at v px/s (CAR_PARTS): a bumper (chrome, or black
   // plastic on the newer models), a mirror, a hubcap, a headlight, its plate, a bit of grille. Blows tear off
-  // CAR_PARTS.most at most; a blast (all) takes what it likes.
-  shed(x, y, a, v, all = false) {
+  // CAR_PARTS.most at most; a blast (all) takes what it likes. `which`: that piece (a mirror scraped off)
+  shed(x, y, a, v, all = false, which = null) {
     const P = CAR_PARTS;
     if (!all && (this.shedN = (this.shedN || 0) + 1) > P.most) return;
-    let name = P.pieces[Math.floor(rand(0, P.pieces.length))];
+    let name = which ?? P.pieces[Math.floor(rand(0, P.pieces.length))];
     if (name === 'car_bumper' && P.black.includes(this.m.sprite)) name = 'car_bumper_black';
     const img = spriteOpt('props/' + name);
     if (!img) return;

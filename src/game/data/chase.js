@@ -182,15 +182,35 @@ export const CHASE = {
   //   at `ease` 1/s, `most` px a step at most, in whole px; out of it, back to the leg's own framing the same way
   //   (within `done` px of it: held there exactly again). Never turned.
   //   pursuers: each one reaching the bend follows the same line, `space` px behind the car ahead of it there (his or
-  //   one of theirs; held back by `catch` px/step for each px short of it, braking `hold` px/step a second for it:
+  //   one of theirs; held back by `catch` px/step for each px short of it, braking `hold` px/step a second for it;
+  //   nearer than `close[0]` of it (in on his flank), at once down to `close[1]` of the speed of the one ahead:
   //   in a bend a knock between two of them wrecks nothing); on a leg he is not on yet, it is kept
   //   `clear` px past the end of the bend he will come out of (never sat on his way out), out of his lane
   //   apex: a breath of slow motion as each turn begins (systems/ChaseCam.js; null: none)
+  //   smash: THE ALLEY (the user, 2026-11-20: "une petite contre-allee ou tu defonces tout"): what stands on the
+  //   line is ploughed through, never a wall. A bolted thing is torn off (as on the road); a loose one up to `kg`
+  //   (a wheeled dumpster) is thrown by hand on ahead and aside (the light ones as Drive.fling; one heavier than
+  //   CHASE.hit.fling.kg at `heavy` [least, most] of the car's speed by its mass, spun `spin` rad/step), and it
+  //   bursts as it goes unless it is metal with more than `burst` hp (a drum, a dumpster stay whole). Each costs his
+  //   speed `cost` (`heavyCost` a heavy one, once a step), never under `floor` of the bend's own speed. A car he
+  //   meets (parked, a wreck) is SCRAPED along its flank: the contact never resolved (`pair.flank`: CarFx's shower
+  //   for as long as they overlap), the other car rocked `push` px/step off his flank, its alarm and its hazards, a
+  //   mirror torn off, a dent every `dent` s (`dents` at most) on both, `drag` of his speed a second. A pursuer
+  //   following him through meets the same; the first to touch a car set as a `snare` (level prop option) is
+  //   wrecked on it (the kill beat); one jammed there (`jam`: over `asked` px/step wanted, under `got` px/step got,
+  //   `t` s) is wrecked where it is. `beat`: the first thing he smashes in a bend opens the slow motion
+  //   (systems/ChaseCam.js 'smash': the world at `slow` for `hold` s real, the picture kicked `push` px; null: none)
   bend: {
     speed: 5.9, straight: 7.4, brake: 14, accel: 6, look: 70, radius: 6, pivot: 18, slip: 0.3, spring: [42, 7], merge: 240,
     camera: { lead: [0.17, 0.2], ease: 2.4, most: 4, done: 0.5 },
-    space: 170, catch: 0.06, hold: 40, clear: 320,
+    space: 170, catch: 0.06, hold: 40, clear: 320, close: [0.7, 0.55],
     apex: { slow: 0.72, in: 0.1, hold: 0.22, out: 0.3 },
+    smash: {
+      kg: 450, heavy: [0.45, 0.8], spin: 0.5, burst: 6, cost: 0.025, heavyCost: 0.09, floor: 0.6,
+      flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9 },
+      jam: { asked: 2, got: 0.6, t: 0.8 },
+      beat: { slow: 0.35, in: 0.05, hold: 0.6, out: 0.18, push: 5, shake: 0.3 },
+    },
   },
   kmh: 6.75,            // km/h a px/step (60 steps a second, 32 px a metre)
   // his gun out of the car (systems/CarGun.js): it never runs dry at the wheel (the user's call, 2026-11-19: no
