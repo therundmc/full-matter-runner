@@ -68,6 +68,7 @@ SIZES = dict(
     sign_wrong_way=(5, 5), sign_speed_55=(5, 5), sign_toll_ahead=(6, 6), reflector_post=(3, 3), toll_island=(254, 46),
     toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
     gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),
+    overpass=None,   # the freeway's bridge over the side street (generate_assets.py FWY_PROPS): hung high, never in the way
     # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
     shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
     tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
@@ -113,7 +114,8 @@ FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_mark
 # ... and its part two's (RAMP_PAINT): the works' cut and heaps, the detour's and the freeway's paint, the toll's
 FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
           'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow',
-          'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4')
+          'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
+          'overpass_shadow', 'gore_taper')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)

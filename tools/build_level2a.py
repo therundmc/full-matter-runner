@@ -33,10 +33,16 @@ off):
                  four metres, bollards along its kerb, tables, parasols, planters, awnings: the way round the lorry
     357-388   A  THE LIT CORNER: the diner, all glass and light
     389-403   J  THE CROSS STREET under traffic lights (its roadway cols 393-398): the last car comes out of it
-    404-449   C  the way to the freeway (its sign over the road)
-    438-460      THE DETOUR (a plain test layout, to be dressed): works shut the street past the side street (cols
-                 442-449); the script takes the car right down it at col 438 and left at its foot onto LEG 1 (rows
-                 43-47, cols 446 on, systems/Route.js legs and bends); the level ends at col 570 of leg 1
+    404-449   C  the way to the freeway (its sign over the road), DETOUR told from col 418
+    446-473      THE WORKS: the street dug up past the side street's mouth (cones tapering both lanes into it, an
+                 arrow board, ROAD CLOSED, water barriers, the road cut, the excavator and the dump truck, lit)
+
+Then the detour (docs/LEVEL2.md "Segment 1, part two"): the script (systems/Route.js legs and bends) takes the car
+right down THE SIDE STREET (cols 440-451: sheds, a loading dock, a yard behind its gate, STOP at both ends), under
+THE FREEWAY's bridge at its foot (rows 33.5-41.5), and left onto LEG 1 (lanes 44.25 / 46.75, one way east): THE
+FRONTAGE ROAD along the freeway's embankment (sheds and docks on the south side, cols 446-497), THE ON-RAMP (its
+own embankment, guardrails, cols 498-523), THE MERGE (the freeway's lanes come in alongside, cols 524-559); the toll
+from col 560 on.
 """
 import math
 import random
@@ -47,18 +53,23 @@ WS, HS = 450, 24             # the street (segment 1): its columns and rows
 W, H = 600, 56               # the map: the street, the detour down the side street, leg 1 (the on-ramp's start) below it
 START = (8.5, 14.75)        # the car's centre, facing +x, in our lane
 LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
-# THE DETOUR (docs/LEVEL2.md "Legs and scripted bends"; a plain test layout for now): works shut the street past the
-# side street's mouth, the script takes the car right down the side street and left at its foot onto LEG 1
+# THE DETOUR (docs/LEVEL2.md "Legs and scripted bends", "Segment 1, part two"): works shut the street past the side
+# street's mouth, the script takes the car right down the side street and left at its foot onto LEG 1
 SIDE = (442, 449)           # the side street's roadway (cols, inclusive), a sidewalk two tiles wide either side
 SIDE_X = 446                # its middle: the bend's line goes down it
 BEND_AT = 438               # the column of the car's middle where the script takes the wheel (leg 0)
 BEND_R = 6                  # tiles: the radius of its two turns
 WORKS_X = 451               # the works across the street, from this column (past the side street's mouth)
-DEAD = 458                  # the street carried on to this column (a blind wall)
+DEAD = 474                  # the street carried on to this column under the works (a blind end, out of sight)
 LEG1 = 446                  # leg 1 holds the columns from here to the map's end (leg 0 the ones before)
-LEG1_W = 436                # its road from this column (a dead end west of the side street's foot)
-ROAD1 = (43, 47)            # its roadway's rows: sidewalks on 41-42 and 48-49, blind walls on 40 and 50
-LANES1 = (44.25, 46.75)     # its lanes' middle rows (the centre line on row 45): theirs, ours
+LEG1_W = 424                # its road from this column (the frontage road comes from the west, out of sight)
+ROAD1 = (43, 47)            # its roadway's rows (two lanes, one way east)
+LANES1 = (44.25, 46.75)     # its lanes' middle rows (the lane line on row 45.5)
+FWY = (34, 40)              # the freeway's asphalt rows along leg 1 (its lanes 35.5-38 and 38-40.5), up on its bank
+DECK = (437, 455)           # its bridge over the side street (cols: the deck from 437 to 455, rows 33.5 to 41.5)
+RAMP_X = 498                # the frontage road's south blocks end: the on-ramp's embankment from this column
+MERGE = (524, 548)          # the freeway's lanes come in alongside ours over these columns (the gore between)
+TOLL_X = 560                # the toll from this column on (leg 1's lanes carried on into it)
 END = 570                   # past this column of leg 1 the level is over
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
 ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
@@ -66,6 +77,7 @@ ALLEY_AT = 111              # event 1 set off with the car's middle at this colu
 BEHIND_AT = (165, 236, 262) # a car set off from behind at each (it starts 19 m back and is alongside 3 s later)
 BEHIND_STYLE = ('rammer', 'blocker', 'gunner')
 CROSS_AT = 368              # the last one, out of the cross street ahead of him, as early (about 0:22)
+FRONTAGE_AT = 468           # one more from behind on the frontage road, out of the detour (leg 1)
 ALLEY_W = 4
 ALLEYS = (22, 105, EVENT_ALLEY, 190, 232, 272, 418)   # south (none just before the terrace: he comes at it along the sidewalk)
 N_ALLEY = (99, 100)         # a passage through the north block (people come and go by it)
@@ -683,51 +695,301 @@ for a in ALLEYS:
     lv.prop('dumpster', a + 0.8, 22.2, 90)
     lv.prop('trash_can', a + 3.3, 21.5)
 
-# ---------------------------------------------------------------- the detour (a test layout: plain, to be dressed)
-# Works shut the street past the side street's mouth; the car is taken round by the script (the level's `bends`,
-# systems/Route.js): right down the side street (+y), left at its foot onto LEG 1, lower on the map. Built after the
+# ================================================================ PART TWO: the works, the detour, the on-ramp
+# (docs/LEVEL2.md "Segment 1, part two", its table). Works shut the street past the side street's mouth; the script
+# (the level's `bends`, systems/Route.js) takes the car right down the side street (+y), under the freeway's bridge,
+# and left at its foot onto LEG 1: the frontage road, one way east at the foot of the freeway's bank, that leaves its
+# sheds for an embankment of its own as the on-ramp and meets the freeway's lanes before the toll. Built after the
 # street (its dice all thrown: the street is the same one); what stood where the side street now runs is taken away.
-lv.area('the detour: the side street')
+# Leg 1's cross-section (rows): the freeway's asphalt 34-40 (its lanes 35.5-38 and 38-40.5, its edge lines on 35.5
+# and 40.5, its guardrails on 33.85 and 41.15), its bank 41-42 (grass), the road 43-47, then the south sidewalk 48-49
+# and the sheds' fronts on row 50 (the frontage road), or the shoulder 48 and the ramp's own bank (the on-ramp).
 S0, S1 = SIDE
-for (x0, y0, x1, y1, t) in ((WS, 8, DEAD - 1, 10, 's'), (WS, 11, DEAD - 1, 15, '='), (WS, 16, DEAD - 1, 17, 's'),   # the
-                            (S0 - 2, 16, S1 + 2, ROAD1[0] - 1, 's'), (S0, 16, S1, ROAD1[0] - 1, '='),               # street
-                            (S0 - 3, 18, S0 - 3, HS - 1, 'X')):     # carried on to the works; the side street; a blind
-    lv.fill(x0, y0, x1, y1, t)                                      # wall for the shops cut by it
+R0, R1 = ROAD1
+F0, F1 = FWY
+M0, M1 = MERGE
+DOCK_S = (453, 464)          # the cold store's loading bays on the frontage road (south, cols)
+YARD_S = (468, 471)          # the opening of the yard gate south of it (cols)
+YARD_E = (452, 457, 25, 29)  # the yard behind its gate on the side street (east): cols, rows
+lv.area('part two: the ground')
+for (x0, y0, x1, y1, t) in (
+        (WS, 8, DEAD - 1, 10, 's'), (WS, 11, DEAD - 1, 15, '='), (WS, 16, DEAD - 1, 17, 's'),   # the street, on under the works
+        (LEG1_W, F0 - 1, TOLL_X - 1, F0 - 1, '"'), (LEG1_W, F0, TOLL_X - 1, F1, '='),           # the freeway on its bank
+        (LEG1_W, F1 + 1, TOLL_X - 1, R0 - 1, '"'), (M0, F1 + 1, TOLL_X - 1, R0 - 1, '='),       # the bank; the gore
+        (S0 - 3, 18, S0 - 3, HS - 1, 'X'),                                                       # a blind wall for the shops cut
+        (S0 - 2, 16, S1 + 2, R0 - 1, 's'), (S0, 16, S1, R0 - 1, '='),                            # the side street
+        (DECK[0] + 1, F0 - 1, S0 - 3, F1, '_'), (S1 + 3, F0 - 1, DECK[1] - 2, F1, '_'),         # its abutments, under the deck
+        (YARD_E[0], YARD_E[2], YARD_E[1], YARD_E[3], '_'),                                       # the yard behind the gate
+        (LEG1_W, R0, TOLL_X - 1, R1, '='),                                                       # the frontage road, the ramp
+        (LEG1_W, R1 + 1, RAMP_X - 1, R1 + 2, 's'),                                               # its south sidewalk
+        (RAMP_X, R1 + 1, TOLL_X - 1, R1 + 1, '='), (RAMP_X, R1 + 2, TOLL_X - 1, R1 + 4, '"'),   # the ramp's shoulder, its bank
+        (RAMP_X, R1 + 5, TOLL_X - 1, H - 1, '~'),                                                # waste ground at its foot
+        (YARD_S[0], R1 + 3, YARD_S[1], R1 + 3, '_'), (YARD_S[0] - 2, R1 + 4, YARD_S[1] + 3, H - 1, '_')):   # the yard south
+    lv.fill(x0, y0, x1, y1, t)
 lv.props[:] = [p for p in lv.props if not (S0 - 2.4 < p[2] < S1 + 3.4 and 15.5 < p[3] < HS + 1)]
 boxes[:] = [b for b in boxes if not (b[2] > S0 - 2.4 and b[0] < S1 + 3.4 and b[3] > 15.5)]
-lv.area('the detour: leg 1, the road it comes out on')
-R0, R1 = ROAD1
-lv.fill(LEG1_W, R0 - 2, W - 2, R0 - 1, 's')
-lv.fill(S0, R0 - 2, S1, R0 - 1, '=')
-lv.fill(LEG1_W, R0, W - 2, R1, '=')
-lv.fill(LEG1_W, R1 + 1, W - 2, R1 + 2, 's')
-for c in range(LEG1_W, W - 2, 4):
-    if not S0 - 4 <= c <= S1 + 4:
-        lv.fill(c, (R0 + R1) // 2, min(W - 2, c + 1), (R0 + R1) // 2, '-')
-lv.area('the detour: the works across the street, what tells the way round')
-# (sprites of segment 2: ROAD CLOSED across the street, concrete barriers behind it, DETOUR on the corner and its
-# arrow painted in our lane: on, then right)
-must('road_closed', WORKS_X + 1.2, 13.5, 90, on='=')
-must('barricade', WORKS_X + 1.2, 16.75, 90, on='s')
-must('arrow_board', WORKS_X + 2.8, 13.1, 90, on='=')
-for r in (11.9, 15.1):
-    must('jersey_barrier', WORKS_X + 4.6, r, 90, on='=')
-must('sign_works', WORKS_X - 0.3, 9.9, 270, on='s')
-for r in (11.5, 12.7, 13.9, 15.1):
-    must('traffic_cone', WORKS_X - 0.4, r, on='=')
-must('sign_detour', BEND_AT + 0.5, 16.6, 0)
-must('sign_detour', SIDE[0] - 5.5, 9.3, 0)
-lv.paint('detour_arrow_paint', BEND_AT - 9.0, LANES[1])
-lv.paint('trench', WORKS_X + 5.6, 13.5, 90)
-lv.area('the detour: leg 1, lamps and a dead end')
-for c in range(LEG1_W + 1, W - 3, 24):
-    if not S0 - 3 <= c <= S1 + 3:
-        must('streetlight', c + 0.5, R0 - 0.28, 90)
-    if not S0 - 3 <= c + 12 <= S1 + 3 and c + 12 < W - 3:
+# the big rounded corners of the side street's two mouths (lay_kerbs), the kerbs dropped where a lorry turns in
+corners.update({(S0, 16): 'ne', (S1 + 1, 16): 'nw', (S0, R0): 'se', (S1 + 1, R0): 'sw'})
+low.update(('v', S0, r) for r in range(28, 33))                          # the loading dock's apron (west)
+low.update(('v', S1 + 1, r) for r in range(YARD_E[2], YARD_E[3] + 1))    # the yard's gate (east)
+low.update(('h', c, R1 + 1) for c in list(range(DOCK_S[0], DOCK_S[1] + 1)) + list(range(YARD_S[0], YARD_S[1] + 1)))
+low.update(('h', c, 11) for c in list(range(441, 445)) + list(range(447, 451)))   # the tyre shop's two doors (north)
+
+
+def pieces(kind, c0, c1, row, step=3.0, deg=0):
+    """A line painted in lengths of `step` tiles end to end from c0 to c1 on `row` (edge lines, a rumble strip)."""
+    c = c0
+    while c + step <= c1 + 0.01:
+        lv.paint(kind, c + step / 2, row, deg)
+        c += step
+
+
+def dashes(c0, c1, row, gap, kind='lane_dash_long', at=0, length=3.0):
+    """A mark (3 m dashes) every `gap` tiles from c0 to c1 on `row`, in step with column `at`."""
+    c = c0 + (at - c0) % gap
+    while c + length <= c1 + 0.01:
+        lv.paint(kind, c + length / 2, row)
+        c += gap
+
+
+def slant(kind, a, b, gap=3.0, dash=3.0):
+    """Lengths of paint `dash` tiles long every `gap` along the slanted line from a to b (the freeway's lanes coming
+    in), each turned along it."""
+    n, deg = math.dist(a, b), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+    t = 0.0
+    while t + dash <= n + 0.01:
+        m = (t + dash / 2) / n
+        lv.paint(kind, a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m, round(deg, 2))
+        t += gap
+
+
+def rail(kind, c0, c1, row, deg, on='"'):
+    """Lengths of a guardrail or a fence laid end to end (touching, not overlapping) from c0 to c1 on `row`."""
+    n = SIZES[kind][0] / 32
+    c = c0
+    while c + n <= c1 + 0.01:
+        assert lv.tiles[int(row)][int(c + n / 2)] in on, f'{kind} at {c + n / 2},{row}'
+        boxes.append(Level.box(kind, c + n / 2, row, deg))
+        lv.prop(kind, c + n / 2, row, deg)
+        c += n
+
+
+# ---------------------------------------------------------------- the works across the street
+# The gas main's trench taken on across the whole street past the side street's mouth: DETOUR told from col 424
+# (signs both sides, the arrow painted twice in our lane: on, then right), then cones tapering both lanes into the side
+# street, an arrow board pointing down it, ROAD CLOSED with its flashers, water barriers, the road cut, the excavator
+# and the dump truck parked for the night, three lighting towers, the site fenced along both kerbs. The tyre shop on
+# the north corner has its shutters down.
+lv.area('part two: DETOUR told')
+must('sign_detour', 424.5, 9.15, 0)
+must('sign_detour', 431.5, 16.6, 0)
+must('sign_detour', S0 - 3.2, 16.6, 0)
+lv.paint('detour_arrow_paint', 424.0, LANES[1])
+lv.paint('detour_arrow_paint', 433.5, LANES[1])
+lv.area('part two: the works')
+for (c, r) in ((446.7, 11.45), (447.45, 12.25), (448.2, 13.05), (448.95, 13.85), (449.7, 14.65), (450.45, 15.45)):
+    must('traffic_cone', c, r, on='=')                                    # the taper: both lanes into the side street
+must('arrow_board', 449.35, 12.3, 270, on='=')                           # (its arrows down the side street)
+must('road_closed', WORKS_X + 0.1, 13.5, 90, on='=')
+for r in (11.95, 13.8, 15.65):
+    must('water_barrier', WORKS_X + 1.6, r, 90, on='=')
+must('barricade', WORKS_X + 2.45, 16.95, 90)                              # the south sidewalk shut too
+lv.paint('road_cut', WORKS_X + 5.0, 12.25)                               # (the plant right behind the barriers: seen
+lv.paint('road_cut', WORKS_X + 5.0, 14.75)                               # from the turn, which sees no further)
+lv.paint('road_cut', WORKS_X + 9.0, 12.25)
+lv.paint('steel_plate', WORKS_X + 9.2, 14.6)
+lv.paint('sand_pile', WORKS_X + 14.6, 15.1)
+lv.paint('asphalt_pile', WORKS_X + 14.0, 12.0, 30)
+must('excavator', WORKS_X + 6.6, 12.3, 180, on='=')                     # on the milled band, its bucket at the barriers
+must('dump_truck', WORKS_X + 8.9, 14.9, 180, on='=')                    # waiting to be loaded
+must('works_light', 449.6, 9.35, 0)                                       # their floods along the works
+must('works_light', WORKS_X + 4.0, 16.95, 0)
+must('works_light', DEAD - 3.0, 9.35, 180)
+for c in range(int(WORKS_X) + 3, DEAD - 4, 4):
+    put('site_fence', c + 1.8, 10.86, 0)
+    put('site_fence', c + 1.8, 16.3, 0)
+for r in (11.95, 15.05):
+    must('jersey_barrier', DEAD - 1.0, r, 90, on='=')
+must('sign_works', 446.4, 8.75, 0)
+lv.area('part two: the tyre shop on the north corner, shut')
+for c in (442.5, 448.5):
+    lv.prop('roller_door', c, 8.07, 0)
+    lv.prop('wall_lamp', c + 2.05, 8.06, 0)
+lv.paint('oil_stain_b', 442.6, 10.2)
+lv.paint('oil_stain_a', 448.0, 10.4, 90)
+lv.prop('flyers', 445.5, 8.06, 0)
+
+# ---------------------------------------------------------------- the side street
+# Light industry, eight metres of asphalt and two sidewalks, two-way, no line: a shed with its shutter and a loading
+# dock (west), a yard behind its chain-link gate with a car in it (east), pipes on the blind walls, two sodium lamps,
+# patches and a cover breathing steam, the freeway's bridge over its foot. STOP for whoever comes up it to the street,
+# STOP for whoever comes down it to the frontage road (one way east: ONE WAY across the way).
+lv.area('part two: the side street, west')
+lv.prop('pipe_steam', S0 - 1.93, 19.6, 270)
+must('dumpster', S0 - 1.4, 21.6, 90)
+put('bin_bag', S0 - 0.55, 20.25)
+put('bin_bag', S0 - 0.5, 22.9)
+put('streetlight', S0 - 0.28, 24.0, 0)
+lv.prop('roller_door', S0 - 1.93, 26.2, 270)
+lv.prop('graffiti', S0 - 1.93, 23.0, 270)
+for (c, r) in ((S0 - 1.45, 27.65), (S0 - 0.7, 27.5)):
+    put('oil_drum', c, r)
+lv.prop('roller_door', S0 - 1.93, 30.6, 270)
+must('loading_dock', S0 - 1.64, 30.6, 270)
+put('pallet_stack', S0 - 0.75, 32.6, 90)
+lv.paint('oil_stain_a', S0 - 0.7, 29.6, 90)
+lv.area('part two: the side street, east')
+lv.prop('conduit', S1 + 2.93, 19.4, 90)
+lv.prop('pipe_water', S1 + 2.93, 21.6, 90)
+lv.prop('wall_lamp', S1 + 2.93, 24.0, 90)
+must('chainlink_gate', S1 + 3.12, (YARD_E[2] + YARD_E[3] + 1) / 2, 90, on='_')
+must('car2', YARD_E[1] - 1.6, 27.4, 90, on='_', lights=False)
+put('pallet_stack', YARD_E[0] + 1.2, YARD_E[2] + 0.6, on='_')
+put('oil_drum', YARD_E[0] + 1.0, YARD_E[3] + 0.45, on='_')
+put('oil_drum', YARD_E[0] + 1.6, YARD_E[3] + 0.6, on='_')
+put('streetlight', S1 + 1.28, 30.6, 180)
+put('trash_can', S1 + 2.45, 31.6)
+lv.prop('flyers', S1 + 2.94, 31.5, 90)
+lv.area('part two: the side street, its paint and its covers')
+for c in (S1 - 2.75, S1 - 1.25):                                         # STOP before the street (northbound half)
+    lv.paint('stop_line', c, 17.6, 90)
+lv.paint('road_stop', S1 - 2.0, 19.5)
+must('sign_stop', S1 + 1.6, 17.55, 0)
+for c in (S0 + 1.25, S0 + 2.75):                                         # STOP before the frontage road (southbound)
+    lv.paint('stop_line', c, R0 - 0.6, 90)
+lv.paint('road_stop', S0 + 2.0, R0 - 2.4, 180)
+must('sign_stop', S0 - 0.75, R0 - 0.7, 180)
+must('sign_oneway', S0 + 3.0, R1 + 1.45, 0)                             # across the way: ONE WAY, east
+must('sign_oneway', S1 + 1.7, R0 - 0.65, 0)
+for (kind, c, r, deg) in (('road_patch_a', 444.4, 22.8, 90), ('road_crack_b', 448.2, 26.6, 0), ('road_patch_c', 443.6, 30.4, 0),
+                          ('road_patch_b', 446.6, 35.2, 90), ('road_crack_a', 444.0, 38.8, 180), ('drain', S0 + 0.25, 21.0, 90),
+                          ('drain', S1 + 0.75, 28.0, 90), ('manhole_sq', 445.0, 32.5, 90)):
+    lv.paint(kind, c, r, deg)
+lv.dress('manholes', 447.7, 24.6)
+lv.dress('papers', S0 - 2, 18, S1 + 2, 33, 9)
+lv.cat(S1 + 1.6, 33.0)
+lv.area('part two: the freeway\'s bridge over the side street')
+lv.prop('overpass', (DECK[0] + DECK[1]) / 2, (F0 - 0.5 + F1 + 1.5) / 2)
+lv.paint('overpass_shadow', (DECK[0] + DECK[1]) / 2, (F0 - 0.5 + F1 + 1.5) / 2)
+lv.roof('ac_unit', 436.8, 26.6)
+lv.roof('vent', 437.2, 23.4)
+lv.roof('duct', 455.0, 20.8)
+lv.roof('vent', 455.2, 31.6)
+
+# ---------------------------------------------------------------- the freeway on its bank (north of leg 1)
+# Two lanes east, its edge lines yellow (left) and white (right), its dashes every 12 m; a guardrail along each side of
+# it, its bank down to the frontage road in grass, its lamps on the bank with an arm over it and one over us. Where the
+# ramp meets it (MERGE) its lanes come in alongside ours over 24 m, the gore painted out between.
+lv.area('part two: the freeway')
+for (c0, c1) in ((LEG1_W, DECK[0]), (DECK[1], M0)):
+    pieces('edge_line_yellow', c0, c1, F0 + 1.5)
+    pieces('edge_line', c0, c1, F1 + 0.5)
+    dashes(c0, c1, F0 + 4.0, 12, at=432)
+    rail('guardrail', c0, min(c1, DECK[1] + 16) - 1, F0 - 0.15, 0)        # (its far side seen from the side street only)
+    rail('guardrail', c0, c1 - 1, F1 + 1.15, 180)
+slant('edge_line_yellow', (M0, F0 + 1.5), (M1, F0 + 4.0))
+slant('lane_dash_long', (M0, F0 + 4.0), (M1, F1 + 0.5), gap=12)
+lv.paint('gore_taper', (M0 + M1) / 2, F1 + 0.5 + (84 / 2 - 2) / 32)
+pieces('edge_line_yellow', M1, TOLL_X, F0 + 4.0)
+dashes(M1, TOLL_X, F1 + 0.5, 12, at=432)
+dashes(M1, TOLL_X, R0, 12, at=438)
+for c in (470.5, 500.5):
+    must('highway_lamp', c, F1 + 1.75, 90, on='"')
+
+# ---------------------------------------------------------------- leg 1: the frontage road
+# One way east, two lanes, a white dash between them every 9 m, the yellow edge line along its north kerb (the bank
+# above it); on the south side sheds and docks: a body shop, a blind warehouse opposite the side street, the cold
+# store's two loading bays (the kerb dropped along them), a yard behind its gate, a long shed with its pipes; sodium
+# lamps on the south sidewalk; FREEWAY ENTRANCE where the sheds end.
+lv.area('part two: the frontage road, its paint')
+pieces('edge_line_yellow', LEG1_W, S0 - 2, R0 + 0.08)                   # (broken across the side street's mouth)
+pieces('edge_line_yellow', S1 + 3, M0, R0 + 0.08)
+dashes(LEG1_W, RAMP_X, R0 + 2.5, 9, at=455)
+dashes(RAMP_X, TOLL_X, R0 + 2.5, 12, at=438)
+for c in list(range(LEG1_W, S0 - 2 - 3, 4)) + list(range(S1 + 3, RAMP_X - 3, 4)):   # the kerb under the bank
+    lv.paint('kerb_s_4', c + 2.0, R0 - 1 / 32)
+for (kind, c, r, deg) in (('road_patch_c', 457.5, 44.3, 0), ('road_crack_a', 463.0, 46.9, 0), ('manhole_sq', 475.2, 45.4, 0),
+                          ('road_patch_b', 481.0, 46.6, 0), ('road_crack_b', 489.5, 44.0, 90), ('drain', 466.5, R1 + 1 - 8 / 32, 0),
+                          ('drain', 490.5, R1 + 1 - 8 / 32, 0), ('oil_stain_b', 458.0, 48.9, 0), ('oil_stain_a', 461.5, 49.2, 0),
+                          ('road_arrow', 462.0, LANES1[0], 0), ('road_arrow', 462.0, LANES1[1], 0)):
+    lv.paint(kind, c, r, deg)
+lv.dress('manholes', 484.6, 44.6)
+lv.area('part two: the frontage road, its south side')
+for c in (428.5, 433.5):                                                  # the body shop
+    lv.prop('roller_door', c, R1 + 2.93, 180)
+    low.update(('h', k, R1 + 1) for k in range(int(c) - 1, int(c) + 2))
+lv.prop('flyers', S0 - 0.5, R1 + 2.94, 180)                              # the warehouse opposite the side street
+lv.prop('conduit', S0 + 6.0, R1 + 2.93, 180)
+must('hydrant', S1 + 0.4, R1 + 1.45)
+lv.paint('valve_cap', S1 + 0.4, R1 + 0.7)
+for c in (DOCK_S[0] + 2.5, DOCK_S[0] + 7.5):                             # the cold store's two bays
+    lv.prop('roller_door', c, R1 + 2.93, 180)
+    must('loading_dock', c, R1 + 2.64, 180)
+put('pallet_stack', DOCK_S[0] - 0.35, R1 + 2.4)
+put('pallet_stack', DOCK_S[1] - 1.0, R1 + 2.45, 90)
+put('oil_drum', DOCK_S[1] + 0.3, R1 + 2.6)
+must('chainlink_gate', (YARD_S[0] + YARD_S[1] + 1) / 2, R1 + 3.12, 0, on='_')
+for (kind, c, r, deg) in (('pallet_stack', 467.4, 51.6, 10), ('oil_drum', 472.8, 51.4, 0), ('oil_drum', 473.4, 51.9, 0),
+                          ('crate', 470.6, 53.2, 20), ('dumpster', 466.9, 54.0, 0)):
+    put(kind, c, r, deg, on='_')
+lv.prop('pipe_water', 480.0, R1 + 2.93, 180)                             # the long shed
+lv.prop('wall_vent', 483.6, R1 + 2.93, 180)
+lv.prop('roller_door', 487.5, R1 + 2.93, 180)
+lv.prop('wall_lamp', 490.2, R1 + 2.94, 180)
+lv.prop('graffiti', 477.0, R1 + 2.94, 180)
+low.update(('h', k, R1 + 1) for k in range(486, 490))
+put('dumpster', 476.4, R1 + 2.4, 0)
+for (kind, c, r) in (('bin_bag', 478.0, 49.45), ('cardboard_box', 474.6, 49.5), ('oil_drum', 491.5, 49.45), ('bin_bag', 452.8, 49.5)):
+    put(kind, c, r)
+for c in (458.5, 482.5):
+    must('streetlight', c, R1 + 1.28, 270)
+must('sign_freeway', RAMP_X - 3.0, R1 + 1.7, 0)
+lv.dress('papers', LEG1_W, R1 + 1, RAMP_X - 1, R1 + 2, 12)
+lv.cat(472.3, 49.5)
+for (kind, c, r) in (('ac_unit', 430.6, 52.6), ('vent', 437.2, 51.8), ('duct', 446.0, 52.2), ('chimney', 452.8, 53.4),
+                     ('ac_unit', 459.4, 52.4), ('vent', 462.6, 51.9), ('hatch', 478.6, 52.6), ('ac_unit', 484.2, 52.2),
+                     ('vent', 489.0, 51.8), ('duct', 492.8, 53.2)):
+    lv.roof(kind, c, r)                                                   # on the sheds' flat roofs
+
+# ---------------------------------------------------------------- leg 1: the on-ramp and the merge
+# The sheds end: the road climbs onto an embankment of its own: a paved shoulder with its rumble strip, the white edge
+# line, a guardrail along the top of the bank (its end toward whoever comes), delineators either side, WRONG WAY for
+# whoever comes up it the wrong way, SPEED LIMIT 55, TOLL 1/2 MILE; the freeway's lanes come in alongside (the gore),
+# MERGE painted in our left lane; waste ground at the foot of the bank (off the picture).
+lv.area('part two: the on-ramp')
+pieces('edge_line', RAMP_X, TOLL_X, R1 + 0.92)
+pieces('rumble_strip', RAMP_X + 1, TOLL_X, R1 + 1.45)
+must('guardrail_end', RAMP_X - 0.1, R1 + 2.15, 0, on='"s')
+rail('guardrail', RAMP_X + 1, TOLL_X, R1 + 2.15, 180)
+for c in range(RAMP_X + 2, TOLL_X - 2, 4):
+    put('reflector_post', c + 0.5, R1 + 1.86, on='=')
+for c in range(RAMP_X + 2, M0 - 1, 4):
+    put('reflector_post', c + 0.5, R0 - 0.3, on='"')
+# (the signs stand at the shoulder's edge, read at a glance: the bank beyond is off the picture)
+must('sign_wrong_way', RAMP_X + 7.0, R1 + 1.7, 270, on='=')
+must('sign_wrong_way', RAMP_X + 7.0, R0 - 0.65, 270, on='"')
+must('sign_speed_55', RAMP_X + 13.0, R1 + 1.7, 0, on='=')
+must('sign_toll_ahead', RAMP_X + 21.0, R1 + 1.7, 0, on='=')
+for c in (515.5, 545.5):
+    must('highway_lamp', c, R1 + 2.65, 90, on='"')
+lv.paint('merge_arrow', M0 + 15.0, LANES1[0])
+dashes(RAMP_X, TOLL_X, R0 + 0.08, 12, kind='raised_marker_yellow', at=444, length=0.25)
+dashes(RAMP_X, TOLL_X, R0 + 2.5, 12, kind='raised_marker', at=444, length=0.25)
+for (kind, c, r, deg) in (('road_crack_a', 506.0, 46.4, 0), ('road_patch_b', 519.5, 44.4, 0), ('road_crack_b', 538.0, 47.0, 90),
+                          ('road_patch_c', 552.0, 45.0, 0)):
+    lv.paint(kind, c, r, deg)
+
+# ---------------------------------------------------------------- beyond: the toll's (a plain road until it is built)
+lv.area('beyond: the toll')
+lv.fill(TOLL_X, R0 - 2, W - 2, R0 - 1, 's')
+lv.fill(TOLL_X, R0, W - 2, R1, '=')
+lv.fill(TOLL_X, R1 + 1, W - 2, R1 + 2, 's')
+for c in range(TOLL_X, W - 2, 4):
+    lv.fill(c, (R0 + R1) // 2, min(W - 2, c + 1), (R0 + R1) // 2, '-')
+for c in range(TOLL_X + 1, W - 3, 24):
+    must('streetlight', c + 0.5, R0 - 0.28, 90)
+    if c + 12 < W - 3:
         must('streetlight', c + 12.5, R1 + 1.28, 270)
-must('hydrant', S1 + 5.5, R0 - 0.5)
-for r in (24.0, 32.0):
-    must('streetlight', S0 - 1.28, r, 0)
 
 
 def bend_line(pts, r, step=0.25):
@@ -861,8 +1123,12 @@ lv.wet = 0.35                                     # the street still wet from an
 lv.rain = 0
 lights = [[x, 13.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.16 if DARK[0] < x < DARK[1] else 0.3] for x in range(10, WS, 30)]
 lights += [[x, 17.0, 8, '#ffd9a0', 0.35] for x in range(D0 + 3, D1, 9)]      # the diner spills onto its corner
-lights += [[SIDE_X, r, 8, '#7a5ad8', 0.28] for r in (22, 34)]                 # the side street, leg 1
-lights += [[x, (ROAD1[0] + ROAD1[1] + 1) / 2, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.3] for x in range(LEG1_W + 4, W, 30)]
+lights += [[SIDE_X, r, 8, '#ffa860', 0.2] for r in (22, 30)]                  # the side street's sodium
+lights += [[x, 46.0, 9, '#ffa860', 0.2] for x in (458, 482)]                   # the frontage road's
+lights += [[x, 39.0, 9, '#ffb46a', 0.22] for x in range(462, TOLL_X, 30)]       # the freeway's lamps along its bank
+lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   # the ramp's
+lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
+lights += [[x, (ROAD1[0] + ROAD1[1] + 1) / 2, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.3] for x in range(TOLL_X + 4, W, 30)]
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
 # under it)
@@ -884,8 +1150,13 @@ ambient = {
 LEGS = [
     {'from': 0, 'to': LEG1, 'lanes': list(LANES), 'mid': 13.0, 'cruise': 8.9, 'kerbs': [9, 16],
      'across': [[SIDE[0] - 2, SIDE[1] + 2, 8, 18]]},
-    {'from': LEG1, 'to': W, 'lanes': list(LANES1), 'mid': (ROAD1[0] - 2 + ROAD1[1] + 3) / 2, 'cruise': 8.9,
-     'kerbs': [ROAD1[0], ROAD1[1] + 1]},
+    # leg 1: the frontage road, the on-ramp, the merge (one way east, both lanes ours). Framed from the freeway's near
+    # lane to the sheds' fronts; 70 km/h (a cruise is the leg's whole: one step up from the street's, the toll's next);
+    # the wheel kept between the bank and the sheds, the dock's edges or the ramp's guardrail (`across`)
+    {'from': LEG1, 'to': W, 'lanes': list(LANES1), 'mid': 44.5, 'cruise': 10.4,
+     'kerbs': [ROAD1[0], ROAD1[1] + 1],
+     'across': [[LEG1, TOLL_X - 1, ROAD1[0] - 0.4, H], [DOCK_S[0] - 2, DOCK_S[1] + 1, 0, ROAD1[1] + 2.2],
+                [RAMP_X - 1, TOLL_X - 1, 0, ROAD1[1] + 1.9]]},
 ]
 # a bend: the car's middle at `at` (col) on its leg, the script drives it along `path` (its corners [col, row], each
 # inner one rounded off by an arc of `radius` tiles) and hands it to leg `to` on the lane the path ends on
@@ -918,9 +1189,13 @@ chase = {
         *[{'at': c, 'kind': 'behind', 'style': st} for (c, st) in zip(BEHIND_AT, BEHIND_STYLE)],
         {'at': LORRY_AT, 'kind': 'lorry', 'lorry': [(YARD[0] + YARD[1] + 1) / 2, 6.69], 'back': 5, 'gap': [(YARD[0] + YARD[1] + 1) / 2, 18.3]},
         {'at': CROSS_AT, 'kind': 'alley', 'car': [(CROSS[0] + CROSS[1] + 1) / 2 + 1.5, 21.0], 'style': 'rammer'},
+        # out of the detour: one more from behind on the frontage road (it starts at col 458, past the bend's way
+        # out), a rammer: the ramp's guardrails are what to shove it into
+        {'at': FRONTAGE_AT, 'kind': 'behind', 'style': 'rammer'},
     ],
     # water standing in the gutter [col, row, r px]: spray under his wheels
-    'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]],
+    'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34],
+              [444.2, 29.4, 26], [470.0, 47.5, 30], [493.0, 47.4, 26]],
     # the boss's Uzi off his passenger seat (taken in a short beat the first time: systems/Drive.js grab). At the wheel
     # it never runs dry (systems/CarGun.js): `mag` is what is in it when he gets out of the car (2B)
     'arms': {'weapon': 'uzi', 'mag': 30, 'seat': True},

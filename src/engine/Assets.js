@@ -55,7 +55,7 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'site_fence', 'roller_door', 'loading_dock', 'chainlink_gate', 'pallet_stack', 'oil_drum', 'sign_stop', 'guardrail',
   'guardrail_end', 'crash_cushion', 'highway_lamp', 'sign_freeway', 'sign_wrong_way', 'sign_speed_55', 'sign_toll_ahead',
   'reflector_post', 'toll_island', 'toll_booth', 'toll_canopy', 'gate_arm_wood', 'gate_arm_bit_a', 'gate_arm_bit_b',
-  'gate_arm_bit_c', 'gate_steel', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change'];
+  'gate_arm_bit_c', 'gate_steel', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change', 'overpass'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
@@ -67,8 +67,10 @@ const ROAD_PAINT = [
   'hatch_kerb', 'oil_stain_a', 'oil_stain_b', 'road_loading', 'skid_marks',
   'road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
   'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow', 'rumble_strip',
-  'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4'];
-// (in ROAD_PAINT: level 1's street from hatch_kerb to skid_marks; from road_cut on, 2A's part two: the works, the ramp, the toll)
+  'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
+  'overpass_shadow', 'gore_taper'];
+// (in ROAD_PAINT: level 1's street from hatch_kerb to skid_marks; from road_cut on, 2A's part two: the works, the ramp, the toll,
+// then the freeway's bridge over the side street and the gore where its lanes come alongside the ramp: FWY_PROPS)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
   'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop'];
 // level 1's interiors (tools/generate_assets.py, "the rooms of level 1": INTERIOR_PROPS): what its shops, its

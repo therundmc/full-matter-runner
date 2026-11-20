@@ -175,7 +175,7 @@ sidewalk 3 m, lanes, south sidewalk 2 m). The events keep their columns.
 | 313-356 | A (nobody parked) | blind wall; THE YARD's gate (cols 337-342): dropped kerb, a hatched box, yellow kerbs, no-parking signs | 3 m sidewalk, then THE TERRACE (cols 325-354): planters and bollards along its kerb, tables, parasols, the cafe set back | none | Event 2: KEEP CLEAR on both lanes, the lorry backs out across them; the terrace is the way round. |
 | 357-388 | A THE LIT CORNER | shops | the diner: glass, booths, phone booth, news boxes, benches | north, cols 358-382: 1 | The last car is set off (col 368). |
 | 389-403 | J THE CROSS STREET | corners rounded, hydrant, mailbox | news boxes | none | Lights on all four corners (ours red, the cross street's green: the last pursuer comes out of it on HIS green). |
-| 404-449 | C TO THE FREEWAY | 3 m sidewalk, palms in grates | shops | none | Lane arrows, the freeway's sign over the road (FREEWAY, TOLL 1 MILE); the level ends at col 428. |
+| 404-445 | C TO THE FREEWAY | 3 m sidewalk, palms in grates; DETOUR (col 424) | shops; DETOUR (cols 431, 438) | none | Lane arrows, the freeway's sign over the road (FREEWAY, TOLL 1 MILE); the yellow DETOUR arrow painted twice in our lane (cols 424, 433: on, then right). The script takes the wheel at col 438 (part two below). |
 
 Parked cars: 12 in all (thinned from 21 on 2026-11-19, the user: "trop de voitures sur les cotes"; the count by
 section is in the table, asserted by the builder and tests/road.test.mjs). The bays left empty show an old patch or
@@ -188,6 +188,37 @@ kerb; kerbs along every sidewalk edge, dropped at alleys, gates and crossings; d
 at a side street is held on the line of the fronts (`chase.across`), and where the fronts step in toward the road
 (a block set forward, the end of the terrace) the car is brought back inside their line before the corner
 (CHASE.frontAhead): neither is a death nobody told.
+
+### Segment 1, part two: the works, the detour, the on-ramp (2026-11-20)
+
+Built on in the same builder, after the street (its own section of tools/build_level2a.py, "PART TWO"; no dice: the
+street is the same one). Works shut the street past a side street; the script (the level's `bends`) takes him right
+down it, under the freeway's bridge at its foot, and left onto LEG 1: a frontage road one way east at the foot of the
+freeway's bank, which leaves its sheds for an embankment of its own as the on-ramp and meets the freeway's lanes
+before the toll (col 560 on). Leg 1's lanes stay on rows 44.25 / 46.75 (both ours: one way), the lane line on 45.5;
+its cross-section (rows): the freeway's asphalt 34-40 (two lanes of 2.5 m, its edge lines on 35.5 and 40.5, a
+guardrail on 41.15), its bank in grass 41-42, the road 43-47, then the south sidewalk 48-49 and the sheds' fronts on
+row 50, or (the ramp) a paved shoulder 48, the guardrail on 49.15 and the ramp's own bank. Framed from the freeway's
+near lane to the sheds' fronts (`mid` 44.5). Cruise 70 km/h (10.4 px/step): a leg has ONE cruise (systems/Route.js,
+Drive picks it up when the leg changes; nothing ramps within a leg), so the street's 60 rises to 70 out of the bend
+and the toll's leg takes it on; the pursuers' top speed (14.5 px/step, 98 km/h) leaves them room at 70, little at 90.
+The wheel is held (leg 1's `across`) between the bank and the sheds' fronts, off the cold store's dock edges and
+inside the ramp's guardrail: what never gives is never nose-on.
+
+| Cols | Section | North side | South side (ours) | What happens |
+|------|---------|------------|-------------------|--------------|
+| 446-473 | THE WORKS (the street) | the tyre shop's two shutters down (kerbs dropped), a lighting tower on each sidewalk end, the site fenced along both kerbs | the side street's mouth (corners rounded 1.5 m), the sidewalk shut by a barricade, a lighting tower | Six cones taper both lanes from the north kerb into the side street's mouth; an arrow board (its arrows down the side street), ROAD CLOSED with its two flashers, three water barriers, the road cut across both lanes (a fresh trench patch, the gas main's marks), a steel plate, the excavator on the milled band (its bucket at the barriers) and the dump truck waiting to be loaded (both seen from the turn, which sees no further), sand and asphalt heaps, jersey barriers at the far end. |
+| 440-451 (rows 16-42) | THE SIDE STREET | (west) the cut shop's blind wall, pipes, a dumpster and bin bags, a sodium lamp, a shed's shutter (graffiti), oil drums, the loading dock and its shutter (its apron's kerb dropped), pallets | (east) conduit, pipes, a wall lamp, the yard behind its chain-link gate (PRIVATE: a car, pallets, drums), a sodium lamp, a bin | Two-way, 8 m, no line: STOP (the line, the word, the sign) for whoever comes up it to the street and for whoever comes down it to the frontage road; patches, a crack, a cover breathing steam, a puddle, a cat, papers. The script drives down its middle (col 446), 40 km/h in the turns. |
+| 437-455 (rows 33.5-41.5) | THE FREEWAY'S BRIDGE | the deck over the side street (prop `overpass`, hung: it fades over him; its shadow painted under it), its abutments | | The second turn starts as he comes out from under it. |
+| 424-451 (leg 1) | THE T | the freeway's bank, the side street's mouth (corners rounded) | the body shop's two shutters, the warehouse opposite (ONE WAY east), a hydrant | He runs the STOP and turns left; the bend hands him to leg 1 in his lane at col 460. |
+| 452-497 | THE FRONTAGE ROAD | the freeway up on its bank (its near lane, its guardrail, a kerb under the grass, the yellow edge line), a freeway lamp (col 470) with an arm over each road | the cold store's two loading docks (the kerb dropped along them, pallets, a drum), the yard gate (col 468), the long shed (pipes, a shutter, a dumpster, bags), two sodium lamps; FREEWAY ENTRANCE at the sheds' corner (col 495) | Lane arrows at col 462, white dashes every 9 m. ONE MORE PURSUER from behind at col 468 (a rammer: the guardrails ahead are what to shove it into). |
+| 498-523 | THE ON-RAMP | the bank, delineators, WRONG WAY (facing whoever comes the wrong way), a freeway lamp (col 500) | the shoulder with its rumble strip and the white edge line, the guardrail along the top of the bank (its end toward the traffic at col 498), delineators, WRONG WAY, SPEED LIMIT 55, TOLL 1/2 MILE, a freeway lamp (col 515) | Dashes every 12 m with cat's eyes, yellow ones along the left edge. |
+| 524-559 | THE MERGE | the freeway's lanes come in alongside over 24 m (their paint slanted), the gore painted out between (a long white triangle, `gore_taper`), then four lanes side by side (rows 39.25, 41.75, ours 44.25, 46.75) | the shoulder, the guardrail, a freeway lamp (col 545) | MERGE painted in our left lane (col 539). The toll from col 560. |
+
+New sprites for it (tools/generate_assets.py "the freeway over the side street", FWY_PROPS: listed in engine/Assets.js
+and levelkit): `overpass` (the deck, 18 x 8 m, hung), `overpass_shadow` and `gore_taper` (floor paint). Not done: no
+ambient traffic on the freeway (systems/Traffic.js lanes run the whole map's width, not a leg's: a lane would drive
+through the blocks), so the freeway is dressing; the flagman (no civilian stands at a post outdoors).
 
 Segment boards: [1 back road](level2/s1_backroad.webp), [2 toll](level2/s2_toll.webp),
 [3 tanker](level2/s5_tanker.webp), [3b jump](level2/s3_jump.webp), [4 drain](level2/s4_canal.webp),
@@ -610,3 +641,14 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the HUD and the QA robot count along the route. The test layout of 2A: works (ROAD CLOSED, jersey barriers) shut
   the street past col 446, the scripted right turn at col 438 down the side street (cols 442-449), the left turn onto
   leg 1 (lanes 44.25 / 46.75, cols 446-600), the end at col 570 (map 600 x 56). Lab station 36 BEND.
+- 2026-11-20: SEGMENT 1, PART TWO BUILT (branch feature/ramp-build; the user: "du niveau de la partie 1 niveau detail"):
+  the test layout of the detour dressed and the road on to the toll built section by section (the table "Segment 1,
+  part two"): the works closing the street past the side street (cones tapering both lanes into it, arrow board, ROAD
+  CLOSED, water barriers, the road cut, excavator, dump truck, lighting towers, site fence), DETOUR told from col 424;
+  the side street (sheds, a loading dock, a yard behind its gate, STOP at both ends, sodium lamps, steam); the
+  freeway crossing it on a bridge (new sprites `overpass`, `overpass_shadow`, `gore_taper`); leg 1 one way east: the
+  frontage road at the foot of the freeway's bank (docks, a yard, sheds), the on-ramp (shoulder, rumble strip,
+  guardrails, delineators, WRONG WAY, 55, TOLL 1/2 MILE, freeway lamps), the merge (the freeway's lanes come in
+  alongside, the gore). Leg 1: `mid` 44.5, cruise 70 km/h (no ramp within a leg), `across` keeping the wheel off the
+  docks and the guardrails; one more pursuer from behind at col 468 (rammer). QA 3 min seed 2: PASS, no stall, the end
+  reached and cleared; with --god: 3 clears, 12/12, the only stall the known one at the lorry (col 336).
