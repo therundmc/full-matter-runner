@@ -1297,12 +1297,15 @@ for (k, r) in enumerate(PLAZA):
     lv.paint('skid_marks', GATE_X - 2.4 - (k % 2) * 0.8, r + (0.15 if k % 2 else -0.2))             # rubber before its gate
 
 # its lights (the night section adds them): sodium pools on the fan and the fan back (they were dark), the neon of the
-# roof's fascias on the road (pink in, teal out), each booth's window, the office's sign, the billboards' lamps
-TOLL_LIGHTS = [[c, r, 9, '#ffb46a', 0.3] for (c, r) in ((589, 36.0), (589, 50.0), (595, 43.0), (600, 35.5), (600, 50.5), (614, 35.5),
-                                                       (614, 50.5), (619, 43.0), (624, 37.0), (624, 49.0), (633, 43.0), (642, 39.0),
+# roof's fascias on the road (pink in, teal out), the office's sign, the billboards' lamps. NOTHING CENTRED ON THE ROOF
+# (it is drawn under the light map: a pool on it burnt its sheet white): the plaza's floods stand at the lanes' mouths
+# and past the gates, the sodium pools and the fascias' neon just outside its edges; under it, faded over him, the
+# road is lit from both ends and by the booths' own windows (their glow maps)
+TOLL_LIGHTS = [[c, r, 8, '#ffb46a', 0.3] for (c, r) in ((589, 36.0), (589, 50.0), (594, 43.0), (598, 35.5), (598, 50.5), (617, 35.5),
+                                                       (617, 50.5), (620, 43.0), (624, 37.0), (624, 49.0), (633, 43.0), (642, 39.0),
                                                        (642, 47.0))]
-TOLL_LIGHTS += [[604.4, r, 5, '#ff4aa6', 0.3] for r in (38.5, 47.5)] + [[611.8, r, 5, '#38f0dc', 0.28] for r in (38.5, 47.5)]
-TOLL_LIGHTS += [[CANOPY_X + 0.3, r + 0.9, 2.5, '#ffd890', 0.16] for r in ISLANDS[:4]]
+TOLL_LIGHTS += [[601.8, r, 6, '#e8f0ff', 0.18] for r in (37.0, 43.0, 49.0)] + [[614.2, r, 6, '#e8f0ff', 0.16] for r in (37.0, 43.0, 49.0)]
+TOLL_LIGHTS += [[603.9, r, 3, '#ff4aa6', 0.3] for r in (38.5, 47.5)] + [[612.2, r, 3, '#38f0dc', 0.28] for r in (38.5, 47.5)]
 TOLL_LIGHTS += [[591.0, 52.0, 4, '#38f0dc', 0.3], [661.0, 47.6, 6, '#ff8ac8', 0.2], [583.0, 50.4, 6, '#8af0e8', 0.2]]
 
 
@@ -1779,8 +1782,7 @@ lights += [[x, 39.0, 9, '#ffb46a', 0.22] for x in range(462, TOLL_X, 30)]       
 lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   # the ramp's
 lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
 lights += [[x, MID, 10, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in range(TOLL0 + 4, W, 30)]   # the freeway's
-lights += [[CANOPY_X, MID + d, 9, '#e8f0ff', 0.14] for d in (-6, 0, 6)]  # the plaza under its lit roof (its top not burnt white)
-lights += TOLL_LIGHTS                                                    # (the toll's block: its neon, pools, windows)
+lights += TOLL_LIGHTS                                                    # (the toll's block: its floods, neon, pools)
 # leg 1 in 1985 (the neon, the billboards, the drum's fire and the lot are their props' own lights): the palms lit
 # from their feet, pink and cyan in turn, the green signs from below, more sodium over the merge (it was the dark end)
 lights += [[c, r, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5] for (k, (c, r)) in enumerate(((466.9, 48.8), (468.0, 42.3), (493.6, 42.1), (507.5, 50.3), (525.0, 50.3), (541.5, 50.3), (556.0, 50.3)))]
