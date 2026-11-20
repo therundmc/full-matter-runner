@@ -120,7 +120,8 @@ export function buildLevel(world, level) {
   // (render/Flicker.js: 'broken', 'stutter', 'dying'...); { valve: true } = a stove whose gas tap can be opened;
   // { tips: false } = a bin that stays up and breaks like any prop (one indoors, systems/Tipping.js);
   // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js);
-  // { drive: true } = a vehicle he can get into and drive (the lab); { pursuer: true } = a pursuer's car parked with
+  // { drive: true } = a vehicle he can get into and drive (the lab), { route: name } along the level's `routes[name]`
+  // ({ legs, bends }: systems/Route.js); { pursuer: true } = a pursuer's car parked with
   // its gunman, telling his shot now and then (the lab); { backs: tiles } = a lorry that backs out across the way (the lab);
   // { worn: share } = a vehicle that has already lost that share of its hp (its engine smokes: systems/CarFx.js; the lab)
   // { seep: name } = it drips, fumes or slops over (data/seeps.js SEEPS, systems/Seeps.js: one washer of a row, one keg)
@@ -136,6 +137,7 @@ export function buildLevel(world, level) {
     if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)
+    if (opt?.route && p.isVehicle) p.route = opt.route; // ... along the level's `routes[name]` (legs, bends: the lab)
     if (opt?.pursuer && p.isVehicle) p.pursuer = true; // the lab's pursuer dummy (systems/Pursuit.js)
     if (opt?.worn && p.isVehicle) p.hp = p.m.hp * (1 - opt.worn);
     if (opt?.backs) p.backs = opt.backs; // a lorry that backs out that many tiles when a car comes (systems/Lorries.js)

@@ -36,24 +36,28 @@ test('road: every prop and every piece of floor paint of the street is a known s
   for (const k of ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade']) assert.ok(png(k + '_glow'), `${k}: its emissive map`);
 });
 
-test('road: nothing stands in the two lanes, from one end to the other', () => {
-  const map = new TileMap(level2a.tiles), [n, s] = C.lanes, top = n - 1.25, bottom = s + 1.25;
-  assert.equal(top, 11);
-  assert.equal(bottom, 16);
+test('road: nothing stands in the lanes of a leg, from one end of it to the other', () => {
+  // (each leg of the route: the street, then the one the detour comes out on; systems/Route.js)
+  const map = new TileMap(level2a.tiles), legs = C.legs.map((L) => ({ ...L, top: L.lanes[0] - 1.25, bottom: L.lanes[L.lanes.length - 1] + 1.25 }));
+  assert.deepEqual([legs[0].top, legs[0].bottom], [11, 16]);
+  assert.deepEqual(C.legs[0].lanes, C.lanes, 'the street is the first leg');
+  const legOf = (c) => legs.find((L) => c >= L.from && c < L.to);
   const across = (c) => C.across.some(([a, b]) => c >= a && c <= b);
   for (const [t, c, r, deg = 0] of level2a.props) {
-    const d = PROPS[t];
-    if (d?.hung || (across(c) && (r < 8 || r > 18))) continue;
+    const d = PROPS[t], L = legOf(c);
+    if (!L || d?.hung || (across(c) && (r < 8 || r > 18))) continue;
     const half = halfAcross(t, deg);
-    assert.ok(r + half <= top + 0.01 || r - half >= bottom - 0.01, `${t} at ${c}, ${r} reaches into a lane`);
+    assert.ok(r + half <= L.top + 0.01 || r - half >= L.bottom - 0.01, `${t} at ${c}, ${r} reaches into a lane`);
   }
   // and the lanes are road all the way
-  for (let x = 0; x < map.w; x++) for (let y = top; y < bottom; y++) assert.ok('=-'.includes(map.at(x, y)), `col ${x} row ${y}`);
+  for (const L of legs) {
+    for (let x = Math.max(0, L.from); x < Math.min(map.w - 1, L.to); x++) for (let y = L.top; y < L.bottom; y++) assert.ok('=-'.includes(map.at(x, y)), `col ${x} row ${y}`);
+  }
   // what is loose (a car's nudge sends it rolling) keeps half a metre off them
   for (const [t, c, r] of level2a.props) {
-    const d = PROPS[t];
-    if (!d || d.static || d.hung || !d.kg || d.kg > 40 || r < 8 || r > 18) continue;
-    assert.ok(r < top - 0.1 || r > bottom + 0.3, `${t} at ${c}, ${r} stands by the lane`);
+    const d = PROPS[t], L = legOf(c);
+    if (!L || !d || d.static || d.hung || !d.kg || d.kg > 40 || r < L.top - 3 || r > L.bottom + 2) continue;
+    assert.ok(r < L.top - 0.1 || r > L.bottom + 0.3, `${t} at ${c}, ${r} stands by the lane`);
   }
 });
 
@@ -142,7 +146,7 @@ test('signals: the lamps lit by the time (pure), one flag a light on the prop', 
 });
 
 test('road: the street has what a street has: a bus stop, the works signed in a parking row, the bridge, the freeway sign', () => {
-  const has = (t) => level2a.props.filter(([k]) => k === t);
+  const has = (t) => level2a.props.filter(([k, c]) => k === t && c < C.legs[0].to); // (the street: the works of the detour are past it)
   for (const k of ['bus_shelter', 'sign_bus', 'arrow_board', 'compressor', 'sign_works', 'viaduct', 'gantry_sign']) assert.equal(has(k).length, 1, k);
   assert.ok(has('street_tree').length >= 6 && has('bollard').length >= 8 && has('hydrant').length >= 6 && has('sign_noparking').length >= 5);
   // the works stay in the parking row: its cones and barricades north of their lane

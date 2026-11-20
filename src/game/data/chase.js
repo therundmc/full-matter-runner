@@ -161,6 +161,30 @@ export const CHASE = {
   // and falls back to `at` as it picks its speed up again (eased at `ease` 1/s, in whole px: at speed more of the
   // road ahead is seen, a hit is felt as the picture catching up with the car)
   camera: { view: 360, at: 0.33, surge: 0.07, from: 0.2, ease: 3.5 },
+  // THE SCRIPTED BENDS (systems/Route.js; the level's `chase.legs` / `chase.bends`, docs/LEVEL2.md): where the road
+  // turns a corner (works shut the street: the detour) the wheel is the script's, the gun still his. The car follows
+  // the bend's line (its `path`: straight lines, each corner rounded off by an arc of `radius` tiles): it brakes at
+  // `brake` px/step a second down to `speed` (40 km/h) for a turn seen `look` px ahead, gains `accel` up to `straight`
+  // (50 km/h) between two; the point `pivot` px ahead of its middle keeps to the line, so the tail swings out, `slip`
+  // rad at the bend's speed, on a spring [k 1/s2, d 1/s] (under-damped: one fishtail as it straightens; the rest is
+  // given back to the drive's own slide at the end). Off the line as it came in (the other lane) it is brought onto it
+  // over `merge` px. No shove, no steering, never off the line; nothing it scrapes kills it. Out of it on the lane of
+  // its leg it ends on, it picks the leg's cruise up as after a hit (`ease`).
+  //   camera: while it turns the view no longer holds it a third from the left on the street's middle: it follows it
+  //   both ways, looking ahead along the line (`lead`: [share of the view's width, of its height]), the offset eased
+  //   at `ease` 1/s, `most` px a step at most, in whole px; out of it, back to the leg's own framing the same way
+  //   (within `done` px of it: held there exactly again). Never turned.
+  //   pursuers: each one reaching the bend follows the same line, `space` px behind the car ahead of it there (his or
+  //   one of theirs; held back by `catch` px/step for each px short of it, braking `hold` px/step a second for it:
+  //   in a bend a knock between two of them wrecks nothing); on a leg he is not on yet, it is kept
+  //   `clear` px past the end of the bend he will come out of (never sat on his way out), out of his lane
+  //   apex: a breath of slow motion as each turn begins (systems/ChaseCam.js; null: none)
+  bend: {
+    speed: 5.9, straight: 7.4, brake: 14, accel: 6, look: 70, radius: 6, pivot: 18, slip: 0.3, spring: [42, 7], merge: 240,
+    camera: { lead: [0.17, 0.2], ease: 2.4, most: 4, done: 0.5 },
+    space: 170, catch: 0.06, hold: 40, clear: 320,
+    apex: { slow: 0.72, in: 0.1, hold: 0.22, out: 0.3 },
+  },
   kmh: 6.75,            // km/h a px/step (60 steps a second, 32 px a metre)
   // his gun out of the car (systems/CarGun.js): it never runs dry at the wheel (the user's call, 2026-11-19: no
   // magazine counted, no reload, nothing to pick up). An OPEN car (THE BOSS's convertible): the gun at `arm` px from his

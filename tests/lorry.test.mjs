@@ -270,7 +270,7 @@ test('end: past the road\'s end the picture goes black, TO BE CONTINUED and what
   assert.ok(finishView(F.skipAfter).skip && !finishView(F.skipAfter - 0.1).skip, 'a key passes it once it is up');
   assert.ok(d.over);
   // the road still ends the level (Drive hands over to Game.onExit, which shows the card)
-  const s = start(C.end - 2);
+  const s = start(C.end - 2, C.legs[C.legs.length - 1].lanes[1] * TILE); // (on the last leg: the route's end)
   s.d.o.end = C.end;
   let exits = 0;
   s.w.game.onExit = () => exits++;

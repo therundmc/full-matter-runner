@@ -101,7 +101,7 @@ function world() {
 // level 2A's start: his car where the level puts it, the Uzi on its seat; `intro`: opening on his cigarette
 function start(intro = level2a.chase.intro) {
   const w = world(), at = level2a.chase.van, v = vehicle(w, CHASE.vehicle, at[0] * TILE, at[1] * TILE);
-  w.drive = new Drive(w, { ...level2a.chase, events: [], water: [], across: [], lanes: null, mid: null, end: null, intro }, v);
+  w.drive = new Drive(w, { ...level2a.chase, events: [], water: [], across: [], lanes: null, mid: null, legs: null, bends: null, end: null, intro }, v);
   return { w, v, d: w.drive, input: keys() };
 }
 function run(s, sec) {

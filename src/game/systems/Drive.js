@@ -26,6 +26,10 @@
 //   lamps off, while he finishes his cigarette and flicks it out (stand); then the engine (launch: it pulls away by
 //   itself, its rear tyres spinning) and the grab. A retry starts rolling, the gun in hand
 //   the chase's slow motions (systems/ChaseCam.js) may hand the wheel more (`wheel`): the dodge made easier
+//   THE ROUTE (systems/Route.js; the level's `chase.legs` and `chase.bends`): the road is straight legs along +x, each
+//   with its own lanes, middle, cruise and view; what is said above of "the road" is the leg he is on. At a bend's
+//   `at` the wheel is the script's (bendStep: the car follows the bend's line, braking into its turns, its tail out,
+//   the gun still his; no shove), until it hands him to the next leg on its lane (CHASE.bend)
 // The camera's numbers (view, frame) are Game's to use. DOM-free but for the van it may
 // make (entities/Vehicle.js). Its jolts are told on the world's 'ride' event ({ beat }: systems/Rumble.js feels them).
 import { TILE, CAT, MASK } from '../Config.js';
@@ -38,6 +42,7 @@ import { FLOATS } from '../data/destruction.js';
 import Vehicle from '../entities/Vehicle.js';
 import CarGun from './CarGun.js';
 import LastDrag from './LastDrag.js';
+import { routeOf, legAt, along, bendStep, enterBend, project, bandOf, blocksAll, nearestLane } from './Route.js';
 
 const { Body, Sleeping } = Matter;
 const SLEEP = 60; // Matter's default sleepThreshold, given back when he gets out
@@ -163,10 +168,6 @@ export function asideThrow(sq, kg, C = CHASE) {
   return { along: mix(A.ahead) * k, across: mix(A.side) * k, spin: mix(A.spin) };
 }
 
-// Does a car lying from y = min to max shut BOTH lanes (the road from `top` to `bottom`: the lanes' outer edges)?
-// Neither side of it leaves `need` px (a car's width and a little): then it is pushed on toward its kerb
-export const blocksBoth = (min, max, top, bottom, need) => min - top < need && bottom - max < need;
-
 // how hard a thing torn off the kerb is thrown (Prop.break's power), by the speed it was hit at (px/step)
 export const tearPower = (speed, C = CHASE) => clamp(C.hit.power * (speed / C.cruise), C.hit.power * 0.6, C.hit.most);
 
@@ -223,18 +224,27 @@ export function frontsAt(map, c, r, most = 8) {
 
 // ---------------------------------------------------------------- the drive
 export default class Drive {
-  // o: the level's `chase` ({ van: [col, row], cruise, lanes, end }) or the lab's ({ exit: true }); van: the vehicle
-  // he gets into (none: one of CHASE.vehicle's model is made at o.van, facing +x, already at its cruise speed)
+  // o: the level's `chase` ({ van: [col, row], cruise, lanes, end, legs, bends }) or the lab's ({ exit: true }, a
+  // route of its own maybe: { legs, bends }); van: the vehicle he gets into (none: one of CHASE.vehicle's model is
+  // made at o.van, facing +x, already at its cruise speed)
   constructor(world, o = {}, van = null) {
     this.world = world;
     this.o = o;
     this.C = CHASE;
-    this.cruise = o.cruise ?? CHASE.cruise;
+    this.route = routeOf(o);          // its legs and bends (systems/Route.js)
+    this.legI = 0;                    // the leg he is on (in a bend: the one it hands him to)
+    this.bend = null;                 // a bend under way: Route.enterBend's state ({ b, p, v, slip, ... }), its pose
+    this.camOff = null;               // the camera's offset from the car while it is not the leg's own framing (frame)
+    this.viewW = null;                // world px across the view, as last framed
+    this.far = 0;                     // px along the route, the most so far (progress: never back)
+    if (van || o.van) this.legI = legAt(this.route.legs, van ? van.x : o.van[0] * TILE);
+    this.cruise = this.leg.cruise;
     if (!van) {
       van = new Vehicle(world, o.vehicle ?? CHASE.vehicle, o.van[0] * TILE, o.van[1] * TILE, 0);
       world.props.push(van);
     }
     this.van = van;
+    this.bendI = this.route.bends.findIndex((b) => b.x > van.x); // the next bend on his way (-1: none)
     this.v = o.van ? this.cruise : 0; // px/step along the road
     this.u = 0;                       // px/step across it
     this.shoveT = 0;                  // s of the shove left
@@ -404,8 +414,15 @@ export default class Drive {
   // 0..1: how much of the HUD shows: none during the opening, faded in over CHASE.intro.hud s as it pulls away
   get hud() { return this.standing ? 0 : clamp(this.hudT / this.C.intro.hud, 0, 1); }
   get kmh() { return kmh(this.v, this.C); }
-  // world px of height the picture shows while he is at the wheel (Game.setView)
-  get view() { return this.o.view ?? this.C.camera.view; }
+  // world px of height the picture shows while he is at the wheel (Game.setView): his leg's (in a bend: the one it
+  // left, the cut to the next leg's comes out of it)
+  get view() { return this.route.legs[this.bend ? this.bend.b.from : this.legI].view ?? this.C.camera.view; }
+  // the leg he is on (systems/Route.js legsOf: lanes, mid, cruise, view, kerbs, across)
+  get leg() { return this.route.legs[this.legI]; }
+  // px along the route now (Route.along: through a bend, along its line)
+  get along() { return along(this.route, this.van.x, this.bend?.b, this.bend?.p, this.C.bend); }
+  // how far down the route he is: { s: px from the start (never back), total: px to the end }, or null (no end)
+  get progress() { return this.route.total ? { s: this.far, total: this.route.total } : null; }
   // 0..1: the shove's bar on the HUD (1: ready)
   get ready() { return 1 - this.cool / this.C.shove.cooldown; }
   // the shove under way, as what it meets is told (systems/Pursuit.js): its number while the car is still thrown
@@ -513,6 +530,16 @@ export default class Drive {
     const busy = this.grabbing || !!w.exited;
     if (this.grab) this.grabStep(dt);
     if (!busy) this.gun.step(dt, input, aim);
+    // the route: a bend reached takes the wheel (the script's until its end); else the leg he is on
+    if (!this.bend) {
+      const nb = this.route.bends[this.bendI];
+      if (nb && v.x >= nb.x && this.legI === nb.from) this.startBend(nb);
+      else {
+        const i = legAt(this.route.legs, v.x);
+        if (i !== this.legI) { this.legI = i; this.cruise = this.leg.cruise; }
+      }
+    }
+    if (this.bend) { this.bendDrive(dt); this.camStep(dt); return; }
     // what the physics let it do last step: a hit slows it, a knock sideways is taken (the small bounce off what it
     // leans on is not: it goes on along it)
     const vel = Body.getVelocity(b);
@@ -569,8 +596,88 @@ export default class Drive {
     // how it looks: the front wheels, the body on its springs
     v.steer = clamp((this.u / C.steer) * 0.45, -0.5, 0.5);
     this.springs(dt);
+    this.camStep(dt);
     // the lab: E, and he gets out (the car stopped where it is)
     if (this.o.exit && !busy && input.hit('KeyE')) this.leave();
+  }
+
+  // A BEND REACHED (the route's: systems/Route.js): the wheel is the script's from here to the end of its line; the
+  // camera lets go of the leg's framing (camStep); told on 'chaseBend' ({ phase: 'in' | 'turn' | 'out', car, x, y,
+  // bend }: systems/ChaseCam.js, systems/Pursuit.js)
+  startBend(b) {
+    const v = this.van;
+    this.camOff ??= this.normalOff(); // (from where the leg held the view: no jump)
+    this.bend = enterBend(b, v.x, v.y, v.body.angle, this.v, this.slip, this.slipV, this.C.bend);
+    this.bend.turn = 0;
+    this.legI = b.to;
+    this.shoveT = 0; this.shoved = false; this.freeing = null; this.stallT = 0; this.nosing = null; this.lockT = 0; this.grind = null;
+    this.world.events.emit('chaseBend', { phase: 'in', car: v, x: v.x, y: v.y, bend: b });
+  }
+
+  // The bend, a step: the car along the bend's line (Route.bendStep: braking into a turn, the tail out), its
+  // velocity set to where the line takes it next (what it runs into still takes real momentum; a hit slows it, and
+  // the line waits for it); the wheel and the shove do nothing, the gun is his (step). Out at the line's end
+  bendDrive(dt) {
+    const w = this.world, C = this.C, K = C.bend, v = this.van, b = v.body, st = this.bend;
+    const vel = Body.getVelocity(b);
+    st.v = Math.min(st.v, Math.hypot(vel.x, vel.y) + C.give);
+    const ahead = { x: v.x + Math.cos(b.angle) * K.pivot, y: v.y + Math.sin(b.angle) * K.pivot };
+    const held = project(st.b.path, ahead.x, ahead.y, st.p, 96, 2);
+    if (st.p - held > st.v * 2 + 8) st.p = held + st.v * 2; // (held up by what it hit)
+    const pose = bendStep(st, st.b, dt, Infinity, K);
+    let dx = pose.x - v.x, dy = pose.y - v.y;
+    const most = st.v * 1.5 + 2, d = Math.hypot(dx, dy);
+    if (d > most) { dx *= most / d; dy *= most / d; }
+    Body.setVelocity(b, { x: dx, y: dy });
+    Body.setAngularVelocity(b, angDiff(b.angle, pose.a));
+    b.flyUntil = w.time + C.fly;
+    st.a = pose.q.a;
+    this.v = st.v;
+    this.u = 0;
+    this.slip = st.slip;
+    this.slipV = st.slipV;
+    v.steer = clamp(pose.q.turn * 0.4 - st.slip * 0.5, -0.5, 0.5);
+    this.springs(dt);
+    // (each turn told as it begins: the breath of slow motion, systems/ChaseCam.js)
+    if (pose.q.turn && !st.turn) w.events.emit('chaseBend', { phase: 'turn', car: v, x: v.x, y: v.y, bend: st.b, turn: pose.q.turn });
+    st.turn = pose.q.turn;
+    if (st.p >= st.b.length) this.endBend();
+  }
+
+  // the end of the bend's line: on the next leg, in the lane it ends on, his again; its cruise picked up (speedStep)
+  endBend() {
+    const st = this.bend, b = st.b, v = this.van;
+    this.bend = null;
+    this.bendI = b.i + 1 < this.route.bends.length ? b.i + 1 : -1;
+    this.legI = b.to;
+    this.cruise = this.leg.cruise;
+    this.u = 0;
+    this.lastV = this.was2.v = this.v;
+    Body.setVelocity(v.body, { x: this.v, y: 0 });
+    this.world.events.emit('chaseBend', { phase: 'out', car: v, x: v.x, y: v.y, bend: b, lane: nearestLane(this.leg.lanes, v.y / TILE) });
+  }
+
+  // the camera's offset from the car (world px), a step: in a bend it looks ahead along the line, out of one it comes
+  // back to the leg's own framing (normalOff) and lets go of it once there (CHASE.bend.camera)
+  camStep(dt) {
+    if (!this.bend && !this.camOff) return;
+    const K = this.C.bend.camera, o = (this.camOff ??= this.normalOff());
+    let want = this.normalOff();
+    if (this.bend) {
+      const a = this.bend.a ?? 0, W = this.viewW ?? (this.view * 16) / 9;
+      want = { x: Math.cos(a) * W * K.lead[0], y: Math.sin(a) * this.view * K.lead[1] };
+    }
+    const k = Math.min(1, K.ease * dt);
+    o.x += clamp((want.x - o.x) * k, -K.most, K.most);
+    o.y += clamp((want.y - o.y) * k, -K.most, K.most);
+    if (!this.bend && Math.abs(o.x - want.x) < K.done && Math.abs(o.y - want.y) < K.done) this.camOff = null;
+  }
+
+  // the offset the leg's own framing holds the view at from the car (frame): C.camera.at of the view's width
+  // behind its middle along the road, the street's middle across
+  normalOff() {
+    const C = this.C.camera, v = this.van, mid = this.street, W = this.viewW ?? (this.view * 16) / 9;
+    return { x: W * (0.5 - C.at - this.surge), y: mid === null ? 0 : mid - v.y };
   }
 
   // Never stalled for good (C.stall): crawling under `under` of its cruise speed for `after` s (a car shoved into its
@@ -650,7 +757,7 @@ export default class Drive {
     }
     if (Math.abs(push) > 0.3) return Math.sign(push);
     if (mid !== null && Math.abs(mid - y) >= TILE) return Math.sign(mid - y);
-    const far = (this.o.lanes || []).map((r) => r * TILE).sort((a, c) => Math.abs(c - y) - Math.abs(a - y))[0];
+    const far = (this.leg.lanes || []).map((r) => r * TILE).sort((a, c) => Math.abs(c - y) - Math.abs(a - y))[0];
     return far !== undefined && far !== y ? Math.sign(far - y) : 1;
   }
 
@@ -673,7 +780,7 @@ export default class Drive {
   // (a street only: the chase; the lab has none)
   offFronts(u) {
     this.grind = null;
-    if (!this.o.lanes || !this.world.map) return u;
+    if (!this.leg.lanes || !this.world.map) return u;
     const b = this.van.body.bounds, m = this.C.front, [lo, hi] = this.fronts();
     // already past them: the fronts step in ahead of him (a block set forward, the end of a terrace, of a yard): the
     // car is brought back inside their line before it gets there, however he steers
@@ -693,7 +800,7 @@ export default class Drive {
     const nose = Math.floor(b.max.x / TILE), mid = this.street;
     let lo = -Infinity, hi = Infinity;
     for (let c = Math.floor(b.min.x / TILE); map && c <= nose + this.C.frontAhead; c++) {
-      const f = frontsAt(map, c, r), x = this.o.across?.find((a) => c >= a[0] && c <= a[1]);
+      const f = frontsAt(map, c, r), x = this.leg.across.find((a) => c >= a[0] && c <= a[1]);
       if (f) { lo = Math.max(lo, f[0]); hi = Math.min(hi, f[1]); }
       else if (c > nose && c < map.w && mid !== null) {
         // a front in his own row, ahead: its face toward the street's middle is the line
@@ -707,9 +814,9 @@ export default class Drive {
     return [lo, hi];
   }
 
-  // the street's middle line (world px y: the level's `chase.mid` row, else the lanes'), or null (the lab)
+  // the street's middle line (world px y: his leg's `mid` row, else its lanes'), or null (the lab)
   get street() {
-    const lanes = this.o.lanes, row = this.o.mid ?? (lanes ? lanes.reduce((s, r) => s + r, 0) / lanes.length : null);
+    const row = this.leg.mid;
     return row === null ? null : row * TILE;
   }
 
@@ -760,7 +867,8 @@ export default class Drive {
   coast() {
     this.dead = true;
     this.coasting = true;
-    this.side = this.van.y > (this.o.lanes ? this.o.lanes[this.o.lanes.length - 1] * TILE : this.van.y) ? -1 : 1;
+    const lanes = this.leg.lanes;
+    this.side = this.van.y > (lanes ? lanes[lanes.length - 1] * TILE : this.van.y) ? -1 : 1;
   }
 
   coastStep(dt) {
@@ -877,7 +985,7 @@ export default class Drive {
     const cover = coverOf(o.bounds.min.y, o.bounds.max.y, b.position.y, v.h) / v.h, sq = squareOf(cover, ca * nx + sa * ny, C);
     const dy = o.position.y - b.position.y;
     let side = again ? was.side : Math.sign(dy) || 1;
-    if (!again && Math.abs(dy) < A.dead && this.o.lanes && w.map) {
+    if (!again && Math.abs(dy) < A.dead && this.leg.lanes && w.map) {
       const [lo, hi] = this.fronts();
       side = hi - o.bounds.max.y >= o.bounds.min.y - lo ? 1 : -1;
     }
@@ -894,11 +1002,11 @@ export default class Drive {
     return { sq, side, along, again };
   }
 
-  // A car he shoved aside never shuts both lanes (blocksBoth: neither side of it leaves his car's width and A.room
-  // of the two lanes): slowing down across them, it is pushed on toward its kerb (the side of the street's middle its
-  // own is on, else the way it was thrown) at A.push px/step until one lane is clear. Followed A.watch s
+  // A car he shoved aside never shuts all the lanes of his leg (blocksAll: neither side of it leaves his car's width
+  // and A.room of the road): slowing down across them, it is pushed on toward its kerb (the side of the street's
+  // middle its own is on, else the way it was thrown) at A.push px/step until a way past is clear. Followed A.watch s
   clearLanes(dt) {
-    const A = this.C.aside, lanes = this.o.lanes, b = this.van.body, w = this.world;
+    const A = this.C.aside, lanes = this.leg.lanes, b = this.van.body, w = this.world;
     // still over a car he has just shoved (it was thrown into something that held it): out from under him, every
     // `again` s, ahead of him and to its side
     if (this.asides.size && !this.dead) {
@@ -914,9 +1022,9 @@ export default class Drive {
     for (const [e, s] of this.asides) {
       if ((s.t += dt) > A.watch || e.dead) { this.asides.delete(e); continue; }
       if (!lanes || lanes.length < 2 || e.exploded) continue;
-      const o = s.o, band = [Math.min(...lanes) * TILE, Math.max(...lanes) * TILE], half = (band[1] - band[0]) / 2;
+      const o = s.o, { band, half } = bandOf(this.leg);
       const vel = Body.getVelocity(o);
-      if (Math.abs(vel.y) > A.push || !blocksBoth(o.bounds.min.y, o.bounds.max.y, band[0] - half, band[1] + half, this.van.h + A.room)) continue;
+      if (Math.abs(vel.y) > A.push || !blocksAll(o.bounds.min.y, o.bounds.max.y, band[0] - half, band[1] + half, this.van.h + A.room)) continue;
       const mid = (band[0] + band[1]) / 2, to = Math.abs(o.position.y - mid) > 4 ? Math.sign(o.position.y - mid) : s.side;
       if (o.frozen) wake(o);
       if (o.isSleeping) Sleeping.set(o, false);
@@ -954,9 +1062,10 @@ export default class Drive {
     if (!this.dead) { this.scrape(dt); this.fx(dt); }
     this.clearLanes(dt);
     this.carry();
-    // the end of the road: the level is over (the results)
+    if (!this.dead) this.far = Math.max(this.far, this.along);
+    // the end of the road (on the leg it is on, out of any bend): the level is over (the results)
     const end = this.o.end;
-    if (end && !this.dead && !w.exited && this.van.x >= end * TILE) {
+    if (end && !this.dead && !w.exited && !this.bend && this.van.x >= end * TILE && this.legI >= legAt(this.route.legs, end * TILE)) {
       w.cleared = true;
       w.exited = true;
       w.game?.onExit?.();
@@ -968,8 +1077,9 @@ export default class Drive {
     if (this.dead && !this.coasting) return;
     const square = nosedIn(h.a, h.vx, h.vy, h.nx, h.ny, C);
     if (h.kind === 'solid') {
-      if (square && onNose(h.lo, h.hi, h.mid, v.h, C) && !w.player.invulnerable) { this.crash(h); return; }
-      if (square && !grazes(h.lo, h.hi, h.mid, v.h, C)) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); this.bump('hit'); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
+      // (in a bend the line is the script's: what it brushes is a scrape, never the crash)
+      if (!this.bend && square && onNose(h.lo, h.hi, h.mid, v.h, C) && !w.player.invulnerable) { this.crash(h); return; }
+      if (!this.bend && square && !grazes(h.lo, h.hi, h.mid, v.h, C)) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); this.bump('hit'); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
       w.sound('carHit', h.x, h.y, 0.5);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 8, 260);
       return;
@@ -1070,9 +1180,9 @@ export default class Drive {
     }
     if ((this.fxT -= dt) <= 0 && this.v > F.from) {
       this.fxT = F.scare.every;
-      const x = v.x + this.v * 60 * F.scare.lead;
-      w.critters?.scare(x, v.y, F.scare.r, F.scare.r);
-      w.ambient?.panicAround(x, v.y, F.scare.people, 'scream');
+      const ahead = this.v * 60 * F.scare.lead, x = v.x + Math.cos(b.angle) * ahead, y = v.y + Math.sin(b.angle) * ahead;
+      w.critters?.scare(x, y, F.scare.r, F.scare.r);
+      w.ambient?.panicAround(x, y, F.scare.people, 'scream');
     }
     this.air(dt, rear);
     // awnings and parasols: under one, fast, it goes
@@ -1112,7 +1222,7 @@ export default class Drive {
       s.x += s.vx * dt;
       if (s.t >= s.life) L.splice(i, 1);
     }
-    if (k > 0 && L.length < W.n * k && chance(k * 0.9)) {
+    if (k > 0 && !this.bend && L.length < W.n * k && chance(k * 0.9)) { // (streaks along +x: none round a corner)
       const side = chance(0.5) ? -1 : 1;
       L.push({
         x: v.x + rand(-W.back, W.ahead), y: Math.round(v.y + side * rand(...W.band)) + 0.5, len: Math.round(W.len[0] + (W.len[1] - W.len[0]) * k * rand(0.4, 1)),
@@ -1174,12 +1284,15 @@ export default class Drive {
 
   // Where the camera looks (viewW: world px across the view; z: picture px a world px). Along the road it is locked
   // on the car, which sits C.camera.at of the view's width from the left whatever it does (no lead, no lag: a car
-  // sliding on the picture is drawn between two px, another way every frame); across, on the street's middle (the
-  // level's `chase.mid` row, else the lanes'; none, the lab: on the car). Both on the picture's px grid, from the
-  // car's place as it is drawn (Vehicle.draw snaps it the same way), so the car's offset in the picture is one whole
-  // number of px, frame after frame
+  // sliding on the picture is drawn between two px, another way every frame); across, on the street's middle (his
+  // leg's `mid` row, else its lanes'; none, the lab: on the car). Both on the picture's px grid, from the car's place
+  // as it is drawn (Vehicle.draw snaps it the same way), so the car's offset in the picture is one whole number of
+  // px, frame after frame. Through a bend and until the next leg's framing is back: the car's place and the eased
+  // offset (camStep), each on the grid
   frame(viewW, z = 1) {
-    const C = this.C.camera, v = this.van, snap = (n) => Math.round(n * z) / z, mid = this.street;
+    this.viewW = viewW;
+    const C = this.C.camera, v = this.van, snap = (n) => Math.round(n * z) / z, mid = this.street, o = this.camOff;
+    if (o) return { x: snap(v.x) + snap(o.x), y: snap(v.y) + snap(o.y) };
     // (slowed by a hit it sits `surge` further forward: whole px, like the rest)
     return { x: snap(v.x) + snap(viewW * (0.5 - C.at - this.surge)), y: snap(mid === null ? v.y : mid) };
   }
@@ -1211,6 +1324,6 @@ export function driveSpot(world, van) {
     get y() { return van.toWorld(dx, dy).y; },
     r: 30, label: 'DRIVE', kind: 'drive',
     ok: () => !world.drive && !van.exploded && !van.dead,
-    use: () => { world.drive = new Drive(world, { exit: true }, van); },
+    use: () => { world.drive = new Drive(world, { exit: true, ...world.level?.routes?.[van.route] }, van); }, // (a route of its own: systems/Route.js)
   };
 }

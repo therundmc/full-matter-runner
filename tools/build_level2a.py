@@ -35,14 +35,28 @@ off):
     389-403   J  THE CROSS STREET under traffic lights (its roadway cols 393-398): the last car comes out of it
     404-449   C  the way to the freeway (its sign over the road); the level ends at col 428
 """
+import math
 import random
 
-from levelkit import Level, SIZES
+from levelkit import Level, SIZES, SOLID as BLOCKS
 
-W, H = 450, 24
+WS, HS = 450, 24             # the street (segment 1): its columns and rows
+W, H = 600, 56               # the map: the street, the detour down the side street, leg 1 (the on-ramp's start) below it
 START = (8.5, 14.75)        # the car's centre, facing +x, in our lane
-END = 428                   # past this column the level is over (25 s at 60 km/h from the start)
 LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
+# THE DETOUR (docs/LEVEL2.md "Legs and scripted bends"; a plain test layout for now): works shut the street past the
+# side street's mouth, the script takes the car right down the side street and left at its foot onto LEG 1
+SIDE = (442, 449)           # the side street's roadway (cols, inclusive), a sidewalk two tiles wide either side
+SIDE_X = 446                # its middle: the bend's line goes down it
+BEND_AT = 438               # the column of the car's middle where the script takes the wheel (leg 0)
+BEND_R = 6                  # tiles: the radius of its two turns
+WORKS_X = 451               # the works across the street, from this column (past the side street's mouth)
+DEAD = 458                  # the street carried on to this column (a blind wall)
+LEG1 = 446                  # leg 1 holds the columns from here to the map's end (leg 0 the ones before)
+LEG1_W = 436                # its road from this column (a dead end west of the side street's foot)
+ROAD1 = (43, 47)            # its roadway's rows: sidewalks on 41-42 and 48-49, blind walls on 40 and 50
+LANES1 = (44.25, 46.75)     # its lanes' middle rows (the centre line on row 45): theirs, ours
+END = 570                   # past this column of leg 1 the level is over
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
 ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
                             # so it is told early enough to cross AHEAD of him into the far lane (he keeps out of it)
@@ -113,27 +127,27 @@ def roadway(x):
 
 
 # ---------------------------------------------------------------- the ground
-for x in range(W):
+for x in range(WS):
     lv.fill(x, 8, x, n_kerb(x) - 1, 's')
     lv.fill(x, n_kerb(x), x, s_kerb(x) - 1, '=')
     lv.fill(x, s_kerb(x), x, s_face(x) - 1, 's')
 for (a, b) in (CORAL, CROSS):
-    lv.fill(a + 1, 0, b - 1, H - 1, '=')
+    lv.fill(a + 1, 0, b - 1, HS - 1, '=')
     for x in (a, b):                                    # its two sidewalks, up to the corners of ours
         lv.fill(x, 0, x, 7, 's')
-        lv.fill(x, s_face(x), x, H - 1, 's')
+        lv.fill(x, s_face(x), x, HS - 1, 's')
 for a in ALLEYS:
-    lv.fill(a, s_face(a + 1), a + ALLEY_W - 1, H - 1, '_')
+    lv.fill(a, s_face(a + 1), a + ALLEY_W - 1, HS - 1, '_')
     lv.fill(a, 16, a + ALLEY_W - 1, s_face(a + 1) - 1, 's')
 lv.fill(N_ALLEY[0], 0, N_ALLEY[1], 7, '_')
 # the centre line: double and solid where nobody may pass (toward a junction, under the bridge, at the bus stop, past
 # the yard, to the freeway: paint), else single dashes, two metres on, two off (a line that never breaks does not show
 # the road going by); none across a junction
-SOLID = ((30, 45), (62, 74), (132, 160), (238, 276), (306, 356), (374, 388), (404, W - 1))
+SOLID = ((30, 45), (62, 74), (132, 160), (238, 276), (306, 356), (374, 388), (404, WS - 1))
 BOXES = ((46, 61), (389, 403))
-for c in range(0, W, 4):
+for c in range(0, WS, 4):
     if not within(c, SOLID) and not within(c, BOXES) and not within(c + 1, SOLID):
-        lv.fill(c, 13, min(W - 1, c + 1), 13, '-')
+        lv.fill(c, 13, min(WS - 1, c + 1), 13, '-')
 for (a, b) in SOLID:
     for c in range(a, b + 1, 3):
         if c + 3 <= b + 1:
@@ -211,9 +225,9 @@ def side(north, x0, x1, signs, blind=0.25):
 
 
 lv.area('north shops')
-north_shops = side(True, 1, DARK[0] - 2, list(SIGNS_1)) + side(True, DARK[1] + 2, W - 4, list(SIGNS_2), 0.2)
+north_shops = side(True, 1, DARK[0] - 2, list(SIGNS_1)) + side(True, DARK[1] + 2, WS - 4, list(SIGNS_2), 0.2)
 lv.area('south shops')
-south_shops = side(False, 1, DARK[0] - 2, list(SIGNS_1S)) + side(False, DARK[1] + 2, W - 4, list(reversed(SIGNS_2)), 0.2)
+south_shops = side(False, 1, DARK[0] - 2, list(SIGNS_1S)) + side(False, DARK[1] + 2, WS - 4, list(reversed(SIGNS_2)), 0.2)
 
 
 # what stands inside a shop (seen through its windows), lit by a lamp under its ceiling, close to the glass
@@ -362,7 +376,7 @@ def junction(a, b, one_way, name):
         lv.paint('stop_line', rw0 + 1.5, 4.55, 90)
         lv.paint('stop_line', rw1 - 1.5, max(fw, fe) + 3.45, 90)
         lv.paint('centre_double', mid, 2.2, 90)
-        lv.paint('centre_double', mid, H - 1.8, 90)
+        lv.paint('centre_double', mid, HS - 1.8, 90)
     # the mast arms: the pole on the far corner, the arm over the lane it is for (heads toward who comes)
     cross = SIGNAL_AT + 9
     must('traffic_light', b + 0.62, 16.38, 270, phase=SIGNAL_AT)            # ours: south-east corner, arm north
@@ -455,7 +469,7 @@ B0, B1 = BRIDGE
 BX = (B0 + B1 + 1) / 2
 lv.prop('viaduct', BX, 13.0)
 lv.paint('viaduct_shadow', BX + 0.35, 13.0)
-for r in list(range(0, 7)) + list(range(19, H)):
+for r in list(range(0, 7)) + list(range(19, HS)):
     lv.roof('rail_bed', BX, r + 0.5)
 lv.paint('road_slow', B0 - 5.0, LANES[1], 90)
 lv.paint('road_slow', B1 + 6.0, LANES[0], 270)
@@ -534,7 +548,7 @@ def clear_of(col, spans, pad=1.5):
 JUNCTIONS = [(CORAL[0] - 4, CORAL[1] + 4), (CROSS[0] - 4, CROSS[1] + 4)]
 MOUTHS_S = [(a, a + ALLEY_W - 1) for a in ALLEYS] + JUNCTIONS + [TERRACE]
 MOUTHS_N = [YARD, N_ALLEY, (BUS[0] + 6, BUS[0] + 18), BRIDGE] + JUNCTIONS
-for col in range(12, W - 4, 12):
+for col in range(12, WS - 4, 12):
     north = (col // 12) % 2 == 1
     if not clear_of(col + 0.5, MOUTHS_N if north else MOUTHS_S) or within(col, (BRIDGE,)):
         continue
@@ -571,7 +585,7 @@ for (kind, c, r, deg) in (('manhole_sq', 27.5, 16.9, 0), ('road_crack_a', 33.0, 
                           ('road_crack_b', 413.0, 13.6, 0), ('road_patch_c', 436.0, 14.6, 0), ('valve_cap', 163.5, 15.6, 0),
                           ('valve_cap', 320.5, 15.6, 0), ('valve_cap', 274.0, 11.5, 0)):
     lv.paint(kind, c, r, deg)
-for c in range(18, W - 6, 34):                        # drains in the gutters, both sides
+for c in range(18, WS - 6, 34):                        # drains in the gutters, both sides
     if clear_of(c, JUNCTIONS, 3):
         lv.paint('drain', c + 0.5, n_kerb(c) + 8 / 32)
         lv.paint('drain', c + 9.5, s_kerb(c + 9) - 8 / 32)
@@ -601,7 +615,7 @@ S_DARK = ['bin_bag', 'bin_bag', 'crate', 'crate', 'trash_can', 'keg', 'cardboard
 doors = doors_of(south_shops) + [D0 + 15.5]
 order = list(S_WALL)
 col = 4.0
-while col < W - 6:
+while col < WS - 6:
     col += rng.uniform(3.2, 6.0)
     f = s_face(int(col))
     if f - s_kerb(int(col)) < 2 or f != s_face(int(col - 1.4)) or f != s_face(int(col + 1.4)):
@@ -631,9 +645,9 @@ for (north, shops) in ((True, north_shops), (False, south_shops)):
         if b - a < 3 or rng.random() < 0.3:
             continue
         lv.prop(rng.choice(AWNINGS), x + (a + b) / 2, 8.56 if north else face - 0.56, 0 if north else 180)
-lv.dress('papers', 0, 8, W - 1, 8, 20)
-lv.dress('papers', 0, 16, W - 1, 17, 40)
-lv.dress('papers', 0, 11, W - 1, 15, 24)
+lv.dress('papers', 0, 8, WS - 1, 8, 20)
+lv.dress('papers', 0, 16, WS - 1, 17, 40)
+lv.dress('papers', 0, 11, WS - 1, 15, 24)
 
 # ---------------------------------------------------------------- the dark stretch
 lv.area('the dark stretch: the fence, the vacant lot')
@@ -665,6 +679,92 @@ for a in ALLEYS:
         continue
     lv.prop('dumpster', a + 0.8, 22.2, 90)
     lv.prop('trash_can', a + 3.3, 21.5)
+
+# ---------------------------------------------------------------- the detour (a test layout: plain, to be dressed)
+# Works shut the street past the side street's mouth; the car is taken round by the script (the level's `bends`,
+# systems/Route.js): right down the side street (+y), left at its foot onto LEG 1, lower on the map. Built after the
+# street (its dice all thrown: the street is the same one); what stood where the side street now runs is taken away.
+lv.area('the detour: the side street')
+S0, S1 = SIDE
+for (x0, y0, x1, y1, t) in ((WS, 8, DEAD - 1, 10, 's'), (WS, 11, DEAD - 1, 15, '='), (WS, 16, DEAD - 1, 17, 's'),   # the
+                            (S0 - 2, 16, S1 + 2, ROAD1[0] - 1, 's'), (S0, 16, S1, ROAD1[0] - 1, '='),               # street
+                            (S0 - 3, 18, S0 - 3, HS - 1, 'X')):     # carried on to the works; the side street; a blind
+    lv.fill(x0, y0, x1, y1, t)                                      # wall for the shops cut by it
+lv.props[:] = [p for p in lv.props if not (S0 - 2.4 < p[2] < S1 + 3.4 and 15.5 < p[3] < HS + 1)]
+boxes[:] = [b for b in boxes if not (b[2] > S0 - 2.4 and b[0] < S1 + 3.4 and b[3] > 15.5)]
+lv.area('the detour: leg 1, the road it comes out on')
+R0, R1 = ROAD1
+lv.fill(LEG1_W, R0 - 2, W - 2, R0 - 1, 's')
+lv.fill(S0, R0 - 2, S1, R0 - 1, '=')
+lv.fill(LEG1_W, R0, W - 2, R1, '=')
+lv.fill(LEG1_W, R1 + 1, W - 2, R1 + 2, 's')
+for c in range(LEG1_W, W - 2, 4):
+    if not S0 - 4 <= c <= S1 + 4:
+        lv.fill(c, (R0 + R1) // 2, min(W - 2, c + 1), (R0 + R1) // 2, '-')
+lv.area('the detour: the works across the street, what tells the way round')
+for r in (12.0, 14.2):
+    must('barricade', WORKS_X + 1.5, r, 90, on='=')
+must('barricade', WORKS_X + 1.5, 16.3, 90, on='s')
+must('arrow_board', WORKS_X + 3.6, 13.1, 90, on='=')
+must('sign_works', WORKS_X - 0.3, 9.9, 270, on='s')
+for r in (11.5, 12.7, 13.9, 15.1):
+    must('traffic_cone', WORKS_X - 0.4, r, on='=')
+must('compressor', WORKS_X + 5.4, 12.2, 180, on='=')
+lv.paint('trench', WORKS_X + 5.0, 14.6)
+lv.area('the detour: leg 1, lamps and a dead end')
+for c in range(LEG1_W + 1, W - 3, 24):
+    if not S0 - 3 <= c <= S1 + 3:
+        must('streetlight', c + 0.5, R0 - 0.28, 90)
+    if not S0 - 3 <= c + 12 <= S1 + 3 and c + 12 < W - 3:
+        must('streetlight', c + 12.5, R1 + 1.28, 270)
+must('hydrant', S1 + 5.5, R0 - 0.5)
+for r in (24.0, 32.0):
+    must('streetlight', S0 - 1.28, r, 0)
+
+
+def bend_line(pts, r, step=0.25):
+    """The points along a bend's line (tiles), as systems/Outro.js routePath lays it: straight lines, each inner corner
+    rounded off by an arc of radius r (shortened when the lines are too short for it)."""
+    out, cur = [], tuple(pts[0])
+
+    def line(a, b):
+        n = max(1, int(math.dist(a, b) / step))
+        out.extend((a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n) for i in range(n))
+    for i in range(1, len(pts) - 1):
+        P, B = pts[i], pts[i + 1]
+        l1, l2 = math.dist(cur, P), math.dist(P, B)
+        d1, d2 = ((P[0] - cur[0]) / l1, (P[1] - cur[1]) / l1), ((B[0] - P[0]) / l2, (B[1] - P[1]) / l2)
+        sign = 1 if d1[0] * d2[1] - d1[1] * d2[0] >= 0 else -1
+        phi = math.acos(max(-1.0, min(1.0, d1[0] * d2[0] + d1[1] * d2[1])))
+        half = math.tan(phi / 2)
+        rr = min(r, l1 * 0.98 / half, l2 * 0.49 / half)
+        a = (P[0] - d1[0] * rr * half, P[1] - d1[1] * rr * half)
+        line(cur, a)
+        c = (a[0] - d1[1] * sign * rr, a[1] + d1[0] * sign * rr)
+        a0, n = math.atan2(a[1] - c[1], a[0] - c[0]), max(2, int(rr * phi / step))
+        out.extend((c[0] + rr * math.cos(a0 + sign * phi * k / n), c[1] + rr * math.sin(a0 + sign * phi * k / n)) for k in range(n))
+        cur = (P[0] + d2[0] * rr * half, P[1] + d2[1] * rr * half)
+    line(cur, tuple(pts[-1]))
+    return out + [tuple(pts[-1])]
+
+
+def check_bend(path, r, wall=1.5, prop=1.3):
+    """The bend's line is clear: no wall, window or door within `wall` tiles of it, no prop within `prop`."""
+    pts = bend_line(path, r)
+    for (px, py) in pts:
+        for y in range(int(py - wall), int(py + wall) + 1):
+            for x in range(int(px - wall), int(px + wall) + 1):
+                if lv.tiles[y][x] in BLOCKS or lv.tiles[y][x] in 'GDL':
+                    d = math.hypot(max(x - px, 0, px - x - 1), max(y - py, 0, py - y - 1))
+                    assert d >= wall, f'the bend\'s line at {px:.1f},{py:.1f} is {d:.2f} from the wall at {x},{y}'
+    for (_, kind, col, row, deg, _) in lv.props:
+        if SIZES.get(kind) is None:
+            continue
+        b = Level.box(kind, col, row, deg)
+        for (px, py) in pts:
+            d = math.hypot(max(b[0] - px, 0, px - b[2]), max(b[1] - py, 0, py - b[3]))
+            assert d >= prop, f'{kind} at {col},{row} is {d:.2f} from the bend\'s line at {px:.1f},{py:.1f}'
+
 
 # ---------------------------------------------------------------- the kerbs
 # a kerb along every edge between a sidewalk and the road, laid from the tiles: straight lengths (four metres at a
@@ -731,7 +831,7 @@ lay_kerbs()
 lv.area('roofs')
 for row in (2.0, 5.5, 20.0, 22.4):
     col = 2.0
-    while col < W - 3:
+    while col < WS - 3:
         col += rng.uniform(4.0, 11.0)
         kind = rng.choice(('vent', 'vent', 'ac_unit', 'ac_unit', 'chimney', 'hatch', 'duct'))
         if B0 - 3 < col < B1 + 4:
@@ -751,8 +851,10 @@ lv.cat(320.0, 17.6)
 # ---------------------------------------------------------------- the night
 lv.wet = 0.35                                     # the street still wet from an earlier rain (seen)
 lv.rain = 0
-lights = [[x, 13.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.16 if DARK[0] < x < DARK[1] else 0.3] for x in range(10, W, 30)]
+lights = [[x, 13.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.16 if DARK[0] < x < DARK[1] else 0.3] for x in range(10, WS, 30)]
 lights += [[x, 17.0, 8, '#ffd9a0', 0.35] for x in range(D0 + 3, D1, 9)]      # the diner spills onto its corner
+lights += [[SIDE_X, r, 8, '#7a5ad8', 0.28] for r in (22, 34)]                 # the side street, leg 1
+lights += [[x, (ROAD1[0] + ROAD1[1] + 1) / 2, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.3] for x in range(LEG1_W + 4, W, 30)]
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
 # under it)
@@ -765,18 +867,38 @@ ambient = {
     ],
 }
 
+# THE ROUTE (systems/Route.js): straight legs along +x, the bends between them scripted. A leg: the columns it holds
+# [from, to), its lanes' middle rows (ours last), the row the camera is drawn toward (`mid`: the street's middle,
+# between its two facades; the view is 360 px high), its cruise (px/step), its kerbs (the roadway's first row, the
+# first sidewalk row: where the parking row is on the north side, the lorry's stretch), its streets across [first col,
+# last col, row above, row below] (the line of the building fronts held across them: systems/Drive.js fronts; the
+# chase's own `across` hold on every leg)
+LEGS = [
+    {'from': 0, 'to': LEG1, 'lanes': list(LANES), 'mid': 13.0, 'cruise': 8.9, 'kerbs': [9, 16],
+     'across': [[SIDE[0] - 2, SIDE[1] + 2, 8, 18]]},
+    {'from': LEG1, 'to': W, 'lanes': list(LANES1), 'mid': (ROAD1[0] - 2 + ROAD1[1] + 3) / 2, 'cruise': 8.9,
+     'kerbs': [ROAD1[0], ROAD1[1] + 1]},
+]
+# a bend: the car's middle at `at` (col) on its leg, the script drives it along `path` (its corners [col, row], each
+# inner one rounded off by an arc of `radius` tiles) and hands it to leg `to` on the lane the path ends on
+BENDS = [
+    {'at': BEND_AT, 'path': [[BEND_AT, LANES[1]], [SIDE_X, LANES[1]], [SIDE_X, LANES1[1]], [SIDE_X + 14, LANES1[1]]],
+     'radius': BEND_R, 'to': 1},
+]
+
 chase = {
     'van': list(START),
     'cruise': 8.9,              # px/step: 60 km/h
-    'lanes': list(LANES),       # the lanes' middle rows: theirs (westbound), ours
-    'kerbs': [9, 16],           # the roadway between its kerbs where the parking row is on the north side (the
-                                # lorry's stretch, most of the street), rows; the map says where it is elsewhere
-    'mid': 13.0,                # the row the camera is drawn toward: the street's middle, between its two facades (the
-                                # view is 360 px high: both rows of signs and the south shopfronts stay on the picture)
-    'end': END,
+    # (the first leg's, as before there were legs: lanes, kerbs, mid)
+    'lanes': list(LANES),
+    'kerbs': [9, 16],
+    'mid': 13.0,
     # the streets across [first col, last col, row above, row below]: the wheel does not take him down one (the
     # line of the building fronts is held across it: systems/Drive.js fronts)
     'across': [[CORAL[0], CORAL[1], 8, 18], [CROSS[0], CROSS[1], 8, 18]],
+    'legs': LEGS,
+    'bends': BENDS,
+    'end': END,                 # on the last leg
     'next': 'THE TOLL',         # what comes after it, on the card that closes the demo (Game: TO BE CONTINUED)
     # by the column of the car's middle. 'alley' (systems/Pursuit.js) waits at `car` [col, row] facing north, lamps on;
     # 'lorry' (systems/Lorries.js): the lorry waits at `lorry` [col, row] its cab to the north, and backs `back` tiles
@@ -801,20 +923,26 @@ chase = {
 
 
 def check_lanes():
-    """Nothing stands in the two lanes, anywhere (a parked car's flank included), and nothing loose stands within
-    reach of them: a thing a car could knock into a lane is a thing in the lane."""
+    """Nothing stands in the lanes of a leg, anywhere along it (a parked car's flank included), and nothing loose
+    stands within reach of them: a thing a car could knock into a lane is a thing in the lane. Leg 0's two lanes are
+    the roadway's rows 11 to 15, leg 1's ROAD1."""
+    roads = ((11.0, 16.0), (ROAD1[0], ROAD1[1] + 1.0))
     for (_, kind, col, row, deg, _) in lv.props:
         if SIZES.get(kind) is None:
             continue
         b = Level.box(kind, col, row, deg)
         if roadway(int(col)) and not 8 <= row < 18:
             continue                                          # up or down a street across
-        assert b[3] <= 11.0 or b[1] >= 16.0, f'{kind} at {col},{row} is in a lane'
+        for leg, (top, bottom) in zip(LEGS, roads):
+            if leg['from'] <= col < leg['to']:
+                assert b[3] <= top or b[1] >= bottom, f'{kind} at {col},{row} is in a lane'
 
 
 if __name__ == '__main__':
     lv.actor('@', int(START[0]), int(START[1]), face=0)
     check_lanes()
+    for B in BENDS:
+        check_bend(B['path'], B['radius'])
     lv.check(guards=0)
     lv.write('level2a', name='THE CHASE', subtitle='SUNSET BAY  -  MARCH 16TH 1986  -  1:40 AM',
              lights=lights, ambient=ambient, chase=chase, header=[
@@ -822,5 +950,6 @@ if __name__ == '__main__':
                  'Two lanes that nothing stands in, between kerbs; parking on the north side, on ours or on neither by',
                  'section; two junctions under traffic lights, a railway bridge, works, a bus stop, the yard the lorry backs',
                  'out of (event 2) with the cafe\'s terrace as the way round, the diner on the lit corner. The alley at',
-                 'col 138 is event 1.',
+                 'col 138 is event 1. Then works shut it: the scripted detour down the side street onto leg 1 (a plain',
+                 'test layout for now: systems/Route.js legs and bends).',
              ])

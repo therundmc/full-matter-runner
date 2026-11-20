@@ -140,12 +140,13 @@ function drawDrive(ctx, d, x, y, s, t) {
   ctx.globalAlpha = FADE;
 }
 
-// At the wheel in the chase, top middle: how much road is left (level `chase`: from its start to its `end`), a line
-// with his mark on it and the metres to go under it
+// At the wheel in the chase, top middle: how much road is left (level `chase`: from its start to its `end`, along
+// the route: its legs and the bends between them, systems/Route.js; Drive.progress never goes back), a line with
+// his mark on it and the metres to go under it
 function drawRoad(ctx, w, W, pad, s) {
-  const c = w.level.chase;
-  if (!c?.end) return;
-  const x0 = c.van[0] * TILE, x1 = c.end * TILE, k = clamp((w.drive.van.x - x0) / (x1 - x0), 0, 1);
+  const pr = w.drive.progress;
+  if (!pr) return;
+  const k = clamp(pr.s / pr.total, 0, 1);
   const bw = 400 * s, bx = W / 2 - bw / 2, by = pad + 8 * s;
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(bx - s, by - s, bw + 2 * s, 4 * s);
@@ -157,7 +158,7 @@ function drawRoad(ctx, w, W, pad, s) {
   ctx.globalAlpha = FADE;
   const mx = bx + bw * k; // his mark: a small triangle pointing down at the line
   ctx.beginPath(); ctx.moveTo(mx - 6 * s, by - 10 * s); ctx.lineTo(mx + 6 * s, by - 10 * s); ctx.lineTo(mx, by - 2 * s); ctx.fill();
-  const left = Math.max(0, Math.round((x1 - w.drive.van.x) / TILE));
+  const left = Math.max(0, Math.round((pr.total - pr.s) / TILE));
   text(ctx, `${left} M`, W / 2, by + 16 * s, 12 * s, PALETTE.white, { alpha: 0.75 });
 }
 

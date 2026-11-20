@@ -413,11 +413,13 @@ test('level2a: the back road loads, the van in our lane at the start, the end of
   assert.ok(map.w >= 420 && map.h >= 20, `${map.w} x ${map.h}`);
   assert.equal(c.van[1], c.lanes[c.lanes.length - 1], 'in our lane (the south one)');
   assert.ok(c.end * TILE < map.widthPx && c.end > 400, 'the end of the road on the map, after about 420 m');
-  // our lane is clear road all the way to the end
-  for (let x = Math.floor(c.van[0]); x < c.end; x++) assert.ok(!map.isSolid(x, Math.floor(c.van[1])), `col ${x}`);
-  // a short drive on the real map: from 3 tiles before the end, the level is over
-  const w = world(level2a.tiles), v = vehicle(w, 'van', (c.end - 3) * TILE, c.van[1] * TILE);
-  const d = new Drive(w, { ...c, arms: null, van: [c.end - 3, c.van[1]] }, v), input = keys();
+  // our lane is clear road all the way: the street to its bend, the leg the bend hands him to up to the end
+  const B = c.bends[0], last = c.legs[B.to], ours = last.lanes[last.lanes.length - 1];
+  for (let x = Math.floor(c.van[0]); x < B.at; x++) assert.ok(!map.isSolid(x, Math.floor(c.van[1])), `col ${x}`);
+  for (let x = Math.ceil(B.path[B.path.length - 1][0]); x < c.end; x++) assert.ok(!map.isSolid(x, Math.floor(ours)), `col ${x}`);
+  // a short drive on the real map: from 3 tiles before the end (on the last leg), the level is over
+  const w = world(level2a.tiles), v = vehicle(w, 'van', (c.end - 3) * TILE, ours * TILE);
+  const d = new Drive(w, { ...c, arms: null, van: [c.end - 3, ours] }, v), input = keys();
   w.drive = d;
   run(w, d, input, 0.5);
   assert.ok(w.cleared && w.exited && w.exits === 1, 'over');
@@ -509,7 +511,8 @@ test('drive: stalled, the wheel he holds is his: the car never fights it, and ge
 });
 
 // ---- a parked car he hits is shoved aside, never a wall (the user: "elle doit se mettre sur le cote")
-const { squareOf, asideKeep, asideThrow, blocksBoth, gripOf, slideStep, skidOf } = await load('game/systems/Drive.js');
+const { squareOf, asideKeep, asideThrow, gripOf, slideStep, skidOf } = await load('game/systems/Drive.js');
+const { blocksAll: blocksBoth } = await load('game/systems/Route.js'); // (two lanes: all of them)
 
 test('aside: how square a hit is, what it costs him and how the car is thrown (pure)', () => {
   assert.equal(squareOf(0.1, 1), 0, 'a corner: a graze');
