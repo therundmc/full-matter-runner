@@ -50,7 +50,9 @@ grid under its roof (cols 603-611: five islands, four booths, a gate at the end 
 boom, told by its lane's signal), spread back, the outer two merge in: the freeway's start; the level ends at col 656.
 """
 import math
+import os
 import random
+import struct
 
 from levelkit import Level, SIZES, SOLID as BLOCKS
 
@@ -172,7 +174,9 @@ lv.fill(N_ALLEY[0], 0, N_ALLEY[1], 7, '_')
 # the centre line: double and solid where nobody may pass (toward a junction, under the bridge, at the bus stop, past
 # the yard, to the freeway: paint), else single dashes, two metres on, two off (a line that never breaks does not show
 # the road going by); none across a junction
-SOLID = ((30, 45), (62, 74), (132, 160), (238, 276), (306, 356), (374, 388), (404, WS - 1))
+# (a double starts where a gap of the dashes would, in their rhythm, and runs on to the stop line: Coral Street's at col
+# 46, the dashes again after a gap)
+SOLID = ((28, 45), (62, 74), (132, 161), (238, 276), (306, 356), (374, 388), (404, WS - 1))
 BOXES = ((46, 61), (389, 403))
 for c in range(0, WS, 4):
     if not within(c, SOLID) and not within(c, BOXES) and not within(c + 1, SOLID):
@@ -486,7 +490,7 @@ for (c0, c1, full) in N_BAYS:
 for (c0, c1, full) in S_BAYS:
     bays(c0, c1, full, False)
 assert len(PARKED) == 12 and not set(EMPTY) - {c for (c0, c1, _) in N_BAYS + S_BAYS for c in range(c0, c1, 6)}, len(PARKED)
-for c in range(LOADING[0], LOADING[1] + 1, 6):
+for c in range(LOADING[0] + 6, LOADING[1] + 1, 6):                   # (its first tee is the parking row's last)
     lv.paint('park_tee', c, 17.0, 180)
 lv.paint('hatch_bay', LOADING[0] + 3.0, 17.0)
 lv.paint('hatch_bay', LOADING[0] + 9.0, 17.0)
@@ -604,7 +608,7 @@ for (kind, c, r, deg) in (('sign_speed', 16.4, 16.3, 0), ('sign_noparking', 62.4
     must(kind, c, r, deg)
 for c in range(105, 110):
     painted[('h', c, 9)] = 'red'
-for (c, r) in ((40.3, 14.9), (88.5, 12.4), (171.5, 14.6), (199.4, 12.0), (236.4, 15.0), (290.2, 12.6), (368.2, 14.4), (411.0, 12.3)):
+for (c, r) in ((37.0, 12.5), (88.5, 12.4), (171.5, 14.6), (199.4, 12.0), (236.4, 15.0), (290.2, 12.6), (368.2, 14.4), (411.0, 12.3)):
     lv.dress('manholes', c, r)
 for (kind, c, r, deg) in (('manhole_sq', 27.5, 16.9, 0), ('road_crack_a', 33.0, 12.2, 0), ('road_patch_c', 71.0, 14.6, 0),
                           ('manhole_sq', 80.2, 9.2, 90), ('road_crack_b', 92.5, 12.6, 0), ('road_patch_a', 121.0, 14.7, 0),
@@ -1349,12 +1353,12 @@ lv.paint('litter_a', 154.4, 8.5)
 # ---------------------------------------------------------------- 1: the derelict stretch (cols 157-246)
 lv.area('harmony 1: the dark stretch (palms gone wild in the lot, the homeless)')
 must('palm_stump', 173.4, 8.45)                                           # one the city cut down
-for (kind, c, r) in (('sabal_palm_ragged', 165.6, 7.1), ('sabal_palm_b', 210.6, 7.0)):
+for (kind, c, r) in (('sabal_palm_ragged', 168.2, 7.0), ('sabal_palm_b', 210.6, 7.0)):
     must(kind, c, r, on='~"')                                             # in the lot, their crowns over the fence
 must('coconut_palm_lean', 187.4, 6.9, 75, on='~"')                       # leaning out of the lot over the sidewalk
 lv.paint('coconuts_fallen', 188.6, 8.5)
 lv.paint('palm_frond_fallen', 185.6, 8.45)
-lv.paint('sabal_frond_fallen', 166.8, 8.5, 150)
+lv.paint('sabal_frond_fallen', 169.4, 8.5, 150)
 lv.paint('sabal_frond_fallen', 209.6, 8.5, 30)
 # a man asleep on his cardboard against the blind wall, his things by him; another with his cart, smoking
 lv.paint('cardboard_bed_blanket', 188.4, 17.4)
@@ -1368,7 +1372,7 @@ lv.paint('litter_bottles', 222.6, 16.7, 180)
 lv.paint('litter_b', 203.6, 16.8)
 lv.paint('litter_a', 239.0, 16.7, 90)
 HARMONY_LIGHTS += [[187.5, 9.0, 5, '#7a5ad8', 0.2], [219.6, 17.0, 4, '#ffa860', 0.16], [173.0, 16.6, 6, '#7a5ad8', 0.16],
-                   [166.0, 8.6, 4, '#5a6ad8', 0.16], [210.6, 8.6, 4, '#5a6ad8', 0.16], [233.0, 16.6, 6, '#7a5ad8', 0.16]]
+                   [168.2, 8.6, 4, '#5a6ad8', 0.16], [210.6, 8.6, 4, '#5a6ad8', 0.16], [233.0, 16.6, 6, '#7a5ad8', 0.16]]
 
 # ---------------------------------------------------------------- 2: the bus stop (cols 247-271)
 lv.area('harmony 2: the bus stop (a lawyer\'s bench, the pay phone, people waiting, young palms)')
@@ -1558,6 +1562,48 @@ for (kind, c, r, deg) in (('oil_streak', 564.0, 44.25, 0), ('oil_streak', 571.0,
     lv.paint(kind, c, r, deg)
 HARMONY_LIGHTS += [[568.0, 43.0, 9, '#ffb46a', 0.24], [575.5, 39.5, 8, '#ffa860', 0.2], [582.0, 46.5, 8, '#ffb46a', 0.24],
                    [585.5, 40.0, 5, '#ff4aa6', 0.16], [648.0, 43.0, 9, '#ffb46a', 0.22], [660.0, 43.0, 9, '#ffa860', 0.2]]
+
+# ================================================================ POLISH: the street from its start to the dark stretch (cols 0-220)
+# (the user, 2026-11-20: "il faut passer sur tout le niveau et peaufiner, avoir un rendu realiste, clean et pro".) Walked
+# frame by frame and on a map of it at a world px a px: what the street's shared rules (the junctions, the drains every
+# 34 m, the lamps every 12, a meter at every tee) laid wrong there is put right by hand. Laid after the street's dice
+# (nothing here draws from `rng`), before the kerbs (`painted` is theirs).
+lv.area('polish west: drains, paint and kerbs at Coral Street')
+# a drain is never on a crossing, a bay's hatching, a tee or a hydrant's valve: each in its gutter beside it, Coral
+# Street's at the inside corners of its bulb-outs, where the parking rows' gutters run into them
+for (c, r, to) in ((CORAL[0] - 0.6, 11 + 8 / 32, (CORAL[0] - 4.9, 9 + 8 / 32)), (CORAL[1] + 1.6, 16 - 8 / 32, (CORAL[1] + 5.4, 16 - 8 / 32)),
+                   (95.5, 18 - 8 / 32, (103.0, 16 - 8 / 32)), (163.5, 16 - 8 / 32, (160.6, 16 - 8 / 32)), (188.5, 9 + 8 / 32, (185.2, 9 + 8 / 32))):
+    unpaint(lambda k, x, y, c=c, r=r: k == 'drain' and abs(x - c) < 0.05 and abs(y - r) < 0.05)
+    lv.paint('drain', *to)
+for c in (CORAL[0] - 1, CORAL[1] + 1):                                   # no red stub poking out from under a corner
+    for r in (11, 16):
+        painted.pop(('h', c, r), None)
+# the news boxes off the crossing's kerb ramp (they stood on its landing), west of it by the kerb
+drop(lambda k, c, r: k == 'news_box' and CORAL[0] - 3 < c < CORAL[0] - 1.4 and abs(r - 16.45) < 0.05)
+for i in range(3):
+    must('news_box', CORAL[0] - 5.0 + i * 0.56, 16.45)
+lv.area('polish west: meters, signs, lamps')
+# a meter serves the bay east of its tee: none at a row's last tee
+drop(lambda k, c, r: k == 'parking_meter' and any(abs(c - (t + 0.2)) < 0.05 for t in (44, 88, 146, 200)))
+if drop(lambda k, c, r: k == 'sign_noparking' and abs(c - (B0 - 0.6)) < 0.05):           # (not in front of a door)
+    must('sign_noparking', B0 - 0.25, 8.7)
+# PALM PLAZA's pole sign stood with its panels half in the south fronts (2 m of sidewalk under a 2.75 m sign) and against
+# a lamp: it stands where the north sidewalk is three metres wide, at its end before the strip's block
+drop(lambda k, c, r: k == 'pole_sign_strip')
+must('pole_sign_strip', 102.4, 9.62)
+# lamps: none under a palm's crown (84: off it and its drain) nor in front of a door (108); the dark stretch's (one in two by the rule, which
+# with the bridge and an alley mouth left 60 m without one, and one over a barricade of the works) every 14 m on
+# alternate sides, each one failing its own way
+drop(lambda k, c, r: k == 'streetlight' and (abs(c - 84.5) < 0.05 or abs(c - 108.5) < 0.05 or DARK[0] < c < 220))
+for (c, north, fault) in ((87.5, True, None), (105.9, True, None), (166.5, False, 'stutter'), (180.5, True, 'broken'),
+                          (195.0, False, 'dying'), (208.5, True, 'broken')):
+    row, deg = (n_kerb(int(c)) - 0.28, 90) if north else (s_kerb(int(c)) + 0.28, 270)
+    must('streetlight', c, row, deg, **({'flicker': fault} if fault else {}))
+lv.area('polish west: the vacant lot')
+# no drum (docs/LEVEL2.md: "No keg, no drum"): a dumped mattress and a stack of pallets in the lot instead
+drop(lambda k, c, r: k == 'barrel' and LOT[0] < c < 220)
+lv.paint('mattress_dumped', LOT[0] + 20.6, 6.5, 14)
+must('pallet_stack', LOT[0] + 53.4, 6.6, 15, on='~"')
 
 
 def bend_line(pts, r, step=0.25):
@@ -1851,9 +1897,48 @@ def check_lanes():
                     assert b[3] <= top or b[1] >= bottom, f'{kind} at {col},{row} is in a lane'
 
 
+# the road's markings (lines, bars, tees, arrows, lettering, hatching) and its iron covers: what may never lie on one
+# another (a cover is never painted over: the paint stops short of it, or it sits beside the line)
+LINE_PAINT = {'zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_arrow', 'road_arrow_turn', 'road_bus',
+              'road_stop', 'road_slow', 'road_keep', 'road_clear', 'road_only', 'hatch_bay', 'hatch_yard', 'edge_line',
+              'edge_line_yellow', 'lane_dash_long', 'detour_arrow_paint', 'detour_arrow_paint_left', 'merge_arrow',
+              'merge_arrow_s', 'gore_hatch', 'toll_text', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4'}
+COVERS = {'drain', 'manhole_sq', 'valve_cap'}
+SPRITES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'sprites', 'props')
+
+
+def paint_size(kind):
+    """A road paint's size in tiles: its sprite's (painted at twice the world's density, as all of the road's are)."""
+    with open(os.path.join(SPRITES, kind + '.png'), 'rb') as f:
+        w, h = struct.unpack('>II', f.read(24)[16:24])
+    return w / 64, h / 64
+
+
+def check_paint_overlaps(col0, col1, eps=0.03):
+    """Between columns col0 and col1 no two road markings overlap (two lines, a line on a crossing's bars, lettering on
+    a line...), none lies on an iron cover, and none on the centre line's dashes (the tiles '-'); lengths of one line
+    laid end to end only touch. A marking's box is its sprite's."""
+    marks = []
+    for (kind, x, y, deg) in lv.floor:
+        if (kind in LINE_PAINT or kind in COVERS) and col0 <= x < col1:
+            w, h = paint_size(kind)
+            a = math.radians(deg)
+            w, h = abs(w * math.cos(a)) + abs(h * math.sin(a)), abs(w * math.sin(a)) + abs(h * math.cos(a))
+            marks.append((kind, x, y, (x - w / 2, y - h / 2, x + w / 2, y + h / 2)))
+    marks += [('centre dash', c + 0.5, r + 0.5, (c, r + 0.4, c + 1, r + 0.6)) for r in range(H) for c in range(int(col0), min(W, int(col1)))
+              if lv.tiles[r][c] == '-']
+    for (i, (ka, xa, ya, a)) in enumerate(marks):
+        for (kb, xb, yb, b) in marks[i + 1:]:
+            if ka == kb == 'centre dash' or (ka in COVERS and kb in COVERS):
+                continue
+            assert not (a[0] < b[2] - eps and b[0] < a[2] - eps and a[1] < b[3] - eps and b[1] < a[3] - eps), \
+                f'{ka} at {xa:.2f},{ya:.2f} overlaps {kb} at {xb:.2f},{yb:.2f}'
+
+
 if __name__ == '__main__':
     lv.actor('@', int(START[0]), int(START[1]), face=0)
     check_lanes()
+    check_paint_overlaps(0, 220)          # (the street's start to the dark stretch: polished; the rest to come)
     for B in BENDS:
         check_bend(B['path'], B['radius'])
     lv.check(guards=0)
