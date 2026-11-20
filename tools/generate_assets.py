@@ -12474,9 +12474,9 @@ RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     toll_text=(road_text('TOLL', 9910), (51, 44)),
     plaza_stripes=(plaza_lines(320, 448, _FAN, 9911), (320, 448)),
     plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912), (128, 6)),
-    # made to measure for 2A's toll (tools/build_level2a.py): the two lanes' edges flaring out to four lanes of 2.5 m
-    # (the new lanes either side), then the four spreading to the plaza's grid (TOLL_LANES: 4.5 m apart), their
-    # edges out to the outer islands' noses; turned round (180), the same after the plaza
+    # made to measure for 2A's toll (tools/build_level2a.py): two lanes' edges flaring out to four lanes of 2.5 m
+    # (laid turned round past the plaza: the outer two end), and four lanes spreading to the plaza's grid (TOLL_LANES:
+    # 4.5 m apart), their edges out to the outer islands' noses (turned round: the same after it)
     lane_taper=(plaza_lines(384, 336, _TAPER, 9921), (384, 336)),
     plaza_fan=(plaza_lines(512, 592, _TOLL_FAN, 9922), (512, 592)),
 )
@@ -12510,6 +12510,121 @@ RAMP_SIZES.update((n, sz) for n, (_, sz) in RAMP_PAINT.items())
 CHASE_PROPS.update(RAMP_PROPS)
 CHASE_SIZES.update(RAMP_SIZES)
 ROAD_GLOWING += RAMP_GLOWING
+
+
+# ---------------------------------------------------------------- level 2A, part two: the freeway over the side street
+# Made to measure for tools/build_level2a.py: the freeway runs along the frontage road the detour comes out on and
+# crosses the side street on a short bridge (the deck, hung high: it fades over him as he goes under; the shadow it
+# lays on the street under it), and where the ramp joins it the freeway's lanes come in over 24 m to lie alongside
+# ours (the gore between them, a long right triangle). The freeway's cross-section is the builder's: from the deck's
+# north edge (row 33.5), its parapet, a shoulder, the yellow edge line on row 35.5, two lanes of 2.5 m (the dashes on
+# row 38), the white edge line on row 40.5, a narrow shoulder and the south parapet to row 41.5.
+FWY_DASH = (224, 320)        # the deck's one lane dash (px along it): the freeway's dashes lie every 12 m from col 432
+
+
+def p_overpass():
+    """The freeway's bridge over the side street, from above, 18 m along it and 8 m across (hung high: it fades over
+    him as he drives under): two concrete parapets with their coping and a steel rail along the top, the deck's
+    asphalt gone grey and polished in the wheel paths, oil down the middle of each lane, the yellow edge line, the
+    lane's dash and the white edge line where the ground's paint carries on, a finger joint across each end and a
+    slab joint in the middle sealed in black, scuppers along the parapets with a rust stain under each, patches."""
+    W, H = 576, 256
+    cv = Cv(W, H)
+    rng = random.Random(9951)
+    grit, slow = VNoise(W, H, 3, rng), VNoise(W, H, 22, rng)
+    deck = hx('#4e5059')
+
+    def surface(x, y, cur):
+        c = shift(deck, int((grit(x, y) - 0.5) * 12 + (slow(x, y) - 0.5) * 16))
+        for lane in (104.0, 184.0):                                       # the wheel paths polished, oil between
+            d = abs(y - lane)
+            if 18 < d < 30:
+                c = shift(c, 5)
+            elif d < 4 and slow(x * 0.7, y) > 0.55:
+                c = mix(c, hx('#2e2c34'), 0.25)
+        return c
+    px_paint(cv, 0, 16, W, H - 16, surface)
+    for (y0, y1, col) in ((62, 66, ROAD_YELLOW), (222, 226, ROAD_WHITE)):  # the edge lines
+        px_paint(cv, 0, y0, W, y1, lambda x, y, cur, col=col: mix(cur, col, 0.85) if grit(x, y * 4) < 0.8 else None)
+    px_paint(cv, FWY_DASH[0], 142, FWY_DASH[1], 146, lambda x, y, cur: mix(cur, ROAD_WHITE, 0.8) if grit(x, y) < 0.74 else None)
+
+    def parapet(y0, y1, inner):
+        """A parapet wall from y0 to y1, its face toward the deck at `inner` (the coping lit on its north side)."""
+        def f(x, y, cur):
+            t = (y - y0) / (y1 - y0)
+            u = t if inner == y1 else 1 - t                               # 0: the outer edge, 1: the deck's side
+            L = 0.86 if u < 0.25 else 0.66 if u < 0.7 else 0.3
+            c = shade(CONCRETE, L)
+            if (x + 7) % 96 < 1.0:
+                c = dk(c, 0.35)                                            # its joints
+            return shift(c, int((grit(x, y) - 0.5) * 16))
+        px_paint(cv, 0, y0, W, y1, f)
+        r = y0 + (y1 - y0) * 0.38
+        frect(cv, 0, r - 0.75, W, r + 0.75, shade(STEEL_L, 0.42))          # the rail along its top
+        frect(cv, 0, r - 0.75, W, r - 0.25, shade(STEEL_L, 0.82))
+        for x in range(10, W, 64):
+            frect(cv, x - 1.0, r - 1.5, x + 1.0, r + 1.5, shade(STEEL_L, 0.3))   # its posts
+    parapet(0, 16, 16)
+    parapet(H - 16, H, H - 16)
+    for x in range(40, W, 96):                                             # scuppers, a rust stain under each
+        for (y, d) in ((16.5, 1), (H - 17.5, -1)):
+            frect(cv, x - 2.5, y, x + 2.5, y + 1.5, hx('#16141c'))
+            for k in range(7):
+                cv.dot(x - 1.0 + rng.uniform(-0.6, 0.6), y + d * (2.0 + k * 0.8), alpha(hx('#7a4a26'), 150 - k * 18))
+
+    def joint(x0):
+        """A finger joint across the deck: the steel plates, their teeth, the black gap between."""
+        frect(cv, x0, 16, x0 + 5, H - 16, shade(STEEL_L, 0.36))
+        for y in range(16, H - 16, 3):
+            frect(cv, x0 + 1.5, y, x0 + 3.5, y + 1.5, shade(STEEL_L, 0.62))
+        frect(cv, x0 + 2.25, 16, x0 + 2.75, H - 16, hx('#0e0c12'))
+    joint(1)
+    joint(W - 6)
+    frect(cv, W / 2 - 0.75, 16, W / 2 + 0.75, H - 16, hx('#22212a'))         # the slab joint, sealed
+    for (x, y, w, h) in ((96, 150, 42, 26), (402, 82, 30, 18), (300, 196, 56, 14)):   # patches of a newer black
+        frect(cv, x, y, x + w, y + h, lambda cur: mix(cur, hx('#2c2c34'), 0.7))
+        frect(cv, x, y, x + w, y + 0.75, hx('#1c1a22'))
+    smudge(cv, rng, 40, (8, 18, W - 8, H - 18), (2, 6), 0.16)
+    smudge(cv, rng, 14, (8, 18, W - 8, H - 18), (1, 3), 0.3, hx('#8a8e98'))
+    cv.outline()
+    return cv
+
+
+def p_overpass_shadow():
+    """The shadow the freeway's bridge lays on the street under it: dark, its edges a little softer."""
+    W, H = 576, 256
+
+    def f(x, y, cur):
+        e = min(x, y, W - x, H - y)
+        return GUTTER + (int(132 * min(1.0, 0.45 + e / 16)),)
+    cv = Cv(W, H)
+    px_paint(cv, 0, 0, W, H, f)
+    return cv
+
+
+def p_gore_taper():
+    """Where the freeway's lanes come in alongside the ramp: the gore between them painted out, 24 m long and 2.5 m
+    wide where it starts (-x), a long right triangle: its foot along the ramp's edge (+y), its other side the freeway's
+    edge line slanting down to meet it at its point (+x), white bars across it slanting back at the traffic."""
+    W, H = 768, 84
+    top0, foot = 2.0, H - 2.0
+
+    def mask(x, y):
+        if not 2 <= x < W - 1:
+            return False
+        top = top0 + (foot - top0) * x / W
+        if y < top - 2.0 or y > foot + 2.0:
+            return False
+        if y < top + 2.0 or y > foot - 2.0:
+            return True                                                    # its two edge lines
+        return (x + (y - top0) * 1.6) % 64 < 5.0                           # the bars
+    return road_mark(W, H, mask, 9961)
+
+
+FWY_PROPS = dict(overpass=p_overpass, overpass_shadow=p_overpass_shadow, gore_taper=p_gore_taper)
+FWY_SIZES = dict(overpass=(576, 256), overpass_shadow=(576, 256), gore_taper=(768, 84))
+CHASE_PROPS.update(FWY_PROPS)
+CHASE_SIZES.update(FWY_SIZES)
 
 
 # --------------------------------------------------------------------------

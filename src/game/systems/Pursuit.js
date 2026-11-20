@@ -474,12 +474,12 @@ export default class Pursuit {
       if (hold) ty = v.y;
     }
     // a toll's plaza ahead (systems/Toll.js): its gate's lane, chosen and kept (no other line tried); the one sent
-    // the wrong way held a little behind him
+    // the wrong way, and one following him down his lane, held behind him
     const gate = this.world.toll?.steer(car, v.x, ty, tg) ?? null;
     if (gate !== null) {
       ty = gate;
       hold = true;
-      tx = this.world.toll.wrongX(car, tg) ?? tx;
+      tx = this.world.toll.holdX(car, tg) ?? tx;
     }
     let vx = clamp(pv + (tx - v.x) * C.close, 0, max);
     // what stands ahead in its lane: the nearest free line to its slot's, or brake for it

@@ -133,17 +133,21 @@ export default class Toll {
     const his = tg ? woodFor(P, x, tg.y) : -1, hy = tg?.y ?? y, cy = car.v?.y ?? y;
     const others = (this.world.pursuit?.cars || []).filter((c) => c !== car && c.toll?.P === P).map((c) => ({ y: c.v.y, k: c.toll.k }));
     const k = car.gate0 === 'steel' ? steelFor(P, x, cy, Math.max(0, his), hy, others) : woodFor(P, x, cy, his, hy, others);
-    car.toll = { P, k: k >= 0 ? k : nearestLane(P, y, x) };
+    car.toll = { P, k: k >= 0 ? k : nearestLane(P, y, x), his };
     return laneY(P, car.toll.k, x + reach(C.lead, car.s));
   }
 
-  // the px along the road one sent the wrong way holds its middle at: `wrong` px off his (a car's length behind him:
-  // it hits the boom a moment after he is through, and is never side by side with him as he changes lanes), unless
-  // it is still ahead of him in his lane (it would brake onto his nose: it keeps its slot until out of it); else null
-  wrongX(car, tg) {
-    if (!car.toll || car.gate0 !== 'steel' || !tg?.car) return null;
+  // the px along the road a car going through holds its middle at (Pursuit.want), or null (its slot's): one sent the
+  // wrong way `wrong` px off his (a car's length behind him: it hits the boom a moment after he is through), one
+  // following him down his own lane `follow` px off it (behind him, never side by side in it); either keeps its slot
+  // while still ahead of him in his lane (it would brake onto his nose)
+  holdX(car, tg) {
+    const T = car.toll;
+    if (!T || !tg?.car) return null;
     const inHis = Math.abs(car.v.y - tg.y) < (car.v.h + tg.car.h) / 2 + 8;
-    return inHis && car.v.x > tg.x ? null : tg.x + this.C.wrong;
+    if (inHis && car.v.x > tg.x) return null;
+    if (car.gate0 === 'steel') return tg.x + this.C.wrong;
+    return T.k === T.his ? tg.x + this.C.follow : null;
   }
 
   // A step: how far each plaza is told (his car `tell` s from its gates, until he is `past` them; faded in over

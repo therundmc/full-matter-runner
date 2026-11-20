@@ -258,23 +258,25 @@ test('toll: from leg 1 on into the approach and the plaza with no bend: his row 
   assert.equal(s.w.killed, null);
 });
 
-test('toll: on the plaza the view follows him across (`track`): steered down to the last lane, it goes with him, never a jump', () => {
+test('toll: on the plaza the view follows him across (`track`): steered to the outer wooden lane, it goes with him, never a jump', () => {
   const legs = legsOf(C), kp = legAt(legs, GX), L = legs[kp];
   assert.ok(L.track > 0 && L.lanes.join() === T.lanes.join(), 'the plaza\'s leg follows him');
-  const s = start(T.fan[0] - 8, T.from[3], { speed: L.cruise }), { d, v } = s, z = 3, viewW = 640;
+  // (the wooden lane farthest from the road's middle: the one the view has to follow him to)
+  const k = T.gates.reduce((best, g, i) => (g === 'wood' && (best < 0 || Math.abs(T.lanes[i] - L.mid) > Math.abs(T.lanes[best] - L.mid)) ? i : best), -1);
+  const s = start(T.fan[0] - 8, T.from[k], { speed: L.cruise }), { d, v } = s, z = 3, viewW = 640;
   let was = d.frame(viewW, z), most = 0;
-  run(s, 1.6, { steer: 3, each: () => {
+  run(s, 1.6, { steer: k, each: () => {
     const f = d.frame(viewW, z);
     most = Math.max(most, Math.abs(f.y - was.y));
     was = f;
     return v.x > GX - 2 * TILE;
   } });
   const f = d.frame(viewW, z), want = L.mid * TILE + (v.y - L.mid * TILE) * L.track;
-  assert.ok(Math.abs(v.y - T.lanes[3] * TILE) < 12, `in the last lane (${(v.y / TILE).toFixed(2)})`);
+  assert.ok(Math.abs(v.y - T.lanes[k] * TILE) < 12, `in lane ${k + 1} (${(v.y / TILE).toFixed(2)})`);
   assert.ok(most <= CHASE.camera.across.most + 1, `${most.toFixed(1)} px a step at most`);
   assert.ok(Math.abs(f.y - want) < 24, `the view's middle with him (${(f.y / TILE).toFixed(2)}, wants ${(want / TILE).toFixed(2)})`);
-  assert.ok(f.y - L.mid * TILE > 3 * TILE, 'moved down with him');
-  assert.ok(f.y + 180 > v.y + 40, 'the last lane on the picture (the view 360 px high)');
+  assert.ok(Math.abs(f.y - L.mid * TILE) > 3 * TILE, 'moved across with him');
+  assert.ok(Math.abs(v.y - f.y) + 40 < 180, 'his lane on the picture (the view 360 px high)');
   assert.equal(s.w.killed, null);
 });
 

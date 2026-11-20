@@ -327,12 +327,13 @@ export const CHASE = {
   // across for each px off it, twice the chase's: the islands leave it 60 cm a side; `steer` px/step across at most:
   // the fan's outer lines spread fast); one sent the wrong way
   // (the level's event `gate: 'steel'`) takes the steel lane next to his and holds `wrong` px off his middle (a car's
-  // length behind him, never side by side as he changes lanes: it hits the boom a moment after he is through).
+  // length behind him, never side by side as he changes lanes: it hits the boom a moment after he is through); one
+  // going down his lane (no other wooden one on its side of him) keeps `follow` px off his middle, behind him.
   // Nothing is attacked or told by them meanwhile.
   // His car through a wooden arm (what it costs him: the arm's `cost`, data/props.js): a breath of slow motion
   // (`beat`, systems/ChaseCam.js), the picture kicked `push` px on, shaken
   toll: {
-    tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, lateral: 0.14, steer: 5, every: 30, run: 90, from: 70, fade: 0.15,
+    tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, follow: -240, lateral: 0.14, steer: 5, every: 30, run: 90, from: 70, fade: 0.15,
     beat: { slow: 0.4, in: 0.04, hold: 0.2, out: 0.18, push: 5, shake: 0.22 },
   },
   // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane

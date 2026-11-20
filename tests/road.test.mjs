@@ -168,3 +168,36 @@ test('road: the street has what a street has: a bus stop, the works signed in a 
   for (const k of ['hung', 'lasting', 'overhead']) assert.ok(PROPS.viaduct[k] && PROPS.gantry_sign[k], k);
   assert.ok(PROPS.traffic_light.static && !PROPS.traffic_light.lasting && PROPS.bollard.static && !PROPS.bollard.lasting, 'bolted: torn off by the car');
 });
+
+test('road: part two: works shut the street past the side street, STOP at both its ends, leg 1 one way along the freeway, what never gives out of the wheel\'s reach', () => {
+  const B = C.bends[0], L1 = C.legs[B.to], side = [B.path[1][0] - 4, B.path[1][0] + 4];
+  const at = (t, c0, c1, r0, r1) => level2a.props.filter(([k, c, r]) => k === t && c >= c0 && c <= c1 && r >= r0 && r <= r1);
+  const paint = (n) => level2a.floor.filter(([k]) => k === n);
+  // the works across the street past the side street's mouth, the way round told before it
+  assert.equal(at('road_closed', side[1], side[1] + 30, 11, 16).length, 1, 'ROAD CLOSED across the street');
+  assert.ok(at('traffic_cone', side[0], side[1] + 1, 11, 16).length >= 5, 'cones taper the lanes into the side street');
+  for (const k of ['excavator', 'dump_truck', 'arrow_board']) assert.equal(at(k, side[0], side[1] + 30, 11, 16).length, 1, k);
+  assert.ok(paint('detour_arrow_paint').filter(([, c, r]) => c < B.at && r === C.lanes[1]).length >= 2, 'DETOUR painted in our lane');
+  assert.ok(level2a.props.filter(([k, c]) => k === 'sign_detour' && c < side[0]).length >= 3, 'and signed');
+  // the side street: STOP for whoever comes up it and whoever comes down it; the freeway's bridge over its foot
+  assert.equal(at('sign_stop', side[0] - 2, side[1] + 3, 16, 43).length, 2);
+  assert.ok(paint('stop_line').filter(([, c, r]) => c > side[0] && c < side[1] + 1 && r > 16).length >= 4);
+  const deck = level2a.props.filter(([k]) => k === 'overpass');
+  assert.ok(deck.length === 1 && PROPS.overpass.hung && PROPS.overpass.overhead && paint('overpass_shadow').length === 1);
+  // leg 1 one way: white lines, no yellow centre line in its lanes before the toll; the freeway comes alongside
+  const map = new TileMap(level2a.tiles), toll = 560;
+  for (let x = L1.from; x < toll; x++) for (let y = 43; y < 48; y++) assert.equal(map.at(x, y), '=', `col ${x} row ${y}`);
+  assert.ok(paint('lane_dash_long').filter(([, c, r]) => c > L1.from && c < toll && r === 45.5).length >= 7);
+  assert.equal(paint('gore_taper').length, 1);
+  // what never gives (a guardrail, its end, a dock's edge) stands beyond the line his wheel is held to (leg 1's
+  // `across`): along it he scrapes, never nose-on into it
+  const holds = (c) => L1.across.filter(([a, b]) => c >= a && c <= b);
+  for (const [t, c, r, deg] of level2a.props) {
+    if (c < L1.from || c >= toll || r < 41 || !['guardrail', 'guardrail_end', 'loading_dock', 'jersey_barrier'].includes(t)) continue;
+    const half = halfAcross(t, deg), lines = holds(c);
+    assert.ok(lines.length, `${t} at ${c}: a line held there`);
+    if (r > 46) assert.ok(Math.min(...lines.map((a) => a[3])) <= r - half, `${t} at ${c}, ${r}: south of the line`);
+    else assert.ok(Math.max(...lines.map((a) => a[2])) >= r + half, `${t} at ${c}, ${r}: north of the line`);
+  }
+  assert.ok(L1.cruise > C.cruise, 'faster out of the detour');
+});
