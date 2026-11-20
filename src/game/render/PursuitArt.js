@@ -13,8 +13,11 @@ import { BODY_SCALE } from '../Config.js';
 import { sprite, drawSprite } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { CHASE } from '../data/chase.js';
+import { WEAPONS } from '../data/weapons.js';
 import { laneY, mouthX } from '../systems/Toll.js';
 import { laneSign } from './LaneSign.js';
+
+const PISTOL = WEAPONS.pistol; // the gunmen's 1911 (systems/Pursuit.js pistolOf)
 
 const RED = '255,42,74';        // the telegraph's red
 const BONE = '239,230,210';     // enemy tracers
@@ -41,7 +44,8 @@ export function drawChaseFigures(ctx, w, vis) {
     for (const car of P.cars) if (vis(car.v.x, car.v.y) && !car.v.exploded) car.v.carried(ctx, () => drawGunman(ctx, P, car));
   }
   const gun = w.drive?.on && !w.drive.dead ? w.drive.gun : null;
-  if (gun?.aimed?.ok && !gun.van.rider) drawHand(ctx, gun, w.player); // (an open car draws him, his arm out)
+  // (an open car draws him, his arm out; a closed one's hand is in its frame as it is drawn too)
+  if (gun?.aimed?.ok && !gun.van.rider) gun.van.carried(ctx, () => drawHand(ctx, gun, w.player));
 }
 
 // the gunman: his shoulder in the window, his head out, the arm and the pistol toward where he aims; shot, his arm
@@ -62,20 +66,20 @@ function drawGunman(ctx, P, car) {
   ctx.beginPath();
   ctx.ellipse((sh.x + g.x) / 2, (sh.y + g.y) / 2, 5.5, 4, out, 0, Math.PI * 2);
   ctx.fill();
-  const hand = { x: g.x + Math.cos(car.gunA) * 9, y: g.y + Math.sin(car.gunA) * 9 };
+  const { hand, at } = P.pistolOf(car); // (where his shot leaves: Pursuit.muzzle)
   line(ctx, g.x, g.y, hand.x, hand.y, JACKET, 3);
   dot(ctx, hand.x, hand.y, SKIN, 1.6);
-  drawSprite(ctx, sprite('weapons/pistol'), hand.x + Math.cos(car.gunA) * 3, hand.y + Math.sin(car.gunA) * 3, car.gunA, 1, BODY_SCALE);
+  drawSprite(ctx, sprite(PISTOL.sprite), at.x, at.y, car.gunA, 1, BODY_SCALE);
   drawSprite(ctx, sprite('characters/thug_head'), g.x, g.y, car.gunA, 1, BODY_SCALE * 0.9);
 }
 
-// his hand out of the driver's window, his gun in it
+// his hand out of the driver's window, his gun in it (CarGun.outOf: where its rounds leave)
 function drawHand(ctx, gun, p) {
-  const a = gun.aimed.a, v = gun.van, root = v.toWorld(gun.seat[0], 1), h = gun.hand(a);
-  line(ctx, root.x, root.y, h.x, h.y, COAT, 3.2);
-  dot(ctx, h.x, h.y, SKIN, 1.7);
+  const a = gun.aimed.a, o = gun.outOf(a);
+  line(ctx, o.sh.x, o.sh.y, o.hand.x, o.hand.y, COAT, 3.2);
+  dot(ctx, o.hand.x, o.hand.y, SKIN, 1.7);
   const img = p.weapon && sprite(p.def.sprite);
-  if (img) drawSprite(ctx, img, h.x + Math.cos(a) * 4, h.y + Math.sin(a) * 4, a, 1, BODY_SCALE);
+  if (img) drawSprite(ctx, img, o.at.x, o.at.y, a, 1, BODY_SCALE);
 }
 
 export function drawChaseTells(ctx, w, t) {
@@ -87,11 +91,19 @@ export function drawChaseTells(ctx, w, t) {
   for (const L of P.lanes) drawLane(ctx, L, t);
   if (P.tell) drawTell(ctx, P, P.tell);
   for (const tr of P.tracers) {
-    const k = 1 - tr.t / P.G.tracer;
-    line(ctx, tr.x0, tr.y0, tr.x1, tr.y1, `rgba(${BONE},${0.9 * k})`, 1.4);
-    dot(ctx, tr.x1, tr.y1, `rgba(255,250,235,${k})`, 2);
+    const k = 1 - tr.t / P.G.tracer, [p0, p1] = tracerAt(tr);
+    line(ctx, p0.x, p0.y, p1.x, p1.y, `rgba(${BONE},${0.9 * k})`, 1.4);
+    dot(ctx, p1.x, p1.y, `rgba(255,250,235,${k})`, 2);
   }
   ctx.restore();
+}
+
+// a gunman's shot hangs in his car's frame as it is drawn (it goes on with the two cars, out of his muzzle), or where
+// it was once his car is gone
+function tracerAt(tr) {
+  const v = tr.car?.v;
+  if (!v || v.exploded) return [{ x: tr.x0, y: tr.y0 }, { x: tr.x1, y: tr.y1 }];
+  return [v.carriedAt(v.toWorld(tr.s0.sx, tr.s0.sy)), v.carriedAt(v.toWorld(tr.s1.sx, tr.s1.sy))];
 }
 
 // A lorry backing out (systems/Lorries.js): its reversing lamps on the beat, the red lane its tail is about to sweep
@@ -204,7 +216,7 @@ function drawLane(ctx, L, t) {
 
 // the three beats: the glint, the line fattening into a wedge with the bracket closing on where it lands
 function drawTell(ctx, P, T) {
-  const G = P.G, B = G.band, m = P.muzzle(T.car), a = T.aim;
+  const G = P.G, B = G.band, m = T.car.v.carriedAt(P.muzzle(T.car)), a = T.aim; // (his muzzle as his car is drawn)
   if (T.t < G.glint) {
     const k = T.t / G.glint, r = 2 + 7 * Math.sin(k * Math.PI);
     ctx.strokeStyle = `rgba(255,255,255,${0.95})`;

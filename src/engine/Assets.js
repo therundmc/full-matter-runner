@@ -50,6 +50,8 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
 // Miami, 1985 (MIAMI_PROPS / MIAMI_PAINT: generic dressing for any street of Sunset Bay, from royal_palm / mattress_dumped on)
 // then Miami, 1986, the alley (ALLEY_PROPS, from produce_crates on: the city's own too, generic: an alley, a market
 // corner, a sidewalk)
+// then the suburb going to Miami (SUBURB_PROPS / SUBURB_PAINT, from sabal_palm / palm_frond_fallen on: palms, the
+// suburb's furniture, the homeless's things, a fruit market, a car wash, a tyre yard)
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
@@ -66,7 +68,14 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'produce_crates', 'box_stack', 'fruit_cart', 'news_stand', 'laundry_line', 'laundry_shirt', 'laundry_towel', 'laundry_sheet',
   'neon_box_pink', 'neon_box_cyan', 'scooter_mint', 'scooter_pink', 'domino_table', 'dumpster_mint', 'dumpster_pink',
   'dumpster_aqua', 'stucco_trim_pink', 'stucco_trim_mint', 'stucco_trim_peach', 'ac_drip', 'fire_escape', 'palm_fronds',
-  'graffiti_neon_a', 'graffiti_neon_b'];
+  'graffiti_neon_a', 'graffiti_neon_b',
+  'sabal_palm', 'sabal_palm_b', 'sabal_palm_ragged', 'coconut_palm_lean', 'palm_young', 'palm_stump', 'bus_bench_bail',
+  'bus_bench_abogado', 'payphone_pastel', 'news_box_yellow', 'news_box_red', 'mailbox_blue', 'mailbox_post',
+  'pole_sign_strip', 'yard_fence', 'yard_fence_gate', 'carport', 'tv_antenna', 'lawn_flamingos', 'oleander_pink',
+  'oleander_white', 'cart_loaded', 'bedroll', 'bags_pile', 'doorway_camp', 'market_stall', 'market_stall_coco',
+  'fruit_crate_orange', 'fruit_crate_mango', 'fruit_crate_coconut', 'market_sign', 'carwash_sign', 'carwash_board',
+  'wash_bucket', 'hose_reel', 'tyre_stack', 'tyre_pile', 'tyre_loose', 'tyre_rack', 'tyre_sign', 'garden_wall_pink',
+  'garden_wall_mint', 'garden_wall_cream'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
@@ -80,14 +89,17 @@ const ROAD_PAINT = [
   'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow', 'rumble_strip',
   'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
   'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan',
-  'mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris', 'display_ramp', 'expansion_joint', 'oil_streak'];
+  'mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris', 'display_ramp', 'expansion_joint', 'oil_streak',
+  'palm_frond_fallen', 'sabal_frond_fallen', 'coconuts_fallen', 'driveway', 'lawn_dry_a', 'lawn_dry_b',
+  'cardboard_bed_blanket', 'cardboard_sign', 'litter_bottles', 'soap_puddle'];
 // (in ROAD_PAINT: level 1's street from hatch_kerb to skid_marks; from road_cut on, 2A's part two: the works, the ramp, the toll,
 // then the freeway's bridge over the side street and the gore where its lanes come alongside the ramp: FWY_PROPS; the
 // toll's made-to-measure lines last)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
   'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop',
   'billboard_tan', 'billboard_radio', 'pole_sign_motel', 'pole_sign_autos', 'barrel_fire', 'lot_light', 'sign_gantry', 'deco_canopy_pink',
-  'deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender', 'neon_box_pink', 'neon_box_cyan'];
+  'deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender', 'neon_box_pink', 'neon_box_cyan',
+  'payphone_pastel', 'pole_sign_strip', 'market_stall', 'market_stall_coco'];
 // ART DECO 1985 (tools/generate_assets.py DECO_PROPS / DECO_PAINT): generic dressing for Sunset Bay's roads (palms,
 // hibiscus, deco planters and lamp, an office, a trooper's car, a motel's billboard; puddles with the neon in them) and the
 // toll's own states (its attendant ducked, a boom bent: systems/TollFx.js, systems/Toll.js); the lit ones' emissive maps

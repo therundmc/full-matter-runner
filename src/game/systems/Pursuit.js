@@ -41,6 +41,8 @@ import { wake, kgOf } from '../../engine/physics/Body.js';
 import { CHASE } from '../data/chase.js';
 import { WEAPONS } from '../data/weapons.js';
 import Vehicle from '../entities/Vehicle.js';
+import { MUZZLE_IN, onSprite } from '../entities/CharacterAnim.js';
+import { sprite, sw } from '../../engine/Assets.js';
 import { seatOf, slideStep, smashSpeed, bursts } from './Drive.js';
 import { routeOf, legAt, bandOf, bendStep, enterBend, nearestLane, project } from './Route.js';
 
@@ -50,6 +52,7 @@ const DRIVEN = new Set(['cross', 'chase', 'limp']);
 const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']); // what goes through a windscreen into a driver
 const AGAIN = 2; // s a knock from his car counts as his doing (a wreck then is 'shoved')
 const SWAP = { lead: 'ahead', ahead: 'lead' }; // he changed lanes: the two ahead of him keep theirs (assign)
+const PISTOL = WEAPONS.pistol; // the gunmen's 1911 (pistolOf; render/PursuitArt.js draws it)
 
 // ---------------------------------------------------------------- pure
 // the events (level `chase.events`: { at: col, kind, ... }) due once his car is at x (world px), not fired yet
@@ -152,7 +155,7 @@ export default class Pursuit {
     this.cool = 0;         // s before the next tell may start
     this.fired = new Set(); // the events done
     this.lanes = [];       // red lanes shown: { car, x, y0, y1, t, w, on }
-    this.tracers = [];     // { x0, y0, x1, y1, t }
+    this.tracers = [];     // { x0, y0, x1, y1, t, car, s0, s1 }: its ends in the world and in his car's sprite (toSprite)
     this.road = null;      // the lane he is in and the other one (lanesOf), as of the last step
     this.crew = '';        // who is in the chase (the slots are dealt again when it changes: assign)
     this.shuffleT = 0;     // s before the slots are dealt again anyway
@@ -982,11 +985,17 @@ export default class Pursuit {
     return v.toWorld(v.w * G.seat, car.gunSide < 0 ? -G.lean : v.h + G.lean);
   }
 
-  // the muzzle: a little way from his head along where he points
-  muzzle(car) {
-    const g = this.gunPoint(car);
-    return { x: g.x + Math.cos(car.gunA) * 9, y: g.y + Math.sin(car.gunA) * 9 };
+  // his pistol as render/PursuitArt.js draws it (world points placed from the body): his hand `out[0]` px from where
+  // he leans out along where he points, its middle `out[1]` px further, drawn at people's scale; muzzle: the end of
+  // its barrel (CharacterAnim onSprite), where his shot leaves
+  pistolOf(car) {
+    const g = this.gunPoint(car), a = car.gunA, c = Math.cos(a), s = Math.sin(a), [h, k] = this.G.out;
+    const w = sw(sprite(PISTOL.sprite));
+    const hand = { x: g.x + c * h, y: g.y + s * h }, at = { x: hand.x + c * k, y: hand.y + s * k };
+    return { hand, at, muzzle: onSprite(PISTOL, w, at, a, w - MUZZLE_IN) };
   }
+
+  muzzle(car) { return this.pistolOf(car).muzzle; }
 
   // he leans out on the runner's side and points at him (at the bracket while telling): the side of his own car's
   // middle line the runner's SEAT is on (kept until it is G.keep px past it: from a car dead ahead of him he does not
@@ -1073,7 +1082,8 @@ export default class Pursuit {
         w.sound('ricochet', end.x, end.y, 0.5);
       }
     }
-    this.tracers.push({ x0: m.x, y0: m.y, x1: end.x, y1: end.y, t: 0 });
+    // (drawn in his car's frame: render/PursuitArt.js tracerAt)
+    this.tracers.push({ x0: m.x, y0: m.y, x1: end.x, y1: end.y, t: 0, car, s0: car.v.toSprite(m.x, m.y), s1: car.v.toSprite(end.x, end.y) });
     this.endTell();
   }
 

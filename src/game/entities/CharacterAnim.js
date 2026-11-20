@@ -140,6 +140,15 @@ export function muzzleAt(d, w) {
   return MUZZLE;
 }
 
+// A point of gun d (w: its sprite's width) drawn whole by its middle at `at` turned a, at people's scale (drawSprite
+// with BODY_SCALE: a gun held out of a car's window, render/PursuitArt.js): `along` world px of the sprite from its
+// left edge (its muzzle: w - MUZZLE_IN; its port: d.eject), on the bore line
+export function onSprite(d, w, at, a, along, out = {}) {
+  const u = (along - w / 2) * BODY_SCALE, v = (d.bore ?? 0) * BODY_SCALE, c = Math.cos(a), s = Math.sin(a);
+  out.x = at.x + u * c - v * s; out.y = at.y + u * s + v * c; out.a = a;
+  return out;
+}
+
 const pt = () => ({ x: 0, y: 0, a: 0, lift: 0, heel: 0 });
 export function newPose() {
   return {

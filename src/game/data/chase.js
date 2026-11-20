@@ -214,15 +214,17 @@ export const CHASE = {
   },
   kmh: 6.75,            // km/h a px/step (60 steps a second, 32 px a metre)
   // his gun out of the car (systems/CarGun.js): it never runs dry at the wheel (the user's call, 2026-11-19: no
-  // magazine counted, no reload, nothing to pick up). An OPEN car (THE BOSS's convertible): the gun at `arm` px from his
-  // seat (data/feel.js SEAT.aim's arm and the gun), pointed anywhere within `cone` rad of the nose, to his left [0]
+  // magazine counted, no reload, nothing to pick up). An OPEN car (THE BOSS's convertible): the gun in his hand as the
+  // car draws him (data/feel.js SEAT.aim; `arm`: px from his seat to its muzzle for a man with no pose, a test's),
+  // pointed anywhere within `cone` rad of the nose, to his left [0]
   // and to his right [1] (125 degrees each: 250 in all): out of his door, ahead OVER the low windscreen, across the
   // passenger seat, and back along both flanks; only the 110 degrees behind him stay out (he does not fire back over
   // his own shoulders and the boot). A closed car: one hand out of the driver's window (-y), `reach` px out of the
-  // side; its arc is what that hand can point at without the car's own body in the way (the driver's side and ahead,
+  // side (`out`: px from there to his hand, and on to the middle of his gun); its arc is what that hand can point at
+  // without the car's own body in the way (the driver's side and ahead,
   // about 200 degrees), `margin` rad short of it. A long gun (`hold: 'two'`) stays down. `spread` is added to the
-  // gun's own.
-  gun: { reach: 8, arm: 20, margin: 0.04, spread: 0.02, cone: [2.18, 2.18] },
+  // gun's own. `level`: rad the gun may still be off the aim as it fires (a click while the arm comes up waits).
+  gun: { reach: 8, arm: 20, out: [4, 4], margin: 0.04, spread: 0.02, cone: [2.18, 2.18], level: 0.3 },
   // the pursuers (systems/Pursuit.js): black sedans driven by the same velocity-and-heading physics as his van.
   //   max: their top speed (px/step), well over his cruise so one joining is alongside in a second or two; accel /
   //   brake a second; turn: rad a
@@ -329,8 +331,10 @@ export const CHASE = {
   //   tracer: s the bone line of the shot hangs; window: px either side of a seat's x that is its side window (a
   //   round through it reaches him in a closed car; an open one, `open` in VEHICLES, is reached anywhere)
   //   lab: the dummy (station 19) tells every `every` s with the runner within `range` px, harmlessly
+  //   out: px from his head to his hand along where he points, and on to the middle of his pistol (Pursuit.pistolOf:
+  //   its muzzle is where the tell and the shot start)
   gunman: {
-    r: 7, lean: 6, seat: 0.42,
+    r: 7, lean: 6, seat: 0.42, out: [9, 3],
     range: 300, grace: 1, cool: [1.6, 2.4], quiet: 520, straight: 0.3, cone: 1.75, keep: 5,
     glint: 0.15, line: 0.6,
     band: { half: 22, lead: 40 },

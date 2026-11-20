@@ -87,6 +87,16 @@ SIZES = dict(
     dumpster_pink=(58, 34), dumpster_aqua=(58, 34), stucco_trim_pink=None, stucco_trim_mint=None, stucco_trim_peach=None,
     ac_drip=None, graffiti_neon_a=None, graffiti_neon_b=None, neon_sign_botanica=None, neon_sign_cocktail=None,
     laundry_line=None, fire_escape=None, palm_fronds=None,
+    # the suburb going to Miami (generate_assets.py SUBURB_PROPS): a palm, a pay phone or a sign by its post; hung: None
+    sabal_palm=(12, 12), sabal_palm_b=(12, 12), sabal_palm_ragged=(12, 12), coconut_palm_lean=(10, 10), palm_young=(6, 6),
+    palm_stump=(16, 16), bus_bench_bail=(62, 22), bus_bench_abogado=(62, 22), payphone_pastel=(5, 5), news_box_yellow=(14, 11),
+    news_box_red=(14, 11), mailbox_blue=(16, 14), mailbox_post=(5, 5), pole_sign_strip=(8, 8), yard_fence=(128, 4),
+    yard_fence_gate=(128, 4), garden_wall_pink=(96, 10), garden_wall_mint=(96, 10), garden_wall_cream=(96, 10), carport=None,
+    tv_antenna=None, lawn_flamingos=(28, 18), oleander_pink=(48, 40), oleander_white=(48, 40), cart_loaded=(22, 14),
+    bedroll=(26, 10), bags_pile=(44, 22), doorway_camp=(68, 40), market_stall=(78, 44), market_stall_coco=(78, 44),
+    fruit_crate_orange=(18, 12), fruit_crate_mango=(18, 12), fruit_crate_coconut=(18, 12), market_sign=(42, 14),
+    carwash_sign=(70, 6), carwash_board=(22, 14), wash_bucket=(12, 12), hose_reel=(26, 16), tyre_stack=(22, 22),
+    tyre_pile=(52, 36), tyre_loose=(20, 20), tyre_rack=(62, 18), tyre_sign=(46, 14),
     # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
     shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
     tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
@@ -146,6 +156,10 @@ FLOOR += ('mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris
 FLOOR += ('bar_mat', 'cardboard_flat')
 # ART DECO 1985's (DECO_PAINT): rain standing on the asphalt, the neon in it
 FLOOR += ('puddle_neon', 'puddle_neon_b')
+# ... and the suburb going to Miami's (SUBURB_PAINT): fallen fronds and coconuts, a drive, lawns gone to seed, a bed and a
+# sign on the sidewalk, bottles, a car wash's puddle
+FLOOR += ('palm_frond_fallen', 'sabal_frond_fallen', 'coconuts_fallen', 'driveway', 'lawn_dry_a', 'lawn_dry_b',
+          'cardboard_bed_blanket', 'cardboard_sign', 'litter_bottles', 'soap_puddle')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
 FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
           'cutlery_spill', 'runner_corner')

@@ -814,3 +814,27 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   stucco_pink / _mint / _peach / _lilac. Lab station 36: its turn a short smash alley. Tests: tests/alley.test.mjs.
   QA 3 min seed 2 (god): PASS, 4 sessions, no death, 3 clears, the end reached; only the known `slow` (x39, mean 7.66
   ms; main the same run: x35, 7.27 ms).
+- 2026-11-20: SPRITES FOR THE SUBURB GOING TO MIAMI (branch feature/street-miami-sprites; the user: "on s'approche de
+  Miami mais on reste encore un peu en banlieue", and the lorry's dodge through a cafe terrace "pas sur, il y en a trop a
+  Miami, peut-etre autre chose"). Paint only, nothing placed (tools/generate_assets.py "the suburb going to Miami",
+  SUBURB_PROPS / SUBURB_PAINT, FINE, listed in engine/Assets.js, levelkit SIZES / FLOOR, defs in data/props.js and
+  data/destruction.js, BIT `coconut`): palms sabal_palm / _b / _ragged (the suburb's scruffy cabbage palms),
+  coconut_palm_lean (its trunk painted, 3 m of lean), palm_young (in a tree_grate), palm_stump; the suburb's furniture
+  bus_bench_bail / _abogado, payphone_pastel (lit), news_box_yellow / _red, mailbox_blue, mailbox_post, pole_sign_strip
+  (PALM PLAZA: LIQUOR, PAWN, CHECKS CASHED, BODEGA; lit), yard_fence / _gate, garden_wall_pink / _mint / _cream, carport
+  (hung, translucent over a car), tv_antenna (hung), lawn_flamingos, oleander_pink / _white; the homeless's cart_loaded,
+  bedroll, bags_pile, doorway_camp; three alternatives to the terrace for the dodge (torn or flung, nothing `lasting`):
+  (a) a fruit market: market_stall / _coco (a bulb lit), fruit_crate_orange / _mango / _coconut, market_sign; (b) a car
+  wash: carwash_sign, carwash_board, wash_bucket, hose_reel, paint soap_puddle; (c) a tyre yard: tyre_stack, tyre_pile,
+  tyre_loose (rubber: they bounce), tyre_rack, tyre_sign. Floor paint palm_frond_fallen, sabal_frond_fallen,
+  coconuts_fallen, driveway, lawn_dry_a / _b, cardboard_bed_blanket, cardboard_sign, litter_bottles. Tests:
+  tests/suburb.test.mjs. Contact sheet and a mock-up in tmp/street-sprites/ (not committed).
+- 2026-11-20: his Uzi's rounds at the wheel start at its drawn muzzle (the user: they came out offset from the gun).
+  CarGun fired from the seat + 20 px along the aim (10 to 16 px off the drawn muzzle, the hand's side and the gun's
+  length never counted) and drew the flash and the streak where the body had it, a step behind the car as drawn.
+  Now the round leaves the seat pose's own gun (Character.muzzlePos, taken at the shot; a click while the arm comes
+  up waits for it, CHASE.gun.level), the flash and the streak's start follow the muzzle as SEEN (CarGun.drawnMuzzle,
+  Vehicle.carriedAt: the car on whole px, one of its 64 angles, on its springs), the round and the case are drawn
+  from where they were born (Interp.born), the case at the port as seen. The pursuers' gunmen likewise: their tell,
+  shot and tracer start at the end of the pistol drawn in their hand (Pursuit.pistolOf, CHASE.gunman.out).
+  Tests: tests/cargun.test.mjs.

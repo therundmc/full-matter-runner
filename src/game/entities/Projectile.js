@@ -23,6 +23,7 @@ export default class Projectile {
     this.x = x; this.y = y;
     this.ox = x; this.oy = y; // trail origin
     this.from = opts.from || null; // where its first step is traced from (the shooter's chest: see Character.fire)
+    this.src = opts.src || null;   // its gun, if it tells where its muzzle is seen (drawnMuzzle(): systems/CarGun.js)
     this.angle = angle;
     this.speed0 = speed;
     this.vx = Math.cos(angle) * speed;
@@ -284,8 +285,9 @@ export default class Projectile {
     }
     const R = this.look;
     let tx = this.x - this.vx * R.len, ty = this.y - this.vy * R.len;
-    // do not draw the trail behind the muzzle
-    if ((tx - this.ox) * this.vx + (ty - this.oy) * this.vy < 0) { tx = this.ox; ty = this.oy; }
+    // do not draw the trail behind the muzzle (one its gun tells: where it is seen now, in a car on the move)
+    const o = this.src?.drawnMuzzle() ?? null, ox = o ? o.x : this.ox, oy = o ? o.y : this.oy;
+    if ((tx - ox) * this.vx + (ty - oy) * this.vy < 0) { tx = ox; ty = oy; }
     ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = 'rgba(255,200,90,0.35)';
     ctx.lineWidth = R.width;
