@@ -38,7 +38,8 @@ off):
                  arrow board, ROAD CLOSED, water barriers, the road cut, the excavator and the dump truck, lit)
 
 Then the detour (docs/LEVEL2.md "Segment 1, part two"): the script (systems/Route.js legs and bends) takes the car
-right down THE SIDE STREET (cols 440-451: sheds, a loading dock, a yard behind its gate, STOP at both ends), under
+right down THE SIDE STREET, past its mouth THE ALLEY (cols 444-448 between pink and mint stucco: what he ploughs
+through, a parked car he scrapes), under
 THE FREEWAY's bridge at its foot (rows 33.5-41.5), and left onto LEG 1 (lanes 44.25 / 46.75, one way east): THE
 FRONTAGE ROAD along the freeway's embankment (sheds and docks on the south side, cols 446-497), THE ON-RAMP (its
 own embankment, guardrails, cols 498-523), THE MERGE (the freeway's lanes come in alongside, cols 524-559). Then
@@ -59,7 +60,12 @@ LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
 # THE DETOUR (docs/LEVEL2.md "Legs and scripted bends", "Segment 1, part two"): works shut the street past the side
 # street's mouth, the script takes the car right down the side street and left at its foot onto LEG 1
 SIDE = (442, 449)           # the side street's roadway (cols, inclusive), a sidewalk two tiles wide either side
-SIDE_X = 446                # its middle: the bend's line goes down it
+SIDE_X = 446                # its middle
+# THE ALLEY (docs/LEVEL2.md "Segment 1, part two"; the user: "une petite contre-allee ou tu defonces tout"): past its
+# mouth the side street is a back alley five metres between pastel stucco walls (cols ALLEY, rows 18-42), full of what
+# the car ploughs through on the bend's line down its middle (CHASE.bend.smash)
+ALLEY = (444, 448)          # its floor's columns (inclusive); its walls: col 443 (pink) and col 449 (mint)
+ALLEY_X = 446.5             # its middle: the bend's line goes down it
 BEND_AT = 438               # the column of the car's middle where the script takes the wheel (leg 0)
 BEND_R = 6                  # tiles: the radius of its two turns
 WORKS_X = 451               # the works across the street, from this column (past the side street's mouth)
@@ -713,7 +719,6 @@ F0, F1 = FWY
 M0, M1 = MERGE
 DOCK_S = (453, 464)          # the cold store's loading bays on the frontage road (south, cols)
 YARD_S = (468, 471)          # the opening of the yard gate south of it (cols)
-YARD_E = (452, 457, 25, 29)  # the yard behind its gate on the side street (east): cols, rows
 lv.area('part two: the ground')
 for (x0, y0, x1, y1, t) in (
         (WS, 8, DEAD - 1, 10, 's'), (WS, 11, DEAD - 1, 15, '='), (WS, 16, DEAD - 1, 17, 's'),   # the street, on under the works
@@ -722,7 +727,6 @@ for (x0, y0, x1, y1, t) in (
         (S0 - 3, 18, S0 - 3, HS - 1, 'X'),                                                       # a blind wall for the shops cut
         (S0 - 2, 16, S1 + 2, R0 - 1, 's'), (S0, 16, S1, R0 - 1, '='),                            # the side street
         (DECK[0] + 1, F0 - 1, S0 - 3, F1, '_'), (S1 + 3, F0 - 1, DECK[1] - 2, F1, '_'),         # its abutments, under the deck
-        (YARD_E[0], YARD_E[2], YARD_E[1], YARD_E[3], '_'),                                       # the yard behind the gate
         (LEG1_W, R0, TOLL_X - 1, R1, '='),                                                       # the frontage road, the ramp
         (LEG1_W, R1 + 1, RAMP_X - 1, R1 + 2, 's'),                                               # its south sidewalk
         (RAMP_X, R1 + 1, TOLL_X - 1, R1 + 1, '='), (RAMP_X, R1 + 2, TOLL_X - 1, R1 + 4, '"'),   # the ramp's shoulder, its bank
@@ -732,9 +736,7 @@ for (x0, y0, x1, y1, t) in (
 lv.props[:] = [p for p in lv.props if not (S0 - 2.4 < p[2] < S1 + 3.4 and 15.5 < p[3] < HS + 1)]
 boxes[:] = [b for b in boxes if not (b[2] > S0 - 2.4 and b[0] < S1 + 3.4 and b[3] > 15.5)]
 # the big rounded corners of the side street's two mouths (lay_kerbs), the kerbs dropped where a lorry turns in
-corners.update({(S0, 16): 'ne', (S1 + 1, 16): 'nw', (S0, R0): 'se', (S1 + 1, R0): 'sw'})
-low.update(('v', S0, r) for r in range(28, 33))                          # the loading dock's apron (west)
-low.update(('v', S1 + 1, r) for r in range(YARD_E[2], YARD_E[3] + 1))    # the yard's gate (east)
+corners.update({(S0, 16): 'ne'})
 low.update(('h', c, R1 + 1) for c in list(range(DOCK_S[0], DOCK_S[1] + 1)) + list(range(YARD_S[0], YARD_S[1] + 1)))
 low.update(('h', c, 11) for c in list(range(441, 445)) + list(range(447, 451)))   # the tyre shop's two doors (north)
 
@@ -822,55 +824,97 @@ lv.paint('oil_stain_b', 442.6, 10.2)
 lv.paint('oil_stain_a', 448.0, 10.4, 90)
 lv.prop('flyers', 445.5, 8.06, 0)
 
-# ---------------------------------------------------------------- the side street
-# Light industry, eight metres of asphalt and two sidewalks, two-way, no line: a shed with its shutter and a loading
-# dock (west), a yard behind its chain-link gate with a car in it (east), pipes on the blind walls, two sodium lamps,
-# patches and a cover breathing steam, the freeway's bridge over its foot. STOP for whoever comes up it to the street,
-# STOP for whoever comes down it to the frontage road (one way east: ONE WAY across the way).
-lv.area('part two: the side street, west')
-lv.prop('pipe_steam', S0 - 1.93, 19.6, 270)
-must('dumpster', S0 - 1.4, 21.6, 90)
-put('bin_bag', S0 - 0.55, 20.25)
-put('bin_bag', S0 - 0.5, 22.9)
-put('streetlight', S0 - 0.28, 24.0, 0)
-lv.prop('roller_door', S0 - 1.93, 26.2, 270)
-lv.prop('graffiti', S0 - 1.93, 23.0, 270)
-for (c, r) in ((S0 - 1.45, 27.65), (S0 - 0.7, 27.5)):
-    put('oil_drum', c, r)
-lv.prop('roller_door', S0 - 1.93, 30.6, 270)
-must('loading_dock', S0 - 1.64, 30.6, 270)
-put('pallet_stack', S0 - 0.75, 32.6, 90)
-lv.paint('oil_stain_a', S0 - 0.7, 29.6, 90)
-lv.area('part two: the side street, east')
-lv.prop('conduit', S1 + 2.93, 19.4, 90)
-lv.prop('pipe_water', S1 + 2.93, 21.6, 90)
-lv.prop('wall_lamp', S1 + 2.93, 24.0, 90)
-must('chainlink_gate', S1 + 3.12, (YARD_E[2] + YARD_E[3] + 1) / 2, 90, on='_')
-must('car2', YARD_E[1] - 1.6, 27.4, 90, on='_', lights=False)
-put('pallet_stack', YARD_E[0] + 1.2, YARD_E[2] + 0.6, on='_')
-put('oil_drum', YARD_E[0] + 1.0, YARD_E[3] + 0.45, on='_')
-put('oil_drum', YARD_E[0] + 1.6, YARD_E[3] + 0.6, on='_')
-put('streetlight', S1 + 1.28, 30.6, 180)
-put('trash_can', S1 + 2.45, 31.6)
-lv.prop('flyers', S1 + 2.94, 31.5, 90)
-lv.area('part two: the side street, its paint and its covers')
-for c in (S1 - 2.75, S1 - 1.25):                                         # STOP before the street (northbound half)
-    lv.paint('stop_line', c, 17.6, 90)
-lv.paint('road_stop', S1 - 2.0, 19.5)
-must('sign_stop', S1 + 1.6, 17.55, 0)
-for c in (S0 + 1.25, S0 + 2.75):                                         # STOP before the frontage road (southbound)
-    lv.paint('stop_line', c, R0 - 0.6, 90)
-lv.paint('road_stop', S0 + 2.0, R0 - 2.4, 180)
-must('sign_stop', S0 - 0.75, R0 - 0.7, 180)
-must('sign_oneway', S0 + 3.0, R1 + 1.45, 0)                             # across the way: ONE WAY, east
-must('sign_oneway', S1 + 1.7, R0 - 0.65, 0)
-for (kind, c, r, deg) in (('road_patch_a', 444.4, 22.8, 90), ('road_crack_b', 448.2, 26.6, 0), ('road_patch_c', 443.6, 30.4, 0),
-                          ('road_patch_b', 446.6, 35.2, 90), ('road_crack_a', 444.0, 38.8, 180), ('drain', S0 + 0.25, 21.0, 90),
-                          ('drain', S1 + 0.75, 28.0, 90), ('manhole_sq', 445.0, 32.5, 90)):
+# ---------------------------------------------------------------- THE ALLEY (the side street past its mouth)
+# The user (2026-11-20): "quand tu tournes, il faut que ce soit une petite contre-allee ou tu defonces tout sur le
+# passage, qui vole avec des effets ... une voiture qui passe, des etincelles de partout ... Miami annees 80". Past the
+# side street's mouth (rows 16-17, the turn's way in), a back alley five metres wide (cols 444-448) between two
+# stucco walls, pink to the west (a bar's back door, COCKTAILS over it), mint to the east (a botanica's, its sign in
+# cyan), down to the freeway's bridge (its abutments the alley's walls on to row 40) and out under it onto the
+# frontage road. On the bend's line down its middle (col 446.5) and against its walls, all that the car ploughs
+# through (CHASE.bend.smash: torn, thrown, burst; check_bend lets it stand there, nothing LASTING): produce crates,
+# boxes, bins and bags, a fruit cart, a news rack, washing on two lines across it (torn down: `canopy`), the old men's
+# domino table (the two of them dive away), a scooter, bottles, a hydrant (its geyser and mist under the bridge), a
+# wheeled dumpster he clips (it spins away) and THE PARKED CAR against the east wall, its flank 5 px into his line: he
+# scrapes it its whole length (sparks off both, a mirror torn off, dents, its alarm and hazards); the first pursuer to
+# follow him scrapes it too and is wrecked on it (its option `snare`). Neon pools, sodium, a palm over the wall, fire
+# escapes, AC units dripping, graffiti in neon paint, steam out of a cover lit cyan.
+A0, A1 = ALLEY
+lv.area('part two: the alley, its walls')
+for (x0, y0, x1, y1, t) in (
+        (S0 - 2, 18, A0 - 1, F0 - 2, 'X'), (A0 - 1, 18, A0 - 1, F0 - 2, 'P'), (S0 - 2, 18, A0 - 1, 18, 'P'),   # west: pink stucco
+        (A1 + 1, 18, S1 + 2, 20, 's'),                                                                # (its mouth flared east: the tail out)
+        (A1 + 1, 21, S1 + 2, F0 - 2, 'X'), (A1 + 1, 21, A1 + 1, F0 - 2, 'M'), (A1 + 1, 21, S1 + 2, 21, 'M'),   # east: mint
+        (S1 + 3, 25, 457, 29, 'X'),                                                                   # (the yard behind it built over)
+        (S0 - 2, F0 - 1, A0 - 1, F1, '#'), (A1 + 1, F0 - 1, S1 + 2, F1, '#'),                         # the bridge's abutments
+        (S0 - 2, F1 + 1, A0 - 1, R0 - 1, '"'), (A1 + 1, F1 + 1, S1 + 2, R0 - 1, '"'),                 # its bank either side
+        (A0, 18, A1, R0 - 1, '=')):                                                                   # the alley's floor
+    lv.fill(x0, y0, x1, y1, t)
+pieces('edge_line_yellow', S0 - 2, A0, R0 + 0.08)                            # the yellow line and the kerb under the bank
+pieces('edge_line_yellow', A1 + 1, S1 + 3, R0 + 0.08)
+lv.paint('kerb_s_4', S0, R0 - 1 / 32)
+for c in range(A1 + 1, S1 + 3):
+    lv.paint('kerb_s', c + 0.5, R0 - 1 / 32)
+lv.put(A0 - 1, 26, 'L')                                                       # the bar's back door (west)
+lv.put(A1 + 1, 24, 'L')                                                       # the botanica's (east)
+W_FACE, E_FACE = A0 + 0.07, A1 + 1 - 0.07                                     # (a thing on a wall face: its middle there)
+lv.area('part two: the alley, on its walls')
+for r in (20.0, 31.0):
+    lv.prop('stucco_trim_pink', W_FACE, r, 270)
+lv.prop('neon_sign_cocktail', W_FACE, 28.0, 270)                             # over the bar's back door, beside it
+lv.prop('neon_tube_pink', W_FACE, 24.6, 270)
+lv.prop('neon_sign_botanica', E_FACE, 26.0, 90)
+lv.prop('neon_tube_cyan', E_FACE, 22.4, 90)
+lv.prop('graffiti_neon_b', W_FACE, 37.0, 270)                                # on the bridge's abutments
+lv.prop('graffiti_neon_a', E_FACE, 38.0, 90)
+lv.prop('ac_drip', W_FACE, 22.4, 270)
+lv.prop('ac_drip', E_FACE, 27.7, 90)
+lv.prop('ac_drip', W_FACE, 32.4, 270)
+lv.prop('pipe_steam', W_FACE, 34.2, 270)
+lv.area('part two: the alley, overhead')
+lv.prop('palm_fronds', S1 + 1.0, 20.0, 180)                                  # over the east wall at the mouth
+lv.prop('fire_escape', A0 + 44 / 64, 30.2, 270)
+lv.prop('laundry_line', ALLEY_X, 23.2)
+lv.prop('laundry_line', ALLEY_X, 29.8)
+lv.area('part two: the alley, what the car ploughs through (in its order down it)')
+must('neon_box_cyan', A1 + 2.6, 19.4, 90)                                    # on the sidewalk at its mouth
+must('produce_crates', 446.4, 21.0, 0, on='=')                               # the first: the slow motion (ChaseCam 'smash')
+must('box_stack', 445.4, 22.3, 12, on='=')
+must('trash_can', 447.62, 22.2, on='=')
+must('bin_bag', 447.35, 23.1, on='=')
+must('bin_bag', 445.45, 23.6, on='=')
+must('fruit_cart', 445.65, 25.4, 90, on='=')                                 # fruit everywhere
+must('box_stack', 447.75, 25.4, 80, on='=')
+must('news_stand', 447.45, 27.2, 90, on='=')
+must('domino_table', 445.25, 28.45, 0, on='=')
+for r in (27.8, 29.1):
+    must('plastic_chair', 444.42, r, 90, on='=')
+lv.patron('civ1', 444.42, 27.8, 0, 'cards')                                  # the old men at their dominoes: they dive away
+lv.patron('civ3', 444.42, 29.1, 0, 'cards')
+must('car', A1 + 1 - 0.86, 31.1, 90, on='=', lights=False, snare=True)       # THE PARKED CAR: scraped its whole length
+must('scooter_pink', 445.45, 30.8, 90, on='=')
+must('neon_box_pink', 445.45, 32.6, 90, on='=')
+must('bottle_crate', 447.6, 33.75, on='=')
+must('hydrant', 446.9, 35.0, on='=')                                          # its geyser under the bridge
+must('dumpster_mint', 446.2, 37.6, 0, on='=')                               # clipped: it spins away
+must('produce_crates', 445.4, 39.5, 90, on='=')
+must('box_stack', 447.65, 39.6, 0, on='=')
+lv.area('part two: the alley, its ground')
+for (kind, c, r, deg) in (('road_patch_a', 445.2, 20.8, 90), ('road_crack_b', 447.6, 26.0, 0), ('oil_stain_a', 447.8, 30.5, 90),
+                          ('road_patch_c', 445.4, 34.6, 0), ('road_crack_a', 447.2, 38.4, 180), ('drain', ALLEY_X, 32.4, 90),
+                          ('manhole_sq', 445.2, 41.2, 90)):
     lv.paint(kind, c, r, deg)
-lv.dress('manholes', 447.7, 24.6)
-lv.dress('papers', S0 - 2, 18, S1 + 2, 33, 9)
-lv.cat(S1 + 1.6, 33.0)
+lv.dress('manholes', 445.8, 24.4)                                             # a cover breathing steam, lit cyan
+lv.dress('papers', A0, 18, A1 + 1, 42, 14)
+lv.cat(444.5, 40.6)
+lv.roof('ac_unit', S0 - 0.9, 28.0)
+lv.roof('vent', S0 - 1.2, 22.0)
+lv.roof('ac_unit', S1 + 2.0, 27.6)
+# the alley's light: the bar's pink at its back door, the botanica's cyan, violet and pink under the bridge, a sodium
+# lamp at its mouth (lights: [col, row, r tiles, colour, intensity])
+ALLEY_LIGHTS = [[ALLEY_X, 18.6, 7, '#ffa860', 0.22], [A0 + 0.6, 27.0, 5, '#ff4a9a', 0.42], [A1 + 0.4, 25.6, 5, '#4ae8ff', 0.4],
+                [A0 + 0.8, 24.6, 3, '#ff2a6d', 0.3], [A1 + 0.3, 22.4, 3, '#05d9e8', 0.3], [A1 + 2.6, 19.4, 3, '#6ae8ff', 0.25], [ALLEY_X, 36.5, 6, '#9a4aff', 0.34],
+                [A0 + 0.6, 32.6, 3, '#ff6aa0', 0.3], [ALLEY_X, 41.5, 6, '#ffa860', 0.18]]
+
 lv.area('part two: the freeway\'s bridge over the side street')
 lv.prop('overpass', (DECK[0] + DECK[1]) / 2, (F0 - 0.5 + F1 + 1.5) / 2)
 lv.paint('overpass_shadow', (DECK[0] + DECK[1]) / 2, (F0 - 0.5 + F1 + 1.5) / 2)
@@ -935,23 +979,22 @@ must('chainlink_gate', (YARD_S[0] + YARD_S[1] + 1) / 2, R1 + 3.12, 0, on='_')
 for (kind, c, r, deg) in (('pallet_stack', 467.4, 51.6, 10), ('oil_drum', 472.8, 51.4, 0), ('oil_drum', 473.4, 51.9, 0),
                           ('crate', 470.6, 53.2, 20), ('dumpster', 466.9, 54.0, 0)):
     put(kind, c, r, deg, on='_')
-lv.prop('pipe_water', 480.0, R1 + 2.93, 180)                             # the long shed
-lv.prop('wall_vent', 483.6, R1 + 2.93, 180)
-lv.prop('roller_door', 487.5, R1 + 2.93, 180)
-lv.prop('wall_lamp', 490.2, R1 + 2.94, 180)
-lv.prop('graffiti', 477.0, R1 + 2.94, 180)
-low.update(('h', k, R1 + 1) for k in range(486, 490))
-put('dumpster', 476.4, R1 + 2.4, 0)
-for (kind, c, r) in (('bin_bag', 478.0, 49.45), ('cardboard_box', 474.6, 49.5), ('oil_drum', 491.5, 49.45), ('bin_bag', 452.8, 49.5)):
-    put(kind, c, r)
+put('bin_bag', 452.8, 49.5)
+# (the used car lot past the motel: its apron flush with the sidewalk, the showroom's glass front behind it, a door in
+# its middle; dressed with the rest of Miami below)
+LOT_S = (486, 494)
+lv.fill(LOT_S[0], R1 + 1, LOT_S[1], R1 + 2, '_')
+lv.fill(LOT_S[0] + 1, R1 + 4, LOT_S[1] - 1, R1 + 5, '+')
+for c in range(LOT_S[0] + 1, LOT_S[1]):
+    lv.put(c, R1 + 3, 'L' if c == (LOT_S[0] + LOT_S[1]) // 2 else 'G')
 for c in (458.5, 482.5):
     must('streetlight', c, R1 + 1.28, 270)
 must('sign_freeway', RAMP_X - 3.0, R1 + 1.7, 0)
 lv.dress('papers', LEG1_W, R1 + 1, RAMP_X - 1, R1 + 2, 12)
 lv.cat(472.3, 49.5)
 for (kind, c, r) in (('ac_unit', 430.6, 52.6), ('vent', 437.2, 51.8), ('duct', 446.0, 52.2), ('chimney', 452.8, 53.4),
-                     ('ac_unit', 459.4, 52.4), ('vent', 462.6, 51.9), ('hatch', 478.6, 52.6), ('ac_unit', 484.2, 52.2),
-                     ('vent', 489.0, 51.8), ('duct', 492.8, 53.2)):
+                     ('ac_unit', 459.4, 52.4), ('vent', 462.6, 51.9), ('hatch', 478.6, 52.6), ('ac_unit', 482.6, 53.2),
+                     ('vent', 490.0, 55.4), ('duct', 494.8, 55.2)):
     lv.roof(kind, c, r)                                                   # on the sheds' flat roofs
 
 # ---------------------------------------------------------------- leg 1: the on-ramp and the merge
@@ -981,6 +1024,94 @@ dashes(RAMP_X, TOLL_X, R0 + 2.5, 12, kind='raised_marker', at=444, length=0.25)
 for (kind, c, r, deg) in (('road_crack_a', 506.0, 46.4, 0), ('road_patch_b', 519.5, 44.4, 0), ('road_crack_b', 538.0, 47.0, 90),
                           ('road_patch_c', 552.0, 45.0, 0)):
     lv.paint(kind, c, r, deg)
+
+# ---------------------------------------------------------------- leg 1 dressed: Sunset Bay, 1985
+# (docs/LEVEL2.md "Segment 1, part two"; sprites "Miami, 1985" in tools/generate_assets.py.) The picture at the wheel
+# runs from the freeway's near lane to the fronts' foot: what tells the place is on the bank and on the sidewalk.
+# NORTH, the freeway's bank: a camp out from under the bridge (a tarp, a mattress, a fire in a drum, a cart), a
+# chain-link fence along the bank's foot with a hole cut in it by the camp, royal palms, the sun-tan billboard on its
+# catwalk, a burnt-out car that came off the freeway through its rail; on the ramp's bank the radio's billboard and the
+# crash cushion somebody hit. SOUTH: the cold store's mint canopy, the motel's back (its pole sign, MOTEL and VACANCY
+# in neon, a pink canopy, hibiscus), a used car lot (a coupe up on its display ramp under two light poles and the
+# pennants, AUTO SALES on its pole); on the ramp an old crash (tyre marks into a dented length of rail, glass and a
+# hubcap on the shoulder), a call box, royal palms lit from their feet beyond the rail, hibiscus on the bank. The
+# ramp's slabs: an expansion joint every 6 m, oil down the lanes.
+lv.area('miami: the camp under the bridge (north bank)')
+lv.paint('mattress_dumped', 453.7, 42.05, 4)
+lv.patron('tramp', 453.6, 42.0, 0, 'sleep')
+must('tent_tarp', 456.7, 42.0, 0, on='"')
+must('barrel_fire', 459.4, 42.2, on='"')
+lv.fire(459.4, 42.2)
+lv.patron('tramp', 459.4, 41.55, 90, 'clasp')                             # warming his hands over it
+put('shopping_cart', 461.5, 41.75, 20, on='"')
+put('bin_bag', 458.0, 42.6, on='"')
+lv.paint('litter_a', 462.6, 42.2)
+lv.paint('litter_b', 452.9, 42.4, 180)
+lv.area('miami: the freeway\'s bank (palms, the billboard, the burnt car, the fence)')
+WRECK = (486.0, 41.85)                       # the car that came off the freeway, through its rail, and burned here
+lv.props[:] = [p for p in lv.props if not (p[1] == 'guardrail' and abs(p[3] - (F1 + 1.15)) < 0.01 and 478.5 < p[2] < 491.5)]
+boxes[:] = [b for b in boxes if not (abs((b[1] + b[3]) / 2 - (F1 + 1.15)) < 0.05 and 478.5 < (b[0] + b[2]) / 2 < 491.5)]
+
+
+def end_to_end(kind, col, row, deg=0):
+    """A length of rail or fence laid touching its neighbours (as `rail` lays them)."""
+    boxes.append(Level.box(kind, col, row, deg))
+    lv.prop(kind, col, row, deg)
+
+
+end_to_end('guardrail_dented', 481.0, F1 + 1.15, 180)                    # bent in where it went through
+must('car_burnt', WRECK[0] + 0.6, WRECK[1], 180, on='"')
+lv.paint('litter_b', 491.0, 42.3)
+for c in list(range(462, 481, 4)) + [489, 493]:                        # the fence along the bank's foot (the camp's
+    end_to_end('chainlink_hole' if c == 466 else 'chainlink_fence', c + 2.0, R0 - 0.27)   # way through it)
+must('royal_palm', 468.0, 42.0, on='"')
+must('royal_palm_b', 493.6, 41.8, on='"')
+lv.prop('billboard_tan', 477.0, 42.3 - 50 / 32)                          # (hung: its legs on the bank, its face over the rail)
+lv.prop('billboard_radio', 511.0, 42.3 - 50 / 32)
+must('crash_cushion_hit', 522.4, 42.1, 0, on='"=')
+lv.paint('litter_a', 503.6, 42.25, 90)
+lv.area('miami: the cold store, the motel\'s back, the used car lot (south)')
+lv.prop('deco_canopy_mint', 465.9, R1 + 3 - 20 / 32)                    # over the cold store's office door
+must('royal_palm_b', 466.9, R1 + 1.55)
+lv.paint('tree_grate', 466.9, R1 + 1.55)
+must('pole_sign_motel', 472.7, R1 + 1.45)
+lv.prop('neon_sign_motel', 474.6, R1 + 2.91)                             # (neon reads one way up: never turned)
+must('hibiscus_hedge', 476.6, R1 + 2.42)
+lv.prop('neon_sign_flamingo', 477.4, R1 + 2.91)
+lv.prop('deco_canopy_pink', 480.4, R1 + 3 - 20 / 32)
+must('hibiscus_hedge_pink', 483.9, R1 + 2.42)
+lv.prop('neon_sign_vacancy', 483.6, R1 + 2.91)
+must('pole_sign_autos', 485.0, R1 + 1.45)
+lv.paint('display_ramp', 490.6, R1 + 2.0)
+must('car2', 490.6, R1 + 2.05, 0, on='_', lights=False)                 # an 80s coupe up on its ramp, for sale
+for c in (487.8, 493.6):
+    must('lot_light', c, R1 + 1.25, 0, on='_')
+for (c, r, deg) in ((489.2, R1 + 2.05, 30), (492.2, R1 + 2.05, 150), (490.7, R1 + 1.3, 0)):
+    lv.prop('pennant_string', c, r, deg)                                 # strung from the poles to the showroom's door
+for c in range(LOT_S[0], LOT_S[1] + 1):                                  # its kerb, dropped at the way in
+    lv.paint('kerb_n_low' if 489 <= c <= 491 else 'kerb_n', c + 0.5, R1 + 1 + 1 / 32)
+lv.area('miami: the ramp (an old crash, a call box, palms and hibiscus on its bank, its slabs)')
+lv.props[:] = [p for p in lv.props if not (p[1] == 'guardrail' and abs(p[3] - (R1 + 2.15)) < 0.01 and 526.5 < p[2] < 531.5)]
+boxes[:] = [b for b in boxes if not (abs((b[1] + b[3]) / 2 - (R1 + 2.15)) < 0.05 and 526.5 < (b[0] + b[2]) / 2 < 531.5)]
+end_to_end('guardrail_dented', 529.0, R1 + 2.15, 180)
+lv.paint('tyre_marks', 526.0, 47.73)
+lv.paint('crash_debris', 531.6, R1 + 1.45)
+must('call_box', 538.5, R1 + 1.7, 0, on='=')
+lv.prop('sign_gantry', 548.5, F0 + 7.0)                                  # over the merge: the toll told, lit from below
+for (kind, c) in (('royal_palm_b', 507.5), ('royal_palm', 525.0), ('royal_palm_b', 541.5), ('royal_palm', 556.0)):
+    must(kind, c, R1 + 3.6, on='"')
+must('hibiscus_hedge_pink', 533.6, R1 + 3.45, on='"')
+must('hibiscus_hedge', 550.0, R1 + 3.45, on='"')
+for c in range(RAMP_X + 5, TOLL_X - 1, 6):
+    lv.paint('expansion_joint', c, R0 + 3.0)
+for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (541.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1]),
+               (533.0, 39.25), (551.0, 41.75)):
+    lv.paint('oil_streak', c, r)
+# the merge's far side (the freeway's lanes coming in: nobody of his is held up there): a load lost off a truck, the
+# rubber of whoever braked for it, the bits of a mirror
+lv.paint('mattress_dumped', 553.4, 40.4, 160)
+lv.paint('tyre_marks', 543.5, 39.0 + 36 / 32 - 0.3)
+lv.paint('crash_debris', 546.6, 41.9, 90)
 
 # ---------------------------------------------------------------- THE TOLL (cols 560 on; docs/LEVEL2.md segment 2)
 # The four lanes side by side the merge leaves (the freeway's two, leg 1's two) spread to the plaza's grid
@@ -1119,8 +1250,18 @@ def bend_line(pts, r, step=0.25):
     return out + [tuple(pts[-1])]
 
 
-def check_bend(path, r, wall=1.5, prop=1.3):
-    """The bend's line is clear: no wall, window or door within `wall` tiles of it, no prop within `prop`."""
+# what the car may meet on a bend's line (CHASE.bend.smash: torn off, thrown and burst, never LASTING: tests/alley.test.mjs
+# holds data/props.js to it), and the cars it scrapes along their flank (never across the line itself, `scrape` tiles
+# off it at least)
+SMASH = {'produce_crates', 'box_stack', 'trash_can', 'bin_bag', 'fruit_cart', 'news_stand', 'domino_table', 'plastic_chair',
+         'scooter_pink', 'scooter_mint', 'bottle_crate', 'hydrant', 'neon_box_pink', 'neon_box_cyan', 'dumpster_mint',
+         'dumpster_pink', 'dumpster_aqua', 'cardboard_box', 'crate', 'pallet_stack', 'oil_drum', 'traffic_cone'}
+SCRAPE = {'car', 'car2', 'van'}
+
+
+def check_bend(path, r, wall=1.5, prop=1.3, scrape=0.6):
+    """The bend's line is clear: no wall, window or door within `wall` tiles of it, no prop within `prop` but what
+    the car ploughs through (SMASH) and the cars it scrapes (SCRAPE: `scrape` off it)."""
     pts = bend_line(path, r)
     for (px, py) in pts:
         for y in range(int(py - wall), int(py + wall) + 1):
@@ -1129,12 +1270,12 @@ def check_bend(path, r, wall=1.5, prop=1.3):
                     d = math.hypot(max(x - px, 0, px - x - 1), max(y - py, 0, py - y - 1))
                     assert d >= wall, f'the bend\'s line at {px:.1f},{py:.1f} is {d:.2f} from the wall at {x},{y}'
     for (_, kind, col, row, deg, _) in lv.props:
-        if SIZES.get(kind) is None:
+        if SIZES.get(kind) is None or kind in SMASH:
             continue
         b = Level.box(kind, col, row, deg)
         for (px, py) in pts:
             d = math.hypot(max(b[0] - px, 0, px - b[2]), max(b[1] - py, 0, py - b[3]))
-            assert d >= prop, f'{kind} at {col},{row} is {d:.2f} from the bend\'s line at {px:.1f},{py:.1f}'
+            assert d >= (scrape if kind in SCRAPE else prop), f'{kind} at {col},{row} is {d:.2f} from the bend\'s line at {px:.1f},{py:.1f}'
 
 
 # ---------------------------------------------------------------- the kerbs
@@ -1224,13 +1365,18 @@ lv.wet = 0.35                                     # the street still wet from an
 lv.rain = 0
 lights = [[x, 13.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.16 if DARK[0] < x < DARK[1] else 0.3] for x in range(10, WS, 30)]
 lights += [[x, 17.0, 8, '#ffd9a0', 0.35] for x in range(D0 + 3, D1, 9)]      # the diner spills onto its corner
-lights += [[SIDE_X, r, 8, '#ffa860', 0.2] for r in (22, 30)]                  # the side street's sodium
+lights += ALLEY_LIGHTS                                                         # the alley's neon and sodium
 lights += [[x, 46.0, 9, '#ffa860', 0.2] for x in (458, 482)]                   # the frontage road's
 lights += [[x, 39.0, 9, '#ffb46a', 0.22] for x in range(462, TOLL_X, 30)]       # the freeway's lamps along its bank
 lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   # the ramp's
 lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
 lights += [[x, MID, 10, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in range(TOLL0 + 4, W, 30)]   # the freeway's
 lights += [[CANOPY_X, MID + d, 9, '#e8f0ff', 0.22] for d in (-6, 0, 6)]  # the plaza under its lit roof
+# leg 1 in 1985 (the neon, the billboards, the drum's fire and the lot are their props' own lights): the palms lit
+# from their feet, pink and cyan in turn, the green signs from below, more sodium over the merge (it was the dark end)
+lights += [[c, r, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5] for (k, (c, r)) in enumerate(((466.9, 48.8), (468.0, 42.3), (493.6, 42.1), (507.5, 50.3), (525.0, 50.3), (541.5, 50.3), (556.0, 50.3)))]
+lights += [[c, r, 2.2, '#e8fff0', 0.4] for (c, r) in ((RAMP_X - 3.0, 49.2), (RAMP_X + 21.0, 48.3), (RAMP_X + 13.0, 48.3))]
+lights += [[531.0, 41.5, 8, '#ffb46a', 0.32], [541.0, 44.5, 9, '#ffa860', 0.3], [552.0, 45.5, 8, '#ffa860', 0.34], [557.0, 40.0, 8, '#ffb46a', 0.3]]
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
 # under it)
@@ -1280,7 +1426,7 @@ LEGS = [
 # a bend: the car's middle at `at` (col) on its leg, the script drives it along `path` (its corners [col, row], each
 # inner one rounded off by an arc of `radius` tiles) and hands it to leg `to` on the lane the path ends on
 BENDS = [
-    {'at': BEND_AT, 'path': [[BEND_AT, LANES[1]], [SIDE_X, LANES[1]], [SIDE_X, LANES1[1]], [SIDE_X + 14, LANES1[1]]],
+    {'at': BEND_AT, 'path': [[BEND_AT, LANES[1]], [ALLEY_X, LANES[1]], [ALLEY_X, LANES1[1]], [ALLEY_X + 14, LANES1[1]]],
      'radius': BEND_R, 'to': 1},
 ]
 

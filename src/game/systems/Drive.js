@@ -171,6 +171,19 @@ export function asideThrow(sq, kg, C = CHASE) {
 // how hard a thing torn off the kerb is thrown (Prop.break's power), by the speed it was hit at (px/step)
 export const tearPower = (speed, C = CHASE) => clamp(C.hit.power * (speed / C.cruise), C.hit.power * 0.6, C.hit.most);
 
+// IN A BEND (CHASE.bend.smash): may a loose thing of `kg` be thrown by hand out of the line? And the share of the
+// car's speed it is thrown at (a light one: CHASE.hit.fling's; a heavy one by its mass, `heavy` [least, most])
+export const smashable = (kg, K = CHASE.bend.smash) => kg <= K.kg;
+export function smashSpeed(kg, C = CHASE) {
+  const K = C.bend.smash, F = C.hit.fling;
+  if (kg <= F.kg) return rand(...F.v);
+  return K.heavy[0] + (K.heavy[1] - K.heavy[0]) * clamp((K.kg - kg) / (K.kg - F.kg), 0, 1);
+}
+// does a thing thrown in a bend burst as it goes (def: its PROPS entry): all but metal with more than `burst` hp
+export const bursts = (def, K = CHASE.bend.smash) => !!def && !def.lasting && (def.material !== 'metal' || (def.hp ?? 0) <= K.burst);
+// a bend's speed (px/step) after what it hit cost it (`k` of it), never under `floor` of the bend's own
+export const smashCost = (v, k, speed, K = CHASE.bend.smash) => Math.max(Math.min(v, speed * K.floor), v * (1 - k));
+
 // The card that closes a chase not finished yet (the level's `chase.next`; Game state 'continued'), t s after the
 // end of its road: { black: 0..1 the picture going dark, title / name: 0..1 its two lines coming up, skip: a key may
 // pass it, over: it is done }
@@ -625,7 +638,9 @@ export default class Drive {
   bendDrive(dt) {
     const w = this.world, C = this.C, K = C.bend, v = this.van, b = v.body, st = this.bend;
     const vel = Body.getVelocity(b);
-    st.v = Math.min(st.v, Math.hypot(vel.x, vel.y) + C.give);
+    // (what it pushes against costs it its speed, never under the smash's floor: nothing holds it up in a bend, a
+    // pursuer on its tail or a wreck against its flank no more than a crate)
+    st.v = Math.max(Math.min(st.v, Math.hypot(vel.x, vel.y) + C.give), Math.min(st.v, st.b.speed * K.smash.floor));
     const ahead = { x: v.x + Math.cos(b.angle) * K.pivot, y: v.y + Math.sin(b.angle) * K.pivot };
     const held = project(st.b.path, ahead.x, ahead.y, st.p, 96, 2);
     if (st.p - held > st.v * 2 + 8) st.p = held + st.v * 2; // (held up by what it hit)
@@ -939,7 +954,10 @@ export default class Drive {
     const c = pair.collision.supports?.[0] || o.position;
     const h = { o, e, nx, ny, x: c.x, y: c.y, vx: vel.x, vy: vel.y, a: b.angle, kind: 'solid', mid: b.position.y, lo: o.bounds.min.y, hi: o.bounds.max.y };
     const fast = Math.hypot(vel.x - ov.x, vel.y - ov.y);
-    if (e?.isVehicle) {
+    if (e?.isVehicle && this.bend && (!e.pursuer || e.pursuer.state === 'wrecked')) {
+      h.kind = 'flank'; // (in a bend: scraped along its flank, never thrown nor a wall)
+      h.first = this.flankOn(o, pair);
+    } else if (e?.isVehicle) {
       h.kind = 'car';
       this.loosen(o, pair);
       // a parked car, a wreck: shoved aside by hand (one of theirs still driven, or on its way out, is Pursuit's)
@@ -965,6 +983,11 @@ export default class Drive {
         pair.isSensor = o.isSensor = true;
         e.break(Math.atan2(vel.y, vel.x) + rand(-0.3, 0.3), tearPower(fast, C));
         h.kind = 'torn';
+      } else if (this.bend && !o.isStatic && smashable(kgOf(o))) {
+        // (in a bend: thrown out of the line whatever its weight up to a dumpster's, and burst as it goes)
+        this.fling(o, pair, vel, smashSpeed(kgOf(o), C));
+        h.heavy = kgOf(o) > C.hit.fling.kg;
+        h.burst = bursts(e.def);
       } else if (!o.isStatic && !o.frozen && kgOf(o) <= C.hit.fling.kg) this.fling(o, pair, vel); // (however slow)
       else this.loosen(o, pair);
     } else if (e && !e.def) h.kind = 'gives'; // a window, a door: their own business
@@ -975,15 +998,95 @@ export default class Drive {
   // to the side it was hit on, turning, off the floor a moment. The contact itself is dropped (the physics would
   // share the overlap equally between a chair and two tons of car, and hold it up), at any speed: met at a crawl
   // and kept, a bag pinned between the car and a wall held it up
-  fling(o, pair, vel) {
+  // (k: the share of the car's speed it goes at; a bend's smash gives a heavy one less, spun more)
+  fling(o, pair, vel, k = rand(...this.C.hit.fling.v)) {
     const F = this.C.hit.fling, v = this.van, side = v.toSprite(o.position.x, o.position.y).sy < v.h / 2 ? -1 : 1;
-    const sp = Math.max(F.least, Math.hypot(vel.x, vel.y) * rand(...F.v)), a = Math.atan2(vel.y, vel.x) + side * rand(...F.side);
+    const sp = Math.max(F.least, Math.hypot(vel.x, vel.y) * k), a = Math.atan2(vel.y, vel.x) + side * rand(...F.side);
+    const spin = this.bend ? this.C.bend.smash.spin : F.spin;
     pair.isActive = false;
     pair.isSensor = true;
+    if (o.frozen) wake(o);
     if (o.isSleeping) Sleeping.set(o, false);
     Body.setVelocity(o, { x: Math.cos(a) * sp, y: Math.sin(a) * sp });
-    Body.setAngularVelocity(o, rand(-F.spin, F.spin));
+    Body.setAngularVelocity(o, rand(-spin, spin));
     o.flyUntil = this.world.time + rand(...F.fly);
+  }
+
+  // IN A BEND, a car he meets (parked, a wreck: CHASE.bend.smash.flank) is scraped along its flank: the contact is
+  // never resolved (the script's line kept; `pair.flank`: a sensor CarFx still showers sparks along, for as long as
+  // the two overlap: flankStep), the other car rocked off his flank. True the first time this car is met
+  flankOn(o, pair) {
+    const F = this.C.bend.smash.flank, v = this.van, b = v.body;
+    pair.isActive = false;
+    pair.isSensor = true;
+    pair.flank = true;
+    // (away from his flank, across the way he goes: a car loose already (a wreck) is rocked off it; a parked one,
+    // frozen, stays where it is parked: he grinds along it)
+    const a = b.angle, side = Math.sign(-(o.position.x - b.position.x) * Math.sin(a) + (o.position.y - b.position.y) * Math.cos(a)) || 1;
+    if (!o.frozen && !o.isStatic) {
+      if (o.isSleeping) Sleeping.set(o, false);
+      const vel = Body.getVelocity(o);
+      Body.setVelocity(o, { x: vel.x - Math.sin(a) * side * F.push, y: vel.y + Math.cos(a) * side * F.push });
+      Body.setAngularVelocity(o, -side * F.spin);
+      o.flyUntil = this.world.time + this.C.hit.fly;
+    }
+    this.flanks ??= new Map();
+    if (this.flanks.has(o.entity)) return false;
+    this.flanks.set(o.entity, { dentT: 0, dents: 0, side });
+    return true;
+  }
+
+  // a step of the cars he is scraping along (flankOn): dents on both flanks every `dent` s, his speed dragged
+  flankStep(dt) {
+    const F = this.C.bend.smash.flank, w = this.world, v = this.van, b = v.body;
+    // (a car already against his when it stopped being driven, a pursuer wrecked on his tail: scraped from now on)
+    if (this.bend) {
+      for (const pair of w.physics.activePairs()) {
+        const o = pair.bodyA === b ? pair.bodyB : pair.bodyB === b ? pair.bodyA : null, e = o?.entity;
+        if (e?.isVehicle && !pair.isSensor && e.pursuer?.state === 'wrecked') this.flankOn(o, pair);
+      }
+    }
+    if (!this.flanks?.size) return;
+    let rubbing = false;
+    for (const pair of w.physics.activePairs()) {
+      if (!pair.flank || (pair.bodyA !== b && pair.bodyB !== b)) continue;
+      const o = pair.bodyA === b ? pair.bodyB : pair.bodyA, e = o.entity, s = this.flanks.get(e), c = pair.collision.supports?.[0];
+      if (!s || !c) continue;
+      rubbing = true;
+      if ((s.dentT -= dt) > 0 || s.dents >= F.dents) continue;
+      s.dentT = F.dent;
+      s.dents++;
+      // (each dent pushed in toward the middle of the car it is on)
+      const q = e.toSprite?.(c.x, c.y), p = v.toSprite(c.x, c.y);
+      if (q && e.scar) e.scar(clamp(q.sx, 3, e.w - 3), clamp(q.sy, 3, e.h - 3), Math.atan2(o.position.y - c.y, o.position.x - c.x) - o.angle, 'blunt');
+      v.scar?.(clamp(p.sx, 3, v.w - 3), clamp(p.sy, 3, v.h - 3), Math.atan2(b.position.y - c.y, b.position.x - c.x) - b.angle, 'blunt');
+    }
+    if (rubbing && this.bend) this.bend.v = smashCost(this.bend.v, F.drag * dt, this.bend.b.speed, this.C.bend.smash);
+  }
+
+  // the first touch of a car he scrapes in a bend: its alarm and its hazards, a mirror torn off, the panel crumpled
+  // there, a burst of sparks and glass; the picture kicked (told on 'carScraped': { car, by, x, y })
+  flanked(h) {
+    const w = this.world, C = this.C, v = this.van, e = h.e, a = Math.atan2(h.vy, h.vx);
+    e.hit?.(0, h.x, h.y, a + Math.PI / 2, 1, 'blunt');
+    e.startAlarm?.();
+    e.shed?.(h.x, h.y, a + rand(-0.6, 0.6), rand(160, 260), false, 'car_mirror');
+    w.particles.sparks(h.x, h.y, a + Math.PI, 1.0, 18, 340);
+    w.particles.glass(h.x, h.y, a, 0.9, 10, 200);
+    w.sound('carHit', h.x, h.y, 0.9);
+    w.shake(C.hit.shake * 0.8);
+    this.bump('hit', 0.6);
+    w.events.emit('ride', { beat: 'hit', x: h.x, y: h.y });
+    w.events.emit('carScraped', { car: e, by: v, x: h.x, y: h.y });
+    this.smashed(h.x, h.y);
+  }
+
+  // the first thing smashed in a bend: told once a bend ('chaseSmash': the slow motion, systems/ChaseCam.js)
+  smashed(x, y) {
+    const st = this.bend;
+    if (!st || st.smashed) return;
+    st.smashed = true;
+    this.world.events.emit('chaseSmash', { car: this.van, x, y, bend: st.b });
   }
 
   // A parked car (or a wreck) he runs into is SHOVED ASIDE, never a wall (C.aside): thrown on ahead of him and out to
@@ -1081,7 +1184,7 @@ export default class Drive {
     this.lost = false;
     for (const h of this.hits) this.react(h);
     this.hits.length = 0;
-    if (!this.dead) { this.scrape(dt); this.fx(dt); }
+    if (!this.dead) { this.flankStep(dt); this.scrape(dt); this.fx(dt); }
     this.clearLanes(dt);
     this.carry();
     if (!this.dead) this.far = Math.max(this.far, this.along);
@@ -1107,6 +1210,7 @@ export default class Drive {
       return;
     }
     if (h.aside) { this.shovedAside(h); return; }
+    if (h.kind === 'flank') { if (h.first) this.flanked(h); return; }
     const key = e || h.o;
     if (t - (this.seen.get(key) ?? -Infinity) < C.hit.again) return;
     this.seen.set(key, t);
@@ -1132,7 +1236,11 @@ export default class Drive {
         }
       }
       return;
-    } else if (h.kind === 'torn') { w.shake(C.hit.shake * 0.5); this.bump('torn'); w.events.emit('ride', { beat: 'torn', x: h.x, y: h.y }); } else if (h.kind === 'thing') this.bump('torn', 0.6);
+    } else if (h.kind === 'torn') { w.shake(C.hit.shake * 0.5); this.bump('torn'); w.events.emit('ride', { beat: 'torn', x: h.x, y: h.y }); } else if (h.kind === 'thing') this.bump('torn', h.heavy ? 1 : 0.6);
+    // (in a bend what it throws bursts as it goes: the alley erupts behind him; the first of it slows the world)
+    if (h.burst && e?.break && !e.dead && !e.dying) e.break(a + rand(-0.4, 0.4), tearPower(speed, C));
+    if (h.heavy) { w.shake(C.hit.shake * 0.7); w.sound('carHit', h.x, h.y, 0.8); w.particles.sparks(h.x, h.y, a, 1.0, 12, 300); }
+    if (this.bend && (h.kind === 'torn' || h.kind === 'thing')) this.smashed(h.x, h.y);
     if (e?.def && (h.kind === 'torn' || h.kind === 'thing')) {
       // what it was made of thrown on ahead, sheets of paper off it, sparks off steel
       const F = C.fx.debris;
@@ -1143,7 +1251,12 @@ export default class Drive {
     }
     // what it cost him: once a step at most (what it was: its `cost`, a toll's arm), and nothing for what was already
     // broken (the bits of it in the air)
-    if (h.kind !== 'gives' && !this.lost) { this.lost = true; this.v *= 1 - (e?.def?.cost ?? C.hit.loss); }
+    if (h.kind !== 'gives' && !this.lost) {
+      this.lost = true;
+      // (in a bend the script's speed: a share of it, never under its floor)
+      if (this.bend) this.bend.v = this.v = smashCost(this.bend.v, h.heavy ? C.bend.smash.heavyCost : C.bend.smash.cost, this.bend.b.speed, C.bend.smash);
+      else this.v *= 1 - (e?.def?.cost ?? C.hit.loss);
+    }
   }
 
   // He shoved a parked car aside (aside): what it cost him (asideKeep of his speed along his nose, never less), and

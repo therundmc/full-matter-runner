@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { loadSettings, saveSettings } = await load('game/systems/Settings.js');
 
-const D = { master: 1, music: 1, sfx: 1, ambience: 1, quality: 'auto', autoQuality: 'high', shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
+const D = { master: 1, music: 1, sfx: 1, ambience: 1, quality: 'auto', autoQuality: 'high', shake: 1, rumble: 1, fullscreen: false, aimMark: false };
 
 const fakeStorage = () => {
   const data = {};
@@ -17,7 +17,7 @@ test('settings: full volume, the quality on AUTO, full shake and no fullscreen w
 
 test('settings: a saved set comes back as it was', () => {
   const st = fakeStorage();
-  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, quality: 'medium', autoQuality: 'low', shake: 0.35, rumble: 0.6, fullscreen: true, aim: 'wedge', aimMark: true };
+  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, quality: 'medium', autoQuality: 'low', shake: 0.35, rumble: 0.6, fullscreen: true, aimMark: true };
   saveSettings(set, st);
   assert.deepEqual(loadSettings(st), set);
 });
@@ -89,11 +89,14 @@ test('settings: a storage that throws (or is missing) never throws out', () => {
   assert.doesNotThrow(() => saveSettings({ master: 1, music: 1, sfx: 1 }, null));
 });
 
-test('settings: the aim is one of its concepts, anything else is LOCK (the default)', () => {
+test('settings: an old save\'s aim style (`aim`, gone: the aim is LOCK) loads fine, is ignored and not saved again', () => {
   const st = fakeStorage();
-  for (const [stored, read] of [['notch', 'notch'], ['laser', 'lock'], [3, 'lock'], [true, 'lock']]) {
-    st.setItem('fmr.settings.v1', JSON.stringify({ aim: stored }));
-    assert.equal(loadSettings(st).aim, read);
+  for (const stored of ['wedge', 'cross', 'lock', 3, null]) {
+    st.setItem('fmr.settings.v1', JSON.stringify({ master: 0.5, aim: stored, aimMark: true }));
+    const s = loadSettings(st);
+    assert.deepEqual(s, { ...D, master: 0.5, aimMark: true }, String(stored));
+    saveSettings(s, st);
+    assert.ok(!('aim' in JSON.parse(st.getItem('fmr.settings.v1'))));
   }
 });
 

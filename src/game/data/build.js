@@ -4,7 +4,7 @@
 export const BUILD = { release: false };
 
 // the debug keys a release build ignores (Game.advance drops their presses)
-export const DEV_KEYS = ['F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8'];
+export const DEV_KEYS = ['F1', 'F2', 'F3', 'F4', 'F6', 'F8'];
 
 const here = () => globalThis.location?.search ?? '';
 

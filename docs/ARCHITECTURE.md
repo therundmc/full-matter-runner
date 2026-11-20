@@ -77,8 +77,8 @@ src/
                           head can be driven into (a toilet, a urinal, a sink, a ledge: data/finishers.js SLAMS; a wall,
                           never one beyond a doorway), the most specific first (DOM-free, unit-tested)
       Lunge.js            `lungeTarget`: the guard a melee swing of the player's is drawn to (PLAYER.lunge): the aim
-                          turned a little onto him, a short step in, never into a wall; with the LOCK aim cue, the
-                          man it holds takes the whole turn and a longer step (PLAYER.lunge.lock) (rules only, unit-tested)
+                          turned a little onto him, a short step in, never into a wall; the man the LOCK aim
+                          holds takes the whole turn and a longer step (PLAYER.lunge.lock) (rules only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
@@ -343,10 +343,9 @@ src/
       Flicker.js          how bright a light is over time per kind (buzz, broken, pulse, tv...), the letters of a sign,
                           the faulty tubes picked per level (NEON: one dying, a few stuttering); DOM-free
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
-      AimArt.js           the aim's cue at the gun, over the lighting: the concepts of data/aim.js but the cross (LINE,
-                          WEDGE, NOTCH, LOCK; the AIM option, F7 cycles them), told by systems/AimCue.js (the line
+      AimArt.js           the aim's cue, LOCK (data/aim.js), over the lighting, told by systems/AimCue.js (the line
                           of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in Game.padAim); the
-                          mouse keeps a dot (Game.drawCursor). LOCK (the default) is worn stencil paint: a chevron
+                          mouse keeps a dot (Game.drawCursor). LOCK is worn stencil paint: a chevron
                           on the floor along the aim only with the AIM MARK option (World.aimMark, Settings
                           `aimMark`, off by default), a mark round the man it takes (AIM.lock.mark;
                           `?mark=ring|tick|point|corners` to compare), and the vault's mark in the same paint
@@ -815,7 +814,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   sized and coloured by the chain), and under the HUD's score and clock the chain count from its 2nd kill, the fuse
   draining over the chain's window, the labels of the last kills, the cash-out of a chain that ran out; a multi-kill
   puts up a banner and a moment of slow motion (MOMENTS.multi, never cutting short a stronger one). A melee swing of
-  the player's is drawn a little to the guard in front of him (systems/Lunge.js), all the way to the man the LOCK aim cue holds. Screens.drawResults counts the
+  the player's is drawn a little to the guard in front of him (systems/Lunge.js), all the way to the man the LOCK aim holds. Screens.drawResults counts the
   lines up one after the other.
 - Replay (render/Replay.js, `REPLAY` in Config.js): while playing, Game.render hands the finished frame (before the
   vignette and the HUD) to `ReplayRecorder.capture`, which copies it downscaled into a rolling atlas 15 times a
@@ -1206,7 +1205,6 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   so reading it per frame would toggle several times on high-refresh displays.
 - F2 enemy vision (cones, close-awareness ring, state:tactic + meter, target, cover, last known position,
   incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
-- F7 the next way of showing the aim (data/aim.js `AIM_STYLES`; kept as the AIM setting). Lab station 23 AIM.
 - F8 the perf overlay, OFF -> COMPACT -> FULL (systems/Perf.js aggregates, ui/PerfOverlay.js draws it last, on the
   HUD's canvas over the lens): frame times (p95, worst of 2 s, the display's rate, steps a frame, the time scale),
   the CPU per section (engine/Profiler.js `PROF`: `if (PROF.on) PROF.begin('x')` ... `end('x')`, off and free until

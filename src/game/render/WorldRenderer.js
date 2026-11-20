@@ -178,7 +178,7 @@ export default class WorldRenderer {
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis, cam);
     drawLasers(ctx, w);
-    if (w.cues) drawAim(ctx, w, w.aimStyle, t); // the aim's cue (data/aim.js; the style is the player's setting)
+    if (w.cues) drawAim(ctx, w, t); // the aim's cue: LOCK (data/aim.js)
     this.cues.drawItems(ctx, vis); // the floor weapons' catch-lights, the one within reach outlined
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);

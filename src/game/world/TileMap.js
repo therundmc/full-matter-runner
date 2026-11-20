@@ -9,7 +9,11 @@ export const FLOORS = {
   '"': 'grass', '=': 'asphalt', '-': 'asphalt_line', '~': 'dirt', 's': 'sidewalk', '*': 'neon_floor',
   '^': 'roof', // a flat roof one can walk on (same tar paper as the roofs of the buildings around)
 };
-export const WALLS = { '#': 'wall', 'X': 'brick' };
+// (P, M, Y, V: painted stucco over block, Miami's pastels: pink, mint, peach, lilac; the outer ring of a building
+// round its brick roof, as brick is)
+export const WALLS = { '#': 'wall', 'X': 'brick', P: 'stucco_pink', M: 'stucco_mint', Y: 'stucco_peach', V: 'stucco_lilac' };
+// the chips off each when it is hit
+const CHIPS = { X: '#8a3a2a', P: '#e8a8b8', M: '#9ad0bc', Y: '#ecc0a0', V: '#b8a8d8' };
 const STRUCT = new Set(['D', 'L', 'G', 'F']);
 
 // Pure grid logic (no DOM): tiles, solidity, path blocking, wall HP, raycasts, wall bodies.
@@ -125,7 +129,7 @@ export default class TileMap {
     return this.isWallChar(cx, cy) && cx > 0 && cy > 0 && cx < this.w - 1 && cy < this.h - 1;
   }
 
-  chipColor(cx, cy) { return this.at(cx, cy) === 'X' ? '#8a3a2a' : '#d8ccb0'; }
+  chipColor(cx, cy) { return CHIPS[this.at(cx, cy)] ?? '#d8ccb0'; }
 
   // a wall tile gives way and becomes floor; returns the wall texture name (for the renderer)
   destroyTile(cx, cy) {
