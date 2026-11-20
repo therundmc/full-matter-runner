@@ -16409,7 +16409,7 @@ def p_call_box():
     sign_plate(cv, 2, 6.5, W - 2, H - 1, SIGN_YELLOW, rim=SIGN_INK, r=1.0, border=0.75)
     frect(cv, 3.5, 8.5, W - 3.5, 12.0, hx('#2a4ea8'))
     words(cv, W / 2, 8.8, 'CALL', SIGN_WHITE, 0.5, centre=True)
-    words(cv, W / 2, 14.0, '9-512', SIGN_INK, 0.5, centre=True)
+    words(cv, W / 2, 14.0, '512', SIGN_INK, 0.5, centre=True)              # (its number fits its door)
     sign_wear(cv, rng, (3, 7, W - 3, H - 2), 3)
     cv.outline()
     return cv
