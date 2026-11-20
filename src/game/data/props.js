@@ -20,7 +20,7 @@ export const ON_WALL = new Set(['wall_lamp', 'tube_light', 'neon_tube_pink', 'ne
   'towel_dispenser', 'neon_sign_beer', 'neon_sign_bay', 'poster_pinup', 'poster_revue', 'mirror_strip', 'neon_sign_lips',
   'conduit', 'flyers', 'neon_sign_diner', 'neon_sign_cafe', 'security_mirror', 'cig_rack', 'price_board', 'tape_rack',
   'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'wall_clock', 'cleaning_rack', 'boiler', 'mirror_cracked',
-  'mailboxes', 'calendar', 'roller_door']);
+  'mailboxes', 'calendar', 'roller_door', 'neon_sign_motel', 'neon_sign_vacancy', 'neon_sign_flamingo']);
 
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
@@ -403,6 +403,58 @@ export const PROPS = {
   lane_signal_stop: { overhead: true, height: 0.02, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#26262e', sparks: true, glass: true, sound: 'metal',
     light: { r: 44, color: '#ff2c2c', intensity: 0.5 } },
   sign_exact_change: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8b828', sound: 'metal', bends: 6 },
+  // ---- Miami, 1985 (generic dressing; sprites: "Miami, 1985" in tools/generate_assets.py). Royal palms (the pale
+  // trunk is the pole, the crown hung high), hibiscus hedges, pastel stucco canopies along a front (hung: a neon tube
+  // along the lip, its light under it), awnings in pastel cloth, pole signs and wall neon, billboards on their
+  // catwalks (hung, lit by their four lamps), a car lot (its light poles, pennants), and the freeway's grime: a burnt
+  // car, a camp (tarp, a fire in a drum), chain-link (a hole cut in one), a dented rail, a cushion somebody hit, a
+  // call box. What a car goes through is torn (static, not `lasting`); the shells and the rails never give
+  royal_palm: { material: 'wood', r: 8, hp: 16, static: true, chips: '#3a8a4a', sound: 'wood', overhead: true, dirt: true, height: 0.09, pole: ['#a8a49a', 10] },
+  royal_palm_b: { material: 'wood', r: 8, hp: 16, static: true, chips: '#3a8a4a', sound: 'wood', overhead: true, dirt: true, height: 0.09, pole: ['#a8a49a', 10] },
+  hibiscus_hedge: { static: true, vault: true, material: 'wood', w: 92, h: 20, hp: 8, chips: '#2e7a3a', dirt: true, sound: 'wood' },
+  hibiscus_hedge_pink: { static: true, vault: true, material: 'wood', w: 92, h: 20, hp: 8, chips: '#2e7a3a', dirt: true, sound: 'wood' },
+  deco_canopy_pink: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#f0a8c0', sound: 'stone',
+    light: { r: 100, color: '#3ae8ff', intensity: 0.6, flicker: 'buzz', y: 24 } },
+  deco_canopy_mint: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#9edcc6', sound: 'stone',
+    light: { r: 100, color: '#ff4a8a', intensity: 0.6, flicker: 'buzz', y: 24 } },
+  deco_canopy_peach: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#f6c49c', sound: 'stone',
+    light: { r: 100, color: '#ff4a8a', intensity: 0.6, flicker: 'buzz', y: 24 } },
+  deco_canopy_lavender: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#c2b0e4', sound: 'stone',
+    light: { r: 100, color: '#3ae8ff', intensity: 0.6, flicker: 'buzz', y: 24 } },
+  awning_pink: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#f08ab0', sound: 'wood' },
+  awning_mint: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#7ad0b0', sound: 'wood' },
+  awning_peach: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#f4a878', sound: 'wood' },
+  awning_lavender: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b49ae0', sound: 'wood' },
+  pole_sign_motel: { hum: 'neon', overhead: true, height: 0.05, pole: ['#d8d0c0', 4], static: true, material: 'metal', r: 4, hp: 6, chips: '#f6c49c', sparks: true, glass: true, sound: 'metal',
+    light: [{ r: 150, color: '#ff4a9a', intensity: 0.75, flicker: 'buzz', y: -8 }, { r: 90, color: '#3ae8ff', intensity: 0.5, flicker: 'stutter', y: 12 }] },
+  pole_sign_autos: { hum: 'neon', overhead: true, height: 0.05, pole: ['#d8d0c0', 4], static: true, material: 'metal', r: 4, hp: 6, chips: '#c2b0e4', sparks: true, glass: true, sound: 'metal',
+    light: [{ r: 150, color: '#ffb04a', intensity: 0.75, flicker: 'buzz', y: -8 }, { r: 90, color: '#ff4a8a', intensity: 0.5, flicker: 'buzz', y: 10 }] },
+  neon_sign_motel: { hum: 'neon', material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 120, color: '#ff4a8a', intensity: 0.85, flicker: 'buzz' } },
+  neon_sign_vacancy: { hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+    light: { r: 110, color: '#3ae8ff', intensity: 0.8, flicker: 'stutter' } },
+  neon_sign_flamingo: { hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 100, color: '#ff4a9a', intensity: 0.8, flicker: 'buzz' } },
+  billboard_tan: { hung: true, lasting: true, overhead: true, height: 0.04, static: true, material: 'metal', w: 252, h: 104, hp: 99, chips: '#c8c4d0', sound: 'metal',
+    light: [{ r: 130, color: '#fff0d0', intensity: 0.55, x: -90, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: -26, y: -10 },
+      { r: 130, color: '#fff0d0', intensity: 0.55, x: 26, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: 90, y: -10 }] },
+  billboard_radio: { hung: true, lasting: true, overhead: true, height: 0.04, static: true, material: 'metal', w: 252, h: 104, hp: 99, chips: '#c8c4d0', sound: 'metal',
+    light: [{ r: 130, color: '#fff0d0', intensity: 0.55, x: -90, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: -26, y: -10 },
+      { r: 130, color: '#fff0d0', intensity: 0.55, x: 26, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: 90, y: -10 }] },
+  lot_light: { fixture: true, material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.03,
+    light: [{ r: 170, color: '#f4f8ff', intensity: 0.7, x: -26, y: 40 }, { r: 170, color: '#f4f8ff', intensity: 0.7, x: 26, y: 40 }] },
+  sign_gantry: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 80, h: 448, hp: 99, chips: '#1c6a4c', sound: 'metal',
+    light: [{ r: 120, color: '#e8fff0', intensity: 0.55, x: -36, y: -108 }, { r: 120, color: '#e8fff0', intensity: 0.55, x: -36, y: 132 }] },
+  pennant_string: { hung: true, overhead: true, height: 0.06, static: true, material: 'fabric', w: 112, h: 12, hp: 2, chips: '#ff5aa0', sound: 'wood' },
+  car_burnt: { static: true, lasting: true, material: 'metal', w: 136, h: 54, hp: 99, chips: '#5a3a2a', sparks: true, sound: 'metal', blocksPath: true },
+  tent_tarp: { static: true, material: 'fabric', w: 64, h: 44, hp: 6, chips: '#2a5ab8', sound: 'wood' },
+  barrel_fire: { static: true, material: 'metal', r: 10, hp: 10, chips: '#7a3a24', sparks: true, sound: 'metal', blocksPath: true,
+    light: { r: 150, color: '#ff8a2a', intensity: 0.9, flicker: 'tv' } },
+  chainlink_fence: { static: true, material: 'mesh', w: 128, h: 4, hp: 16, chips: '#9ea4ae', sound: 'metal' },
+  chainlink_hole: { static: true, material: 'mesh', w: 128, h: 4, hp: 12, chips: '#9ea4ae', sound: 'metal' },
+  guardrail_dented: { static: true, lasting: true, material: 'metal', w: 128, h: 6, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
+  crash_cushion_hit: { static: true, material: 'plastic', w: 60, h: 50, hp: 6, chips: '#e8c020', sound: 'wood' },
+  call_box: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8c020', sound: 'metal', bends: 6 },
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
