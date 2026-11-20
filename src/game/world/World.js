@@ -77,6 +77,7 @@ import Ambient from '../systems/Ambient.js';
 import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
 import { SEAT, TRAVERSE } from '../data/feel.js';
 import Drive, { driveSpot } from '../systems/Drive.js';
+import Checkpoints, { fromCheckpoint } from '../systems/Checkpoints.js';
 import Pursuit from '../systems/Pursuit.js';
 import Signals from '../systems/Signals.js';
 import Lorries from '../systems/Lorries.js';
@@ -198,13 +199,17 @@ export default class World {
     this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
     const car = this.getaway();
     if (car) car.armoured = true; // the way out cannot be shot up or blown up before it is needed
+    // the chase's checkpoints (level 2A): a retry after a death starts at the last one reached (Game.chaseAt), the
+    // chase as from there (its events behind it gone)
+    this.checkpoints = Checkpoints.of(this, level, game?.chaseAt);
+    const chase = level.chase ? fromCheckpoint(level.chase, this.checkpoints?.from) : null;
     // a level driven in the van (level `chase`: he starts in it), the vans one can get into (the lab: E at the door)
-    this.drive = level.chase ? new Drive(this, level.chase) : null;
+    this.drive = chase ? new Drive(this, chase) : null;
     for (const p of this.props) if (p.drivable) this.uses.add(driveSpot(this, p));
     // the boss's men after him in their cars (the chase), the lab's pursuer dummy
-    this.pursuit = level.chase || this.props.some((p) => p.pursuer) ? new Pursuit(this, level.chase) : null;
+    this.pursuit = chase || this.props.some((p) => p.pursuer) ? new Pursuit(this, chase) : null;
     // the lorry that backs out across the street (the chase's event 2, the lab's)
-    this.lorries = level.chase || this.props.some((p) => p.backs) ? new Lorries(this, level.chase) : null;
+    this.lorries = chase || this.props.some((p) => p.backs) ? new Lorries(this, chase) : null;
     // a toll's plaza on the way (the chase's event 3, the lab's): its gates told, the pursuers' lanes through it
     this.toll = Toll.of(this, level);
     // the chase's own slow motions and cuts (a pursuer stopped, the lorry across the road): where one can be driven
@@ -214,6 +219,7 @@ export default class World {
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
+    this.checkpoints?.resume(); // (started at a checkpoint: the clock and the score it kept)
   }
 
   // this playthrough is over (a retry, another level, the title): its canvases let go now rather than when collected
@@ -648,6 +654,7 @@ export default class World {
     else if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
     this.pursuit?.step(dt);
+    this.checkpoints?.step(dt);
     this.lorries?.step(dt);
     this.toll?.step(dt);
     this.chaseCam?.step();

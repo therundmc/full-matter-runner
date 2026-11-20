@@ -297,14 +297,26 @@ export default class Game {
   // CONTINUE: the furthest level opened
   continueGame() { this.startLevel(urlLevel() || latest(this.progress, has) || this.firstLevel()); }
 
-  // the current level again (R, Backspace, a retry after a death)
+  // the current level again from its beginning (RESTART in the pause, Backspace)
   newGame() { this.startLevel(this.levelId || urlLevel() || this.firstLevel(), { retry: true }); }
 
-  // retry: the same level again (the tutorial then starts at the last room reached: this.tutorialAt, kept by
-  // systems/Tutorial.js); state: what it opens on ('intro': the banner; 'cinematic': the opening, ui/Cinematic.js)
-  startLevel(id, { retry = false, state = 'intro' } = {}) {
-    this.levelId = LEVELS[id] ? id : this.firstLevel();
+  // a retry after a death (R, the pad's A, a click, RETRY in the death screen's pause): the same level, from the last
+  // checkpoint reached where the level has them (the chase: systems/Checkpoints.js, this.chaseAt)
+  retry() { this.startLevel(this.levelId || urlLevel() || this.firstLevel(), { retry: true, resume: true }); }
+
+  // what a new start keeps of the last run: a retry keeps the tutorial's last room reached and its lessons taught; a
+  // retry after a death (resume) keeps the chase's last checkpoint reached too
+  forget(retry, resume) {
     if (!retry) { this.tutorialAt = null; this.taught = new Set(); }
+    if (!resume) this.chaseAt = null;
+  }
+
+  // retry: the same level again (the tutorial then starts at the last room reached: this.tutorialAt, kept by
+  // systems/Tutorial.js); resume: at the chase's last checkpoint (this.chaseAt, kept by systems/Checkpoints.js);
+  // state: what it opens on ('intro': the banner; 'cinematic': the opening, ui/Cinematic.js)
+  startLevel(id, { retry = false, resume = false, state = 'intro' } = {}) {
+    this.levelId = LEVELS[id] ? id : this.firstLevel();
+    this.forget(retry, resume);
     this.world?.dispose?.(); // the last run's canvases let go before the new one makes its own
     this.world = new World(this, LEVELS[this.levelId]);
     this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)
@@ -425,7 +437,9 @@ export default class Game {
 
   // what the level's card shows (ui/Screens.js drawIntro)
   introCard() {
-    return { level: this.world.level, best: this.best, label: levelLabel(this.levelId), device: this.input.device, tint: introTint(this.levelId) };
+    // (a chase resumed at a checkpoint: the part's name in place of the level's)
+    const cp = this.world.checkpoints?.from, level = cp ? { ...this.world.level, name: cp.name } : this.world.level;
+    return { level, best: this.best, label: levelLabel(this.levelId), device: this.input.device, tint: introTint(this.levelId) };
   }
 
   // ---------------- hooks called by the world ----------------
@@ -602,7 +616,7 @@ export default class Game {
       const root = () => this.menu.stack[0].sel;
       if (this.pick.busy) {
         if (this.pick.update(dt, root())) { const a = this.menu.activate(); if (a) this.applyMenu(a); }
-      } else if (this.menu.depth === 0 && inp.hit('KeyR')) this.newGame();
+      } else if (this.menu.depth === 0 && inp.hit('KeyR')) { if (this.pausedFrom?.state === 'dead') this.retry(); else this.newGame(); }
       else {
         if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
         this.updateMenu(inp);
@@ -651,8 +665,10 @@ export default class Game {
       return;
     }
 
-    // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
-    if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
+    // play / dead / outro: run the simulation (R reloads while alive, retries once dead; Backspace restarts anytime,
+    // from the beginning)
+    if (inp.hit('Backspace')) { this.newGame(); inp.consume(); return; }
+    if (this.state === 'dead' && inp.hit('KeyR')) { this.retry(); inp.consume(); return; }
     if (this.state === 'fall' && this.stateT >= FALLEN) {
       // the leap: the world is no longer seen and waits; SPACE held goes on to the next level
       const lt = this.stateT - FALLEN;
@@ -690,7 +706,7 @@ export default class Game {
       return;
     }
     // once dead: R and the pad's A / Y restart at once, a click after a moment (he may have died clicking)
-    if (this.state === 'dead' && (inp.hit('PadA') || (this.stateT > 0.5 && inp.mouseHit(0)))) { this.newGame(); inp.consume(); return; }
+    if (this.state === 'dead' && (inp.hit('PadA') || (this.stateT > 0.5 && inp.mouseHit(0)))) { this.retry(); inp.consume(); return; }
     this.padAim(dt);
 
     // time scale (slow motion)
@@ -908,6 +924,7 @@ export default class Game {
       case 'replayTutorial': this.startLevel('tutorial'); return true;
       case 'resume': this.resume(); return true;
       case 'restart': this.newGame(); return true;
+      case 'retry': this.retry(); return true;
       case 'quit': this.toTitle(); return true;
       default: return false;
     }

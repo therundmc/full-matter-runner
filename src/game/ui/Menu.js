@@ -5,7 +5,8 @@
 //     controls page lists that one's; optional), rumbleOk: false when a pad is connected that this browser cannot
 //     rumble (optional), dead: the pause opened from the death screen (optional) }
 // The navigator answers with plain actions that Game.js applies:
-//   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' | 'quit'
+//   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' (from the
+//   beginning) | 'retry' (after a death: at the last checkpoint, Game.retry) | 'quit'
 //   | 'reset' | 'replayTutorial'
 // Items: { label, page } opens a sub-page, { label, act } fires an action, { label, slider: key, value },
 // { label, toggle: key, value }, { label, choice: key, value, options, show } one of a few values (`show`: what is
@@ -112,7 +113,7 @@ const PAGES = {
   // opened from the death screen there is nothing to resume: RETRY first (going back returns to the death screen)
   pause: (c) => ({
     title: 'PAUSED',
-    items: c.dead ? [{ label: 'RETRY', act: { type: 'restart' } }, { label: 'OPTIONS', page: 'options' }, { label: 'QUIT TO MENU', act: { type: 'quit' } }]
+    items: c.dead ? [{ label: 'RETRY', act: { type: 'retry' } }, { label: 'OPTIONS', page: 'options' }, { label: 'QUIT TO MENU', act: { type: 'quit' } }]
       : [{ label: 'RESUME', act: { type: 'resume' } }, { label: 'OPTIONS', page: 'options' },
         { label: 'RESTART', act: { type: 'restart' } }, { label: 'QUIT TO MENU', act: { type: 'quit' } }],
   }),
