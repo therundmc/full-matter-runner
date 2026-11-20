@@ -114,8 +114,9 @@
   };
   // the chase's bot: s a lane is held [from, to], the odds the next target is a sidewalk (into the building fronts) and
   // s it is held at most, px from the target line that count as on it, px of reach of the gun, the box a pursuer
-  // alongside is shoved in ([dx, dy from, dy to] from his car's middle)
-  const CHASE_BOT = { hold: [1.5, 4], kerb: 0.2, kerbFor: 2.5, near: 10, range: 420, abreast: [70, 45, 120] };
+  // alongside is shoved in ([dx, dy from, dy to] from his car's middle), px past a told lorry's far side the way round
+  // it is held
+  const CHASE_BOT = { hold: [1.5, 4], kerb: 0.2, kerbFor: 2.5, near: 10, range: 420, abreast: [70, 45, 120], lorryPast: 24 };
 
   const prng = K.prng;
 
@@ -769,13 +770,24 @@
       ch.kerb = false;
       ch.until = S.clock + 0.3;
     } else ch.toll = null;
+    // a lorry told across the road ahead (systems/Lorries.js: its lamps, the beeper, the red lane, the bone arrows on
+    // the way round): onto the way round (its `gap`) as a player reading the tell would, held until its tail is passed
+    const lorry = !toll && (w.lorries?.list || []).find((L) => L.gap && L.state !== 'wait' && van.body.bounds.min.x < L.p.body.bounds.max.x + C.lorryPast);
+    if (lorry) {
+      if (!ch.lorry) { ch.lorry = true; act('chase: lorry told, the way round'); }
+      ch.y = lorry.gap.y;
+      ch.kerb = false;
+      ch.until = S.clock + 0.3;
+    } else ch.lorry = false;
     // (stalled, the car easing itself out of what holds it: hands off the wheel, as a player would let it come out)
     const dy = ch.y - van.y, near = toll ? Math.max(C.near, (30 * d.u * d.u) / d.C.pull + 4) : C.near;
     if (Math.abs(dy) > near && !d.freeing) inp.keys.add(dy < 0 ? 'KeyW' : 'KeyS');
     const cars = (w.pursuit?.cars || []).filter((c) => !c.dummy && ['chase', 'limp', 'cross'].includes(c.state));
     // a pursuer alongside: shoved
     const side = cars.find((c) => Math.abs(c.v.x - van.x) < C.abreast[0] && Math.abs(c.v.y - van.y) > C.abreast[1] && Math.abs(c.v.y - van.y) < C.abreast[2]);
-    if (side && d.cool <= 0 && !d.grabbing) {
+    // (never a shove away from a told lorry's way round: it throws the car a lane that way)
+    const away = lorry && side && Math.sign(side.v.y - van.y) !== Math.sign(lorry.gap.y - van.y);
+    if (side && !away && d.cool <= 0 && !d.grabbing) {
       aimAt(inp, side.v.x, side.v.y);
       press(inp, 'Space');
       bump(S.stats.drive, 'shoves');

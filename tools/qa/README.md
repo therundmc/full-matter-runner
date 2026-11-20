@@ -88,7 +88,9 @@ player, and reads `window.game` to decide:
 `npm run qa -- --level level2a`: he drives the whole level (systems/Drive.js), so while `world.drive.on` the bot
 does not walk (`playChase` in `bot.js`, its numbers in `CHASE_BOT`): it turns the wheel (W / S) toward a lane picked on
 a slow random cycle (1.5 to 4 s each), one time in five toward a sidewalk instead, held 2.5 s into the building fronts
-(where the car got caught); SPACE aimed at a pursuer alongside (within 70 px along the road, 45 to 120 px across);
+(where the car got caught); a told lorry is read as a player would (its way round, the bone arrows: its `gap`, held
+until its tail is passed, no shove away from it) and a told toll sends it down a wooden lane (Toll.guide); SPACE aimed
+at a pursuer alongside (within 70 px along the road, 45 to 120 px across);
 else the Uzi held on the windscreen of the nearest pursuer still driven within 420 px and inside the gun's arc
 (`drive.gun.aimAt`). It dies (a told shot, nose-on into a wall, the lorry), restarts with R, and plays the road again
 to the TO BE CONTINUED card and the results. The detectors made for walking stay off at the wheel: `in-wall` for him
