@@ -743,3 +743,12 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   street: the retry at THE STREET), a heap warning across its 5 sessions.
 - 2026-11-20: 2A's checkpoints cut to the user's two parts: THE STREET (the start) and THE ON-RAMP (col 462, just
   out of the detour's turns); THE DETOUR and THE TOLL checkpoints removed.
+- 2026-11-20: his Uzi's rounds at the wheel start at its drawn muzzle (the user: they came out offset from the gun).
+  CarGun fired from the seat + 20 px along the aim (10 to 16 px off the drawn muzzle, the hand's side and the gun's
+  length never counted) and drew the flash and the streak where the body had it, a step behind the car as drawn.
+  Now the round leaves the seat pose's own gun (Character.muzzlePos, taken at the shot; a click while the arm comes
+  up waits for it, CHASE.gun.level), the flash and the streak's start follow the muzzle as SEEN (CarGun.drawnMuzzle,
+  Vehicle.carriedAt: the car on whole px, one of its 64 angles, on its springs), the round and the case are drawn
+  from where they were born (Interp.born), the case at the port as seen. The pursuers' gunmen likewise: their tell,
+  shot and tracer start at the end of the pistol drawn in their hand (Pursuit.pistolOf, CHASE.gunman.out).
+  Tests: tests/cargun.test.mjs.

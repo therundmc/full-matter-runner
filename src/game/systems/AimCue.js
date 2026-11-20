@@ -34,7 +34,8 @@ export function aimCue(world) {
   if (drive) {
     const g = drive.gun;
     if (!g?.aimed) return null;
-    const a = g.aimed.a, off = !g.aimed.ok, o = off ? g.root() : g.hand(a), skip = [p, g.van];
+    // (in its arc, from the muzzle where it is seen: CarGun.drawnMuzzle)
+    const a = g.aimed.a, off = !g.aimed.ok, o = off ? g.root() : g.drawnMuzzle?.() ?? g.hand(a), skip = [p, g.van];
     if (off) return { x: o.x, y: o.y, a, kind: 'gun', half: 0, len: AIM.offArc.len, hit: false, target: null, off, skip, team: p.team };
     return { x: o.x, y: o.y, a, kind: 'gun', half: d.spread || 0, ...lineOfFire(world, p.team, o.x, o.y, a, skip), off, skip, team: p.team };
   }

@@ -147,7 +147,8 @@ export function combatFx(world) {
 export function drawCombat(ctx, world) { combatFx(world).draw(ctx); }
 
 // a gun of definition d goes off at (x, y) along a: its family's flash, the light it throws on the shooter for a
-// moment, sparks out of the barrel (its smoke is the air's: systems/Smoke.js, on 'shot')
+// moment, sparks out of the barrel (its smoke is the air's: systems/Smoke.js, on 'shot'). ch: the shooter whose
+// muzzle the flash follows (or a gun that tells where its own is seen: drawnMuzzle), or null: it stays there
 export function muzzleFlash(world, x, y, a, d, ch) {
   const m = feelOf(d).muzzle;
   combatFx(world).muzzle(x, y, a, m, ch);
@@ -323,7 +324,9 @@ function drawMark(ctx, m, now) {
 
 function drawMuzzle(ctx, m) {
   const sh = SHAPES[m.shape], bands = sh.bands || FLAME.length, ch = m.ch;
-  if (ch?.alive && ch.hasGun) { const p = ch.muzzlePos(); m.x = p.x; m.y = p.y; m.a = p.a; }
+  // (it follows the gun: a man's muzzle as last drawn, or where a gun that tells it is seen: systems/CarGun.js)
+  const p = !ch ? null : ch.drawnMuzzle ? ch.drawnMuzzle() : ch.alive && ch.hasGun ? ch.muzzlePos() : null;
+  if (p) { m.x = p.x; m.y = p.y; m.a = p.a; }
   ctx.save();
   ctx.translate(m.x, m.y);
   ctx.rotate(m.a);

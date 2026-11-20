@@ -49,12 +49,14 @@ export default class Interp {
     this.saved = [];   // the real places while applied: [thing, x, y, angle or z] in a row
     this.nb = 0;       // how many of `saved`'s rows are bodies (the others are points)
     this.on = false;
+    this.live = false; // a capture holds for the step under way (born)
   }
 
   // Before a step: where everything that may move is. bodies: Matter bodies (static and sleeping ones are left
   // out); lists: arrays of things with x, y and maybe z (particles, bullets)
   capture(bodies, lists = []) {
     const n = ++this.n, B = this.bodies, P = this.points;
+    this.live = true;
     B.length = 0;
     P.length = 0;
     for (const b of bodies) {
@@ -73,8 +75,18 @@ export default class Interp {
   // nothing has a place to come from any more: the state is drawn as it is (a new level, a world held still)
   still() {
     this.n++;
+    this.live = false;
     this.bodies.length = 0;
     this.points.length = 0;
+  }
+
+  // A thing made during the step under way (a Matter body, or a point with x, y) at (x, y), turned a: drawn from
+  // there to where the step leaves it, as what was there before the step is, not left where it is (a round or a case
+  // out of a gun in a moving car would be drawn up to a step ahead of the gun). Nothing when nothing was captured
+  born(t, x, y, a) {
+    if (!this.live) return;
+    t.ipx = x; t.ipy = y; t.ipn = this.n;
+    if (t.position) { t.ipa = a ?? t.angle; this.bodies.push(t); } else { t.ipz = t.z; this.points.push(t); }
   }
 
   // Put everything a share alpha of the way from where it was before the last step to where it is. A thing made

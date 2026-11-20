@@ -798,10 +798,16 @@ export default class Vehicle {
   // or put between two px every frame crawls: that was the blur of the car in motion. The body keeps its real place
   // and angle; `drawn` is the pose when it is not the body's (null otherwise)
   pose() {
+    const b = this.body;
+    return (this.drawn = this.snapped()) ?? { x: b.position.x, y: b.position.y, a: b.angle };
+  }
+
+  // the pose it would be drawn at from its body as it is now, or null when that is the body's own (pure: pose keeps it)
+  snapped() {
     const b = this.body, cam = this.world.camera, z = this.moving && cam?.pixel ? cam.z : 0;
-    if (!z || z % 1) { this.drawn = null; return { x: b.position.x, y: b.position.y, a: b.angle }; }
+    if (!z || z % 1) return null;
     const P = CHASE.pixel, snap = (n) => Math.round(n * z) / z;
-    return (this.drawn = { x: snap(b.position.x), y: snap(b.position.y), a: stepAngle(b.angle, this.drawn?.a, TAU / P.steps, P.slack) });
+    return { x: snap(b.position.x), y: snap(b.position.y), a: stepAngle(b.angle, this.drawn?.a, TAU / P.steps, P.slack) };
   }
 
   // Where its shell is, as drawn: the pose and the body on its springs (`sag`, sprite px). What is laid on the car
@@ -826,6 +832,17 @@ export default class Vehicle {
     ctx.translate(-b.position.x, -b.position.y);
     fn();
     ctx.restore();
+  }
+
+  // The same for one point p ({ x, y }, a: a way, turned with it) placed from the body: where it is seen. A draw's
+  // (the muzzle of a gun in the car as the flash and the tracer start from it), never the simulation's. at: the pose
+  // it is drawn at (the last drawn one by default)
+  carriedAt(p, gx = 0, gy = 0, at = this.drawn) {
+    const b = this.body;
+    if (!at) at = { x: b.position.x, y: b.position.y, a: b.angle };
+    const ca = Math.cos(at.a), sa = Math.sin(at.a), da = at.a - b.angle, c = Math.cos(da), s = Math.sin(da);
+    const dx = p.x - b.position.x, dy = p.y - b.position.y;
+    return { x: at.x + gx * ca - gy * sa + dx * c - dy * s, y: at.y + gx * sa + gy * ca + dx * s + dy * c, a: (p.a ?? 0) + da };
   }
 
   draw(ctx) {
