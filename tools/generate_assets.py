@@ -10201,9 +10201,12 @@ def p_car_grille():
 # lights on their mast arms, a bus shelter, signs on their posts, bollards, trees, the works (an arrow board, a
 # compressor, barricades), the railway over the street, the freeway sign at its end. Every painter has its own
 # random.Random: adding one here repaints nothing else.
-ROAD_WHITE, ROAD_YELLOW = hx('#d4cfc2'), hx('#d2aa3a')
+ROAD_WHITE, ROAD_YELLOW = hx('#d4cfc2'), hx('#d2aa3a')   # THE road paint of every kit (lines, words, kerbs, islands)
+ROAD_WEAR = 0.6     # one wear for all of it (road_mark): the street's lines, arrows and words, the ramp's, the toll's
+ROAD_WEAR_RUN = -0.6   # the long lines laid end to end (centre, edges, lane dashes): the same piece every 3 m, so
+                       # its worn-through holes would repeat as a dash; they only thin (their noise wraps: no seam)
 KERB = ramp('#a3a0a8', 0.5, 0.26, 0.28)
-KERB_RED, KERB_YELLOW = hx('#b23a30'), hx('#d0a428')
+KERB_RED, KERB_YELLOW = hx('#b23a30'), ROAD_YELLOW
 GUTTER = (16, 12, 24)
 _ROAD_TILES = {}
 
@@ -10227,18 +10230,18 @@ def tile_px(name, x, y):
     return t.p[int(math.floor(x * FINE)) % t.pw, int(math.floor(y * FINE)) % t.ph]
 
 
-def road_mark(W, H, mask, seed, col=ROAD_WHITE, wear=1.0):
+def road_mark(W, H, mask, seed, col=ROAD_WHITE, wear=ROAD_WEAR):
     """Paint on the asphalt, worn: mask(x, y) is where the marking is (world px, a pixel's centre). Thermoplastic laid
     on a road: chipped where the aggregate shows through, thinned to grey in slow patches, never a clean decal."""
     cv = Cv(W, H)
     rng = random.Random(seed)
-    slow, quick = VNoise(max(W, 16), max(H, 16), 7, rng), VNoise(max(W, 16), max(H, 16), 2, rng)
+    slow, quick = VNoise(max(W, 16), max(H, 16), 8, rng), VNoise(max(W, 16), max(H, 16), 2, rng)   # cells that divide a 3 m piece: it wraps
 
     def f(x, y, cur):
         if not mask(x, y):
             return None
         w = slow(x, y) * 0.62 + quick(x, y) * 0.38 + 0.07 * (wear - 1.0)
-        if w > 0.73 or rng.random() < 0.01:
+        if w > 0.73:
             return None                                                   # worn through: the asphalt
         c = mix(col, FL_ASPHALT, 0.4) if w > 0.64 else col                # thinned round the holes
         return alpha(shift(c, rng.randint(-3, 3)), 240)
@@ -10380,7 +10383,7 @@ def road_text(word, seed, col=None, ky=6):
             return False
         row = FONT_STENCIL[word[n]][int(gy // ky)]
         return row[int((gx - n * step) // kx)] == '#'
-    return lambda: road_mark(W, H, mask, seed, col or ROAD_WHITE, wear=0.3)
+    return lambda: road_mark(W, H, mask, seed, col or ROAD_WHITE)
 
 
 def p_road_arrow():
@@ -11066,10 +11069,10 @@ ROAD_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     kerb_in=(p_kerb_in, (6, 6)),
     kerb_ramp_n=(kerb_ramp('n'), (64, 20)), kerb_ramp_s=(kerb_ramp('s'), (64, 20)),
     zebra_a=(lambda: road_mark(96, 20, lambda x, y: 0.5 <= x < 95.5 and 1 <= y < 19, 9311), (96, 20)),
-    zebra_b=(lambda: road_mark(96, 20, lambda x, y: 0.5 <= x < 95.5 and 1 <= y < 19, 9312, wear=1.5), (96, 20)),
+    zebra_b=(lambda: road_mark(96, 20, lambda x, y: 0.5 <= x < 95.5 and 1 <= y < 19, 9312, wear=ROAD_WEAR + 0.3), (96, 20)),
     stop_line=(lambda: road_mark(14, 80, lambda x, y: 1 <= x < 13 and 1 <= y < 79, 9313), (14, 80)),
-    centre_double=(lambda: road_mark(96, 8, lambda x, y: 0.5 <= y < 3 or 5 <= y < 7.5, 9314, ROAD_YELLOW), (96, 8)),
-    park_tee=(lambda: road_mark(24, 60, lambda x, y: abs(x - 12) < 1.6 or y >= 56.8, 9315, wear=1.2), (24, 60)),
+    centre_double=(lambda: road_mark(96, 8, lambda x, y: 0.5 <= y < 3 or 5 <= y < 7.5, 9314, ROAD_YELLOW, ROAD_WEAR_RUN), (96, 8)),
+    park_tee=(lambda: road_mark(24, 60, lambda x, y: abs(x - 12) < 1.6 or y >= 56.8, 9315), (24, 60)),
     road_arrow=(p_road_arrow, (96, 28)), road_arrow_turn=(p_road_arrow_turn, (66, 40)),
     road_bus=(road_text('BUS', 9321), (38, 44)), road_stop=(road_text('STOP', 9322), (51, 44)),
     road_slow=(road_text('SLOW', 9323), (51, 44)), road_keep=(road_text('KEEP', 9324), (51, 44)),
@@ -12223,7 +12226,7 @@ def p_toll_island():
         if e < 0:
             return None
         if e < 2.4:                                                        # the kerb, painted
-            c = hx('#d8b030') if int((x + y) // 5) % 2 or x > 36 else SIGN_INK
+            c = ROAD_YELLOW if int((x + y) // 5) % 2 or x > 36 else SIGN_INK
             return lt(c, 0.12) if e < 1.0 and lit else dk(c, 0.3) if e < 1.0 else c
         if x < 36:
             return hx('#e0b828') if int((x + y) // 6) % 2 else hx('#1e1c24')   # the nose
@@ -12631,15 +12634,15 @@ RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     gore_hatch=(p_gore_hatch, (256, 72)),
     merge_arrow=(arrow_mark(96, 40, MERGE_ARROW, 5.0, (16, 8), 9905), (96, 40)),
     merge_arrow_s=(arrow_mark(96, 40, mirror_y(MERGE_ARROW, 40), 5.0, (16, 8), 9906), (96, 40)),
-    lane_dash_long=(lambda: road_mark(96, 6, lambda x, y: 1 <= x < 95 and 1 <= y < 5, 9907), (96, 6)),
-    edge_line=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9908, wear=0.8), (96, 6)),
-    edge_line_yellow=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9909, ROAD_YELLOW, wear=0.8), (96, 6)),
+    lane_dash_long=(lambda: road_mark(96, 6, lambda x, y: 1 <= x < 95 and 1 <= y < 5, 9907, wear=ROAD_WEAR_RUN), (96, 6)),
+    edge_line=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9908, wear=ROAD_WEAR_RUN), (96, 6)),
+    edge_line_yellow=(lambda: road_mark(96, 6, lambda x, y: 1 <= y < 5, 9909, ROAD_YELLOW, ROAD_WEAR_RUN), (96, 6)),
     raised_marker=(raised_marker('#e8e4da', '#f4f4ff'), (8, 6)),
     raised_marker_yellow=(raised_marker('#d8b030', '#ffb028'), (8, 6)),
     rumble_strip=(p_rumble_strip, (96, 16)),
     toll_text=(road_text('TOLL', 9910), (51, 44)),
     plaza_stripes=(plaza_lines(320, 448, _FAN, 9911), (320, 448)),
-    plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912), (128, 6)),
+    plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912, wear=ROAD_WEAR_RUN), (128, 6)),
     # made to measure for 2A's toll (tools/build_level2a.py): two lanes' edges flaring out to four lanes of 2.5 m
     # (laid turned round past the plaza: the outer two end), and four lanes spreading to the plaza's grid (TOLL_LANES:
     # 4.5 m apart), their edges out to the outer islands' noses (turned round: the same after it)
