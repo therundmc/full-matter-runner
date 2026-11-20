@@ -16,7 +16,6 @@ test('outro: the phases come in order, from the walk to the drive', () => {
   }
   assert.equal(last, order.length - 1);
   assert.ok(OUTRO.walk < OUTRO.lights && OUTRO.lights < OUTRO.go);
-  assert.ok(OUTRO.skipAfter < OUTRO.walk);
 });
 
 test('outro: a route is straight lines joined by bends, without a jump in place or in direction', () => {

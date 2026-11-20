@@ -186,7 +186,8 @@
   bend) and the hat off the rear seat at the first hard swing; the boss's Uzi lies on the passenger seat (Vehicle
   `gun`, drawn by the car: not pickable in level 1, it is level 2A's gun). It cannot be destroyed (`armoured`). The car is 5.4 m
   in a 4 m lot: its row and the first bend are the only ones that clear the walls (tests/getaway.test.mjs drives the
-  whole body down the route): check it in the browser after touching the route; the lab's station 20 replays it.
+  whole body down the route): check it in the browser after touching the route; the lab's station 20 replays it. It is skipped
+  only by HOLDING SPACE / pad A, like a comic page (a stray key or click as he reaches the car skipped it).
 - The street is laid with 2A's kit (floor paint in level columns through the builder's `drawn()`: bays, LOADING, hatched
   keep-clear, the zebra crossing from the bar's door): nothing with a body in the two lanes, on the patrol's beat (row
   22, cols 16-26) or where the getaway comes out (tests/street1.test.mjs); two flocks of pigeons, no more.

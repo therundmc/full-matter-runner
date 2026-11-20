@@ -32,7 +32,6 @@ export const OUTRO = {
   kick: -2.3,       // rad/s the tail is thrown at as they bite (the slide's spring brings it back: the fishtail)
   squat: 1.6,       // px the body sits back on its rear wheels while they spin
   screech: 0.9,     // how loud the tyres are held while they spin (the squeal of audio/Motor.js)
-  skipAfter: 0.4,   // any key or click from then on goes straight to the results
   speed: 8.6,       // px per step flat out on a straight
   corner: 5.2,      // ... and through a bend
   accel: 9,         // px per step gained in a second

@@ -675,9 +675,9 @@ export default class Game {
       if (skip || v.over) { inp.consume(); this.showResults(); return; }
     }
     if (this.state === 'outro') {
-      // the world plays on by itself: no input reaches it; a fresh key press or a click skips to what follows (the
-      // level's closing page, or the results)
-      const skip = this.stateT > OUTRO.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      // the world plays on by itself: no input reaches it; it is skipped like a comic page, by HOLDING SPACE / pad A
+      // (ui/cine/Hold.js), never by a stray key or click: he arrives at the car mid-fight, keys and buttons going
+      const skip = this.holdSkip(dt);
       inp.consume();
       if (this.world.outro.car.exploded) { this.showResults(); return; }
       if (skip) { this.endOutro(); return; }
@@ -1123,6 +1123,7 @@ export default class Game {
       if (this.state === 'continued') drawContinued(ctx, W, H, finishView(this.stateT), this.world.level.chase.next, t);
       if (this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN)) drawHold(ctx, W, H, this.skip, this.input.device);
       if (this.state === 'play' && this.world?.drive?.drag?.on) drawHold(ctx, W, H, this.skip, this.input.device); // 2A's opening
+      if (this.state === 'outro') drawHold(ctx, W, H, this.skip, this.input.device); // the getaway
     });
   }
 
