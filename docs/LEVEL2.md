@@ -563,3 +563,14 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
 - 2026-11-19: the player sees ONE level 02 (the hit list, the intro banner, the results: "LEVEL 2"), its stages 2A
   then 2B played in a row (src/game/data/campaign.js); 2A and 2B stay separate levels inside the engine, a death in
   2B still restarts 2B; until 2B is made, 2A done is 02 done (04115fd).
+- 2026-11-20: SPRITES FOR 2A'S PART TWO (branch feature/ramp-sprites; tools/generate_assets.py "level 2A, part two":
+  RAMP_PROPS / RAMP_PAINT, FINE, listed in engine/Assets.js, levelkit SIZES / FLOOR, defs in data/props.js and
+  data/destruction.js). The works and the detour: road_closed (flashers, signal `flash`), sign_detour(_left),
+  jersey_barrier, water_barrier, excavator, dump_truck, works_light (lit), site_fence; paint road_cut, sand_pile,
+  asphalt_pile, detour_arrow_paint(_left). The side street: roller_door (on a wall), loading_dock, chainlink_gate,
+  pallet_stack, oil_drum, sign_stop (sign_oneway and road_stop reused). The ramp: guardrail, guardrail_end,
+  crash_cushion, highway_lamp (lit), sign_freeway, sign_wrong_way, sign_speed_55, sign_toll_ahead, reflector_post;
+  paint gore_hatch, merge_arrow(_s), lane_dash_long, edge_line(_yellow), raised_marker(_yellow), rumble_strip. The
+  toll: toll_island, toll_booth (lit), toll_canopy (hung, fades over him, lit; its lanes at TOLL_LANES), gate_arm_wood
+  and its pieces gate_arm_bit_a/b/c, gate_steel, lane_signal_go / _stop (lit), sign_exact_change; paint toll_text,
+  toll_lane_1..4, plaza_stripes, plaza_line. Contact sheet and mock-ups in tmp/ramp-sprites/ (not committed).

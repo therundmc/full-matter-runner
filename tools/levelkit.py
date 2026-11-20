@@ -60,6 +60,14 @@ SIZES = dict(
     traffic_light=(8, 8), bus_shelter=(126, 46), sign_noparking=(5, 5), sign_oneway=(5, 5), sign_speed=(5, 5), sign_bus=(5, 5),
     bollard=(7, 7), street_tree=(8, 8), arrow_board=(60, 34), compressor=(54, 28), barricade=(64, 7), sign_works=(14, 14),
     viaduct=None, gantry_sign=None,
+    # level 2A, part two: the works and the detour, the side street, the on-ramp, the toll (generate_assets.py RAMP_PROPS)
+    road_closed=(124, 8), sign_detour=(38, 6), sign_detour_left=(38, 6), jersey_barrier=(96, 18), water_barrier=(56, 18),
+    excavator=(184, 78), dump_truck=(236, 78), works_light=(60, 34), site_fence=(110, 4), roller_door=None,
+    loading_dock=(128, 22), chainlink_gate=(126, 4), pallet_stack=(38, 32), oil_drum=(18, 18), sign_stop=(5, 5),
+    guardrail=(128, 6), guardrail_end=(60, 14), crash_cushion=(84, 82), highway_lamp=(8, 8), sign_freeway=(6, 6),
+    sign_wrong_way=(5, 5), sign_speed_55=(5, 5), sign_toll_ahead=(6, 6), reflector_post=(3, 3), toll_island=(254, 46),
+    toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
+    gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),
     # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
     shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
     tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
@@ -88,7 +96,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                neon_sign_diner=44, neon_sign_cafe=32,
                security_mirror=10, cig_rack=26, price_board=22, tape_rack=28, notice_board=20, coin_changer=10, hand_dryer=8,
                graffiti=26, wall_clock=7, cleaning_rack=20,
-               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7)
+               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7, roller_door=96)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -102,6 +110,10 @@ FLOOR += ('zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_
           'steel_plate', 'viaduct_shadow')
 # ... and level 1's own
 FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_marks')
+# ... and its part two's (RAMP_PAINT): the works' cut and heaps, the detour's and the freeway's paint, the toll's
+FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
+          'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow',
+          'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
