@@ -15,9 +15,9 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   (on foot: the car burning on the forecourt, the boss's men falling back into the store). Dying in 2A restarts the
   chase at the last CHECKPOINT reached (the user's call, 2026-11-20: "comme il est special, on peut mettre des
   checkpoints", the one exception to the no-checkpoint rule with the tutorial's rooms): one a part of the road as it
-  was cut (the level's `chase.checkpoints`, systems/Checkpoints.js): THE STREET (the start), THE DETOUR (col 416, on
-  the street 1.3 s before the script's turn), THE FRONTAGE ROAD (col 462, leg 1 out of the second corner), THE TOLL
-  (col 556, the merge's four lanes before the toll's two pursuers); each part to come adds its own. Reached, its name
+  was cut (the level's `chase.checkpoints`, systems/Checkpoints.js): TWO, as the user cut it (2026-11-20: "2 checkpoints comme
+  on a decoupe le niveau"): THE STREET (the start) and THE ON-RAMP (col 462, leg 1 just out of the detour's turns:
+  part 2 from the detour to the toll); each part to come adds its own. Reached, its name
   is stamped under the road's bar a moment (CHECKPOINT, CHASE.checkpoint; placeholder sound `checkpoint`). A death
   after it (R, the pad's A, a click, RETRY in the death screen's pause: Game.retry) reloads the level and starts the
   car there, on its leg's lane (ours), at its cruise already rolling, the Uzi in hand, no cigarette nor grab, the
@@ -741,3 +741,5 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   reached, retries started at one). Tests: tests/checkpoints.test.mjs. QA 3 min seed 2: PASS, 4 sessions, no death,
   the end reached 3 times (DETOUR 4, FRONTAGE ROAD 3, TOLL 3 reached); seed 7: PASS, one death (a bullet on the
   street: the retry at THE STREET), a heap warning across its 5 sessions.
+- 2026-11-20: 2A's checkpoints cut to the user's two parts: THE STREET (the start) and THE ON-RAMP (col 462, just
+  out of the detour's turns); THE DETOUR and THE TOLL checkpoints removed.

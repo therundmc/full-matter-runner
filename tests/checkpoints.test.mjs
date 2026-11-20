@@ -131,30 +131,23 @@ function run(s, sec, until = null) {
 }
 
 // ---------------------------------------------------------------- the data
-test('checkpoints: one a part of 2A as it was cut, in order: the street (the start), the detour, the frontage road, the toll', () => {
-  assert.deepEqual(CP.map((c) => c.name), ['THE STREET', 'THE DETOUR', 'THE FRONTAGE ROAD', 'THE TOLL']);
-  for (let i = 1; i < CP.length; i++) assert.ok(CP[i].at > CP[i - 1].at);
+test('checkpoints: one a part of 2A as it was cut, in order: the street (the start), then the on-ramp just out of the detour', () => {
+  assert.deepEqual(CP.map((c) => c.name), ['THE STREET', 'THE ON-RAMP']);
+  assert.ok(CP[1].at > CP[0].at);
   assert.ok(CP[0].at <= C.van[0], 'the first is the start itself');
   const { legs, bends } = routeOf(C), legOf = (c) => legAt(legs, c.at * TILE), bend = bends[0];
-  const detour = named('THE DETOUR'), frontage = named('THE FRONTAGE ROAD'), toll = named('THE TOLL');
-  // the detour: on the street, a breath before the script's turn (no lorry, no event left behind it un-fired there)
-  assert.equal(legOf(detour), bend.from);
-  assert.ok(detour.at < B.at && (B.at - detour.at) * TILE / C.cruise / 60 > 1, 'over a second before the turn');
-  // the frontage road: on leg 1, past the bend's way out, before its pursuer from behind
-  assert.equal(legOf(frontage), bend.to);
-  assert.ok(frontage.at * TILE > B.path.at(-1)[0] * TILE - 1);
-  assert.ok(C.events.some((e) => e.at > frontage.at && e.at < toll.at), 'the frontage road\'s pursuer is ahead of it');
-  // the toll: about col 560, before its two pursuers and its tells
-  assert.ok(Math.abs(toll.at - 560) <= 6);
-  assert.ok(toll.at < C.toll.fan[0]);
-  assert.equal(C.events.filter((e) => e.at > toll.at).length, 2);
+  const ramp = named('THE ON-RAMP');
+  // just past the bend's way out, on the leg it hands the car to, with the road's pursuers still ahead of it
+  assert.equal(legOf(ramp), bend.to);
+  assert.ok(ramp.at * TILE > B.path.at(-1)[0] * TILE - 1);
+  assert.ok(C.events.some((e) => e.at > ramp.at), 'pursuers still to come after it');
 });
 
 test('checkpoints: the chase as from one: the car at its column on ours, rolling at its leg\'s cruise, the events behind it gone, no opening', () => {
   assert.equal(fromCheckpoint(C, null), C, 'from the beginning: the chase as it is');
   assert.equal(fromCheckpoint(C, named('THE STREET')), C, 'the start\'s own: the chase as it is');
   const legs = routeOf(C).legs;
-  for (const name of ['THE DETOUR', 'THE FRONTAGE ROAD', 'THE TOLL']) {
+  for (const name of ['THE ON-RAMP']) {
     const cp = named(name), ch = fromCheckpoint(C, cp), leg = legs[legAt(legs, cp.at * TILE)];
     assert.deepEqual(ch.start, [cp.at, leg.lanes.at(-1)], `${name}: ours, the leg's last lane`);
     assert.equal(ch.speed, leg.cruise);
@@ -168,10 +161,10 @@ test('checkpoints: the chase as from one: the car at its column on ours, rolling
 });
 
 test('checkpoints: a retry resumes only at a checkpoint kept for this very level', () => {
-  const at = { name: level2a.name, i: 2, time: 31, score: null, guards: 8 };
+  const at = { name: level2a.name, i: 1, time: 31, score: null, guards: 8 };
   const cp = resumeAt(level2a, at);
-  assert.equal(cp.name, 'THE FRONTAGE ROAD');
-  assert.equal(cp.at, CP[2].at);
+  assert.equal(cp.name, 'THE ON-RAMP');
+  assert.equal(cp.at, CP[1].at);
   assert.equal(cp.time, 31);
   assert.equal(resumeAt(level2a, { ...at, name: 'ANOTHER' }), null);
   assert.equal(resumeAt(level2a, null), null);
@@ -193,6 +186,8 @@ test('checkpoints: reached by his car, each is kept on the game with the clock a
   };
   const k = Checkpoints.of(w, level2a, null);
   k.step(DT);
+  const legY = routeOf(C).legs[1].lanes.at(-1) * TILE;
+  w.drive.van.y = legY;
   assert.equal(w.game.chaseAt.i, 0, 'the start: kept');
   assert.equal(told.length, 0, 'never told');
   assert.equal(k.view, null);
@@ -202,52 +197,44 @@ test('checkpoints: reached by his car, each is kept on the game with the clock a
   w.drive.van.x = CP[1].at * TILE + 2;
   k.step(DT);
   assert.deepEqual(w.game.chaseAt, { name: level2a.name, i: 1, time: 24.5, score: { points: 245 }, guards: 10 });
-  assert.deepEqual(told.map((e) => e.name), ['THE DETOUR']);
+  assert.deepEqual(told.map((e) => e.name), ['THE ON-RAMP']);
   assert.deepEqual(sounds, ['checkpoint']);
-  assert.equal(k.view.name, 'THE DETOUR', 'its name stamped on the HUD');
+  assert.equal(k.view.name, 'THE ON-RAMP', 'its name stamped on the HUD');
   for (let t = 0; t < CHASE.checkpoint.hold + 0.1; t += DT) k.step(DT);
   assert.equal(k.view, null, 'a moment only');
-  // dead at the wheel, nothing more is kept
-  w.drive.dead = true;
-  w.drive.van.x = CP[2].at * TILE + 2;
+});
+
+test('checkpoints: dead at the wheel, nothing is kept', () => {
+  const w = {
+    events: new EventBus(), level: level2a, game: {}, time: 0, runTime: 0, totalEnemies: 2, exited: false, player: { alive: true },
+    scoring: { snapshot: () => ({}) }, sound: () => {},
+    drive: { on: true, dead: false, van: { x: C.van[0] * TILE, y: 0 } },
+  };
+  const k = Checkpoints.of(w, level2a, null);
   k.step(DT);
-  assert.equal(w.game.chaseAt.i, 1);
+  w.drive.dead = true;
+  w.drive.van.x = CP[1].at * TILE + 2;
+  k.step(DT);
+  assert.equal(w.game.chaseAt.i, 0);
 });
 
 // ---------------------------------------------------------------- the retry
 test('checkpoints: a run through 2A records them in turn; the score earned is kept with each', () => {
   const s = build(null, 400, 480);
-  // straight to the detour's column: the car placed short of it on the street (the run up to it is the other tests')
+  // straight to the on-ramp's column: the car placed short of it on leg 1 (the run up to it is the other tests')
   const { d, w } = s;
-  Matter.Body.setPosition(d.van.body, { x: (CP[1].at - 3) * TILE, y: C.lanes[1] * TILE });
+  Matter.Body.setPosition(d.van.body, { x: (CP[1].at - 3) * TILE, y: routeOf(C).legs[1].lanes.at(-1) * TILE });
   w.scoring.points = 1200; w.scoring.kills = 4; w.scoring.methods.add('wreck');
-  assert.ok(run(s, 1, () => w.game.chaseAt?.i === 1), 'the detour reached');
-  assert.equal(w.game.chaseAt.score.points, 1200);
+  let then = null;
+  w.events.on('checkpoint', () => { then = w.scoring.points; });
+  assert.ok(run(s, 1, () => w.game.chaseAt?.i === 1), 'the on-ramp reached');
+  assert.ok(then >= 1200);
+  assert.equal(w.game.chaseAt.score.points, then, 'the score as it was when reached');
   assert.deepEqual(w.game.chaseAt.score.methods, ['wreck']);
 });
 
-test('checkpoints: a death after THE DETOUR retries on the street before the turn, rolling, gun in hand, the cars behind it not replayed', () => {
-  const cp = named('THE DETOUR');
-  const s = build({ name: level2a.name, i: cp.i, time: 25.25, score: null, guards: 10 }, cp.at - 6, cp.at + 40);
-  const { d, P, v, w } = s;
-  assert.ok(Math.abs(v.x - cp.at * TILE) < 1 && Math.abs(v.y - C.lanes[1] * TILE) < 1, 'at its column, in our lane');
-  assert.equal(d.legI, 0);
-  assert.equal(d.bendI, 0, 'the turn ahead');
-  assert.equal(d.v, C.cruise, 'rolling at the street\'s cruise');
-  assert.equal(d.drag, null, 'no cigarette');
-  assert.equal(d.grab, null, 'no grab');
-  assert.equal(w.player.weapon?.type, 'uzi', 'the Uzi in his hand');
-  assert.equal(v.gun, false, 'off the seat');
-  assert.equal(P.cars.length, 0, 'the alley cars behind it not waiting there any more');
-  assert.equal(w.runTime, 25.25, 'the clock as it was');
-  assert.equal(w.totalEnemies, 10, 'the men of the cars set off before it still counted');
-  assert.ok(run(s, 2, () => !!d.bend), 'the script takes the wheel at the turn');
-  assert.equal(P.fired.size, 0, 'no event behind it replayed');
-  assert.ok(d.progress.s > along(d.route, cp.at * TILE) - 1, 'the road\'s bar where he is, not from 0');
-});
-
-test('checkpoints: a death after THE FRONTAGE ROAD retries on leg 1 out of the corner, its pursuer from behind still to come', () => {
-  const cp = named('THE FRONTAGE ROAD');
+test('checkpoints: a death after THE ON-RAMP retries on leg 1 out of the detour\'s corner, its pursuer from behind still to come', () => {
+  const cp = named('THE ON-RAMP');
   const s = build({ name: level2a.name, i: cp.i, time: 31, score: null, guards: 10 }, cp.at - 8, cp.at + 40);
   const { d, P, v } = s;
   const leg1 = d.route.legs[1];
@@ -259,15 +246,6 @@ test('checkpoints: a death after THE FRONTAGE ROAD retries on leg 1 out of the c
   assert.ok(run(s, 1.5, () => P.cars.length > 0), 'the frontage road\'s pursuer set off');
   assert.deepEqual([...P.fired].map((e) => e.at), [C.events.find((e) => e.at > cp.at).at]);
   assert.equal(d.bend, null);
-});
-
-test('checkpoints: a death after THE TOLL retries on the merge in ours, the toll\'s two pursuers armed', () => {
-  const cp = named('THE TOLL');
-  const s = build({ name: level2a.name, i: cp.i, time: 44, score: null, guards: 12 }, cp.at - 8, cp.at + 30);
-  assert.ok(Math.abs(s.v.y - 46.75 * TILE) < 1);
-  assert.equal(s.chase.events.length, 2);
-  assert.ok(run(s, 1.2, () => s.P.cars.length >= 2), 'both set off after it');
-  assert.equal(s.w.game.chaseAt.i, cp.i, 'the same checkpoint kept (nothing after it reached yet)');
 });
 
 test('checkpoints: resumed, the score as it was kept (the chain under way not kept)', () => {
