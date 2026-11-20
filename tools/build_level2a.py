@@ -1512,12 +1512,12 @@ lv.area('harmony 5: royal palms, hibiscus, deco canopies, stucco')
 drop(lambda k, c, r: 404 < c < 441.5 and 8.2 < r < 10.3 and k in ('bench', 'trash_can', 'sandwich_board', 'vending', 'palm_tree'))
 unpaint(lambda k, c, r: k == 'tree_grate' and 404 < c < 446 and r < 11)
 # (the palms and hedges between the doors, their canopies and the signs on the piers: never in front of one)
-for (k, c) in enumerate((407.2, 419.5, 434.6)):                           # (no crown over the DETOUR sign)
+for (k, c) in enumerate((407.2, 419.5, 437.9)):                           # (no crown over the DETOUR sign)
     lv.paint('tree_grate', c, 8.7)
     must('royal_palm' if k % 2 else 'royal_palm_b', c, 8.7)
     HARMONY_LIGHTS.append([c, 9.2, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5])
 swap('bench', 442.2, 'bus_bench_bail', row=8.6, dc=-2.2)
-for (kind, c) in (('hibiscus_hedge', 422.6), ('hibiscus_hedge_pink', 437.45)):
+for (kind, c) in (('hibiscus_hedge', 422.6), ('hibiscus_hedge_pink', 435.3)):
     must(kind, c, 8.42)
 for (x, w, kind, door, face) in north_shops:
     if x >= 400 and door == 0:                                            # (over the door, short of the sign on its pier)

@@ -188,7 +188,7 @@ sidewalk 3 m, lanes, south sidewalk 2 m). The events keep their columns.
 | 313-356 | A (nobody parked) | blind wall; THE YARD's gate (cols 337-342): dropped kerb, a hatched box, yellow kerbs, no-parking signs | 3 m sidewalk, then THE FRUIT MARKET (cols 325-354): the fronts set back four metres, the sidewalk's row along the kerb then beaten earth, two rows of stalls, crates and signs by the kerb | none | Event 2: KEEP CLEAR on both lanes, the lorry backs out across them; the market is the way round. | 3: THE FRUIT MARKET on the vacant corner (nine stalls each under its bulb, strings of bulbs along its front, crates, MANGOS FRESH 3/$1, a sabal, a leaning coconut palm, the man who keeps it, a customer); peach, mint and pink fronts north, pastel awnings from here on |
 | 357-388 | A THE LIT CORNER | shops | the diner: glass, booths, phone booth, news boxes, benches | north, cols 358-382: 1 | The last car is set off (col 368). | 4: a pink deco canopy over the diner's door, its piers in pink stucco, young palms in grates along its kerb; mint and peach fronts north, a flamingo in neon, a pink tube |
 | 389-403 | J THE CROSS STREET | corners rounded, hydrant, mailbox | news boxes | none | Lights on all four corners (ours red, the cross street's green: the last pursuer comes out of it on HIS green). | 4: the news boxes yellow, blue and red, a blue mailbox |
-| 404-445 | C TO THE FREEWAY | 3 m sidewalk, royal palms in grates, hibiscus; DETOUR (col 424) | shops; DETOUR (cols 431, 438) | none | Lane arrows, the freeway's sign over the road (FREEWAY, TOLL 1 MILE); the yellow DETOUR arrow painted twice in our lane (cols 424, 433: on, then right). The script takes the wheel at col 438 (part two below). | 5: every front in stucco (pink, mint, lilac, peach), ROYAL PALMS in their grates lit from their feet (cyan and pink in turn, as the ramp's), hibiscus hedges, deco canopies over the doors, a pink tube, young palms south, puddles with the neon in them, a BAIL BONDS bench: the alley's stucco and the ramp follow |
+| 404-445 | C TO THE FREEWAY | 3 m sidewalk, royal palms in grates, hibiscus; DETOUR (col 425) | shops; DETOUR (cols 429.6, 438.8) | none | Lane arrows (ours at 411, none past it: the DETOUR arrows take the lane), the freeway's sign over the road (FREEWAY, TOLL 1 MILE); the yellow DETOUR arrow painted twice in our lane on clean asphalt (cols 424, 435: on, then right, the second past the lamp's head); the double centre line ends at the side street's mouth (col 440): the taper and the works lie on clean asphalt. The script takes the wheel at col 438 (part two below). | 5: every front in stucco (pink, mint, lilac, peach), three ROYAL PALMS in their grates (between the doors, never over a sign or the DETOUR sign) lit from their feet (cyan and pink in turn, as the ramp's), hibiscus hedges, deco canopies over the doors, a pink tube, young palms south, puddles with the neon in them, a BAIL BONDS bench: the alley's stucco and the ramp follow |
 
 Parked cars: 12 in all (thinned from 21 on 2026-11-19, the user: "trop de voitures sur les cotes"; the count by
 section is in the table, asserted by the builder and tests/road.test.mjs). The bays left empty show an old patch or
@@ -890,3 +890,17 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   in two by the rule, the bridge, an alley mouth) and one over a barricade: four now, every 14 m on alternate sides,
   stuttering, broken, dying. New builder check `check_paint_overlaps(col0, col1)`: no two road markings overlap, none
   on an iron cover or the centre line's dashes (run on cols 0-220). QA 3 min seed 2: PASS, no stall, the end reached.
+- 2026-11-20: POLISH, the street from col 220 to the detour's mouth (branch polish/2a-street-east; the user: "AVANT LE
+  DETOUR il y a la ligne orange et la ligne blanche au sol qui se recouvrent ... peaufiner, un rendu realiste, clean et
+  pro"). The overlap: the white lane arrow at col 422 ran its head into the tail of the yellow DETOUR arrow at 424; it
+  is gone (ours at 411, past the lamp's head) and the second DETOUR arrow moved off the lamp's head (435). The double
+  yellow no longer runs on through the side street's mouth into the works' cone taper (it ends at col 440, the dashes
+  too); a 2 to 4 m gap before each double (a dash ran into three of them) and the cross street's ends on its stop line;
+  its south arm's double off its crossing. Off the paint: the bus stop's patch from under STOP, the KEEP CLEAR north of
+  the yard nudged off the centre line, the parking row's tee on its kerb corner (and its meter), the cross street's lane
+  arrow, lamp and puddle one after the other, its drains off the crossings and its news boxes off the kerb ramp, a drain
+  off the lit corner's first tee. Props: the houses' garden walls each from the gate post at their path (a hole beside
+  every gate), the chain-link's gate on its path (the door where the gate is), young palms not two alike side by side
+  at the bus stop nor before the diner's door, royal palms off a door and the DETOUR sign, hedges off the shops' signs,
+  the deco canopy short of its sign, the gantry's south post out of a hedge, the pink tube off it, the south DETOUR sign
+  off the lamp post. The walkers cross the cross street on its crosswalk. `check_paint_overlaps` run on cols 220-455.
