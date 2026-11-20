@@ -16,7 +16,7 @@ const SPRITE_LIST = [
     'bed', 'pool_table', 'arcade', 'crate', 'barrel', 'bookshelf', 'speaker', 'dj_booth', 'bar_counter', 'car',
     'dumpster', 'trash_can'].map((n) => `props/${n}`),
   ...['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purple', 'concrete', 'grass', 'asphalt', 'asphalt_line',
-    'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
+    'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick', 'stucco_pink', 'stucco_mint', 'stucco_peach', 'stucco_lilac'].map((n) => `tiles/${n}`),
   ...['door', 'door_locked', 'stall_door', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
     .map((n) => `structure/${n}`),
   // the door skins, one kind of door per place (data/doors.js DOORS.kinds), at FINE density (DOOR_SKINS below)
@@ -48,6 +48,8 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
 // (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps. Its part two (the works and the detour, the
 // side street, the on-ramp, the toll: generate_assets.py RAMP_PROPS / RAMP_PAINT) is listed at the end of each, then
 // Miami, 1985 (MIAMI_PROPS / MIAMI_PAINT: generic dressing for any street of Sunset Bay, from royal_palm / mattress_dumped on)
+// then Miami, 1986, the alley (ALLEY_PROPS, from produce_crates on: the city's own too, generic: an alley, a market
+// corner, a sidewalk)
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
@@ -60,7 +62,11 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'royal_palm', 'royal_palm_b', 'hibiscus_hedge', 'hibiscus_hedge_pink', 'deco_canopy_pink', 'deco_canopy_mint',
   'deco_canopy_peach', 'deco_canopy_lavender', 'awning_pink', 'awning_mint', 'awning_peach', 'awning_lavender',
   'pole_sign_motel', 'pole_sign_autos', 'billboard_tan', 'billboard_radio', 'lot_light', 'pennant_string', 'car_burnt',
-  'tent_tarp', 'barrel_fire', 'chainlink_fence', 'chainlink_hole', 'guardrail_dented', 'crash_cushion_hit', 'call_box', 'sign_gantry'];
+  'tent_tarp', 'barrel_fire', 'chainlink_fence', 'chainlink_hole', 'guardrail_dented', 'crash_cushion_hit', 'call_box', 'sign_gantry',
+  'produce_crates', 'box_stack', 'fruit_cart', 'news_stand', 'laundry_line', 'laundry_shirt', 'laundry_towel', 'laundry_sheet',
+  'neon_box_pink', 'neon_box_cyan', 'scooter_mint', 'scooter_pink', 'domino_table', 'dumpster_mint', 'dumpster_pink',
+  'dumpster_aqua', 'stucco_trim_pink', 'stucco_trim_mint', 'stucco_trim_peach', 'ac_drip', 'fire_escape', 'palm_fronds',
+  'graffiti_neon_a', 'graffiti_neon_b'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
@@ -81,7 +87,7 @@ const ROAD_PAINT = [
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
   'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop',
   'billboard_tan', 'billboard_radio', 'pole_sign_motel', 'pole_sign_autos', 'barrel_fire', 'lot_light', 'sign_gantry', 'deco_canopy_pink',
-  'deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender'];
+  'deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender', 'neon_box_pink', 'neon_box_cyan'];
 // ART DECO 1985 (tools/generate_assets.py DECO_PROPS / DECO_PAINT): generic dressing for Sunset Bay's roads (palms,
 // hibiscus, deco planters and lamp, an office, a trooper's car, a motel's billboard; puddles with the neon in them) and the
 // toll's own states (its attendant ducked, a boom bent: systems/TollFx.js, systems/Toll.js); the lit ones' emissive maps
@@ -132,6 +138,8 @@ export const OPTIONAL_LIST = [
   ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   // Miami's wall neon (at the world's density, as the other neon signs)
   ...['neon_sign_motel', 'neon_sign_vacancy', 'neon_sign_flamingo'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  // Miami's neon (generate_assets.py ALLEY_NEON: light, at the world's density)
+  ...['neon_sign_botanica', 'neon_sign_cocktail'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
   ...[...ROAD_PROPS, ...ROAD_PAINT, ...ROAD_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...DECO_PROPS, ...DECO_PAINT, ...DECO_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),

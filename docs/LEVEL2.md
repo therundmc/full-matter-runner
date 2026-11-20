@@ -221,9 +221,10 @@ inside the ramp's guardrail: what never gives is never nose-on.
 | Cols | Section | North side | South side (ours) | What happens |
 |------|---------|------------|-------------------|--------------|
 | 446-473 | THE WORKS (the street) | the tyre shop's two shutters down (kerbs dropped), a lighting tower on each sidewalk end, the site fenced along both kerbs | the side street's mouth (corners rounded 1.5 m), the sidewalk shut by a barricade, a lighting tower | Six cones taper both lanes from the north kerb into the side street's mouth; an arrow board (its arrows down the side street), ROAD CLOSED with its two flashers, three water barriers, the road cut across both lanes (a fresh trench patch, the gas main's marks), a steel plate, the excavator on the milled band (its bucket at the barriers) and the dump truck waiting to be loaded (both seen from the turn, which sees no further), sand and asphalt heaps, jersey barriers at the far end. |
-| 440-451 (rows 16-42) | THE SIDE STREET | (west) the cut shop's blind wall, pipes, a dumpster and bin bags, a sodium lamp, a shed's shutter (graffiti), oil drums, the loading dock and its shutter (its apron's kerb dropped), pallets | (east) conduit, pipes, a wall lamp, the yard behind its chain-link gate (PRIVATE: a car, pallets, drums), a sodium lamp, a bin | Two-way, 8 m, no line: STOP (the line, the word, the sign) for whoever comes up it to the street and for whoever comes down it to the frontage road; patches, a crack, a cover breathing steam, a puddle, a cat, papers. The script drives down its middle (col 446), 40 km/h in the turns. |
-| 437-455 (rows 33.5-41.5) | THE FREEWAY'S BRIDGE | the deck over the side street (prop `overpass`, hung: it fades over him; its shadow painted under it), its abutments | | The second turn starts as he comes out from under it. |
-| 424-451 (leg 1) | THE T | the freeway's bank, the side street's mouth (corners rounded) | the body shop's two shutters, the warehouse opposite (ONE WAY east), a hydrant | He runs the STOP and turns left; the bend hands him to leg 1 in his lane at col 460. |
+| 440-451 (rows 16-20) | THE SIDE STREET'S MOUTH | (west) the bar's block, its corner in pink stucco | (east) a sidewalk flared out (the tail swings there), OPEN 24 lit on it, a palm's fronds over the wall | The first turn; a sodium lamp. The first crates at its end are THE SMASH's slow motion. |
+| 444-448 (rows 18-42) | THE ALLEY | (west, col 443) pink stucco (P): the bar's back door, COCKTAILS in violet neon, a pink tube, an AC dripping, two stucco trims, a fire escape, the bridge's abutment (graffiti in neon paint) | (east, col 449) mint stucco (M): the botanica's back door, its cyan sign and tube, an AC dripping, THE PARKED CAR against it (rows 29-33), the abutment (graffiti) | Five metres between walls, the bend's line down its middle (col 446.5): what he ploughs through at 40-50 km/h (CHASE.bend.smash), in order: produce crates (the slow motion, x0.35 for 0.6 s), boxes, a bin, bags, two lines of washing across (torn down, the cloth flies), a fruit cart (fruit everywhere), a news rack (papers), the old men's domino table (they dive away), a scooter, a lit box sign, bottles, THE PARKED CAR scraped its whole length (sparks off both, a mirror off, dents, its alarm and hazards), a hydrant under the bridge (its geyser and mist in violet light), a wheeled dumpster clipped (it spins away), crates. The first pursuer to follow him scrapes the parked car too and is wrecked on it (`snare`, the kill beat); the others plough on past its wreck. |
+| 437-455 (rows 33.5-41.5) | THE FREEWAY'S BRIDGE | the deck over the alley (prop `overpass`, hung: it fades over him; its shadow painted under it), its abutments the alley's walls (plaster `#`) | | The second turn starts as he comes out from under it, out of the alley across the bank. |
+| 424-451 (leg 1) | THE T | the freeway's bank, the alley's foot | the body shop's two shutters, the warehouse opposite (ONE WAY east), a hydrant | He turns left out of it; the bend hands him to leg 1 in his lane at col 460.5. |
 | 452-497 | THE FRONTAGE ROAD | the freeway up on its bank (its near lane, its guardrail, a kerb under the grass, the yellow edge line), a freeway lamp (col 470) with an arm over each road; on the bank, SUNSET BAY 1985: a camp out from under the bridge (cols 452-462: a blue tarp, a mattress with a tramp asleep on it, a fire in a drum with a tramp warming his hands, a shopping cart, litter), a chain-link fence along the bank's foot with a hole cut in it (col 468), royal palms (468, 493.6), the COCOA GOLD sun-tan billboard on its catwalk lit by four lamps (cols 473-481), a burnt-out car that came off the freeway through its rail (the rail dented at 481, a gap to 491) | the cold store's two loading docks (the kerb dropped along them, pallets, a drum) and a mint deco canopy over its office door, a royal palm in a grate (467), the yard gate (col 468); THE MOTEL's back (472-485): its MOTEL / VACANCY pole sign, MOTEL, a flamingo and VACANCY in neon on its wall, a pink deco canopy, hibiscus red and pink; THE USED CAR LOT (486-494): AUTO SALES on its pole, an 80s coupe up on its display ramp on the apron, two light poles and pennants strung to the showroom's glass front; two sodium lamps; FREEWAY ENTRANCE at the lot's corner (col 495) | Lane arrows at col 462, white dashes every 9 m. ONE MORE PURSUER from behind at col 468 (a rammer: the guardrails ahead are what to shove it into). |
 | 498-523 | THE ON-RAMP | the bank, delineators, WRONG WAY (facing whoever comes the wrong way), a freeway lamp (col 500), the WAVE 98 FM billboard (cols 507-515), litter, the crash cushion at the bank's nose somebody hit (col 522: two barrels burst, the sand out) | the shoulder with its rumble strip and the white edge line, the guardrail along the top of the bank (its end toward the traffic at col 498), delineators, WRONG WAY, SPEED LIMIT 55, TOLL 1/2 MILE (the green signs lit from below), a freeway lamp (col 515), royal palms beyond the rail lit from their feet (pink and cyan in turn: 507.5, 525) | Dashes every 12 m with cat's eyes, yellow ones along the left edge; an expansion joint across the ramp every 6 m, oil down the lanes. |
 | 524-559 | THE MERGE | the freeway's lanes come in alongside over 24 m (their paint slanted), the gore painted out between (a long white triangle, `gore_taper`), then four lanes side by side (rows 39.25, 41.75, ours 44.25, 46.75); on the freeway's lanes (out of his reach: leg 1's `across`) a mattress lost off a truck, the rubber of whoever braked for it, glass | the shoulder, the guardrail, a freeway lamp (col 545); AN OLD CRASH: tyre marks swerving into the rail, its length dented (col 529), glass, shards and a hubcap on the shoulder; a call box (538.5); royal palms lit from their feet (541.5, 556), hibiscus on the bank | MERGE painted in our left lane (col 539). The sign gantry over the merge (col 548.5: TOLL PLAZA 1/4 MILE over the freeway's lanes, ALL LANES TOLL over ours, lit from below; it fades over him), more sodium (the merge was the dark end). The toll from col 560. |
@@ -331,12 +332,17 @@ brushes.
     each inner corner rounded off by an arc of `radius`, systems/Outro.js routePath; its last point is put on the
     lane of `to` nearest it, its last segment along +x and long enough for the arc: 0.49 x its length >= radius),
     braking to `speed` in a turn (40 km/h), its tail out, smoke and rubber, a breath of slow motion at each turn
-    (ChaseCam 'bend'); W / S and the shove do nothing, the gun is his; nothing it brushes is the crash. At the end:
+    (ChaseCam 'bend'); W / S and the shove do nothing, the gun is his; nothing it brushes is the crash, nothing holds it
+    up (CHASE.bend.smash: a bolted thing torn off, a loose one up to a dumpster's weight thrown and burst, a car scraped
+    along its flank, never a wall; each costs a share of its speed, never under 60 % of the bend's; the first thing
+    smashed opens ChaseCam's 'smash', x0.35 for 0.6 s real). At the end:
     leg `to`, its lane, heading +x, its cruise picked up. Told on 'chaseBend' ({ phase: in | turn | out }).
   - Camera: through a bend it follows the car both ways, leading along the line, eased in whole px; then eases back
     to the next leg's framing (its `mid`, a third from the left) and holds it exactly again.
   - Pursuers: every one reaching `at` follows the same line, CHASE.bend.space px behind whoever is ahead of it (no
-    slots, no attacks, no tells while he or it is in a bend; a knock between two there wrecks nothing); out of it, slots
+    slots, no attacks, no tells while he or it is in a bend; a knock between two there, or a wall, wrecks nothing; in on
+    his flank it falls back at once; it ploughs through what is left as he does; the first to scrape a car set as a
+    `snare` is wrecked on it, one jammed in a narrow way is wrecked there, and the next scrape by); out of it, slots
     again. A car on another leg than his sees him where the route puts him on its own leg (Pursuit.tgFor): ahead of
     him, it waits CHASE.bend.clear px past his way out, out of his lane. A pursuer event's `miss: true` makes it skip
     the bend (on into what shuts the road: the hook for "one misses the turn").
@@ -348,7 +354,8 @@ brushes.
     never back), the QA robot's "farthest down the route". Events, lorries, signals stay keyed by column (x never goes
     back along the route: legs are disjoint and ordered); `end` is a column of the last leg.
   - A builder checks: nothing in a leg's lanes along its columns (`check_lanes` per leg), the bend's line clear of
-    walls (1.5 tiles) and props (1.3 tiles) (`check_bend`).
+    walls (1.5 tiles) and props (1.3 tiles) but what the car ploughs through (`SMASH`: torn or thrown, never LASTING,
+    tests/alley.test.mjs holds data/props.js to it) and the cars it scrapes (`SCRAPE`, 0.6 tiles off the line) (`check_bend`).
 
 ## Roadmap
 
@@ -789,3 +796,21 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   crash). QA 3 min seed 2 (god): PASS, 4 sessions, no death, 3 clears, the known `slow` warning only (x21, mean step
   4.95 ms). Known: the headless browser's screenshot dies on the zoomed-out crash at 1080 (the shots at 720); a pursuer
   wrecked on the approach may slide on down his lane to the islands' noses (seen in one scripted run: held up 5 s).
+- 2026-11-20: THE ALLEY SMASH (branch feature/alley-smash; the user: "quand tu tournes, une petite contre-allee ou tu
+  defonces tout sur le passage, qui vole avec des effets ... une voiture qui passe, des etincelles de partout ... Michael
+  Bay ... Miami annees 80"). The side street past its mouth is a back alley 5 m wide between PINK and MINT STUCCO walls
+  (new wall tiles P / M / Y / V: pink, mint, peach, lilac stucco over block, world/TileMap.js WALLS, generic for any
+  building), the bend's line down its middle (col 446.5), the table above. ENGINE (systems/Drive.js, Pursuit.js,
+  CarFx.js, ChaseCam.js; CHASE.bend.smash): in a bend a loose thing up to 450 kg is thrown by hand and bursts (all but
+  metal over 6 hp), a car met is scraped along its flank (a sensor pair CarFx still showers for as long as they
+  overlap, a dent every 0.07 s on both, its alarm, a mirror torn off, `carScraped`), what it pushes against never
+  drags its speed under 60 % of the bend's; the first thing smashed opens ChaseCam 'smash' (x0.35 for 0.6 s real, over a
+  bend's breath); pursuers plough the same way, fall back at once when on his flank, are never wrecked by a wall in a
+  bend, the first to scrape a `snare` car (level prop option) is wrecked there (no exit: it piles up), one jammed is
+  wrecked where it is. SPRITES (tools/generate_assets.py "MIAMI, 1986: the back alley's", ALLEY_PROPS / ALLEY_NEON,
+  generic): produce_crates, box_stack, fruit_cart, news_stand, laundry_line (+ laundry_shirt / _towel / _sheet),
+  neon_box_pink / _cyan, scooter_mint / _pink, domino_table, dumpster_mint / _pink / _aqua, stucco_trim_pink / _mint /
+  _peach, ac_drip (seep `aircon`), fire_escape, palm_fronds, graffiti_neon_a / _b, neon_sign_botanica / _cocktail; tiles
+  stucco_pink / _mint / _peach / _lilac. Lab station 36: its turn a short smash alley. Tests: tests/alley.test.mjs.
+  QA 3 min seed 2 (god): PASS, 4 sessions, no death, 3 clears, the end reached; only the known `slow` (x39, mean 7.66
+  ms; main the same run: x35, 7.27 ms).

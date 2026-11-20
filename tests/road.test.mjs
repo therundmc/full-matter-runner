@@ -169,7 +169,7 @@ test('road: the street has what a street has: a bus stop, the works signed in a 
   assert.ok(PROPS.traffic_light.static && !PROPS.traffic_light.lasting && PROPS.bollard.static && !PROPS.bollard.lasting, 'bolted: torn off by the car');
 });
 
-test('road: part two: works shut the street past the side street, STOP at both its ends, leg 1 one way along the freeway, what never gives out of the wheel\'s reach', () => {
+test('road: part two: works shut the street past the side street, its alley under the freeway, leg 1 one way along the freeway, what never gives out of the wheel\'s reach', () => {
   const B = C.bends[0], L1 = C.legs[B.to], side = [B.path[1][0] - 4, B.path[1][0] + 4];
   const at = (t, c0, c1, r0, r1) => level2a.props.filter(([k, c, r]) => k === t && c >= c0 && c <= c1 && r >= r0 && r <= r1);
   const paint = (n) => level2a.floor.filter(([k]) => k === n);
@@ -179,9 +179,7 @@ test('road: part two: works shut the street past the side street, STOP at both i
   for (const k of ['excavator', 'dump_truck', 'arrow_board']) assert.equal(at(k, side[0], side[1] + 30, 11, 16).length, 1, k);
   assert.ok(paint('detour_arrow_paint').filter(([, c, r]) => c < B.at && r === C.lanes[1]).length >= 2, 'DETOUR painted in our lane');
   assert.ok(level2a.props.filter(([k, c]) => k === 'sign_detour' && c < side[0]).length >= 3, 'and signed');
-  // the side street: STOP for whoever comes up it and whoever comes down it; the freeway's bridge over its foot
-  assert.equal(at('sign_stop', side[0] - 2, side[1] + 3, 16, 43).length, 2);
-  assert.ok(paint('stop_line').filter(([, c, r]) => c > side[0] && c < side[1] + 1 && r > 16).length >= 4);
+  // the side street past its mouth: the alley (tests/alley.test.mjs); the freeway's bridge over its foot
   const deck = level2a.props.filter(([k]) => k === 'overpass');
   assert.ok(deck.length === 1 && PROPS.overpass.hung && PROPS.overpass.overhead && paint('overpass_shadow').length === 1);
   // leg 1 one way: white lines, no yellow centre line in its lanes before the toll; the freeway comes alongside

@@ -8,8 +8,8 @@ export const RESIST = {
   glass: 0.1, mesh: 0.12, fabric: 0.3, plastic: 0.45, rubber: 0.5, flesh: 0.55, wood: 0.6, ceramic: 1.1,
   concrete: 2.2, metal: 2.8, brass: 2.8,
 };
-// wall tiles: '#' plaster/drywall partition, 'X' brick
-export const WALL_RESIST = { '#': 0.85, 'X': 2.1 };
+// wall tiles: '#' plaster/drywall partition, 'X' brick, P / M / Y / V stucco over block
+export const WALL_RESIST = { '#': 0.85, 'X': 2.1, P: 1.8, M: 1.8, Y: 1.8, V: 1.8 };
 // fixed costs for things we don't measure: a human body, a car (two steel skins + seats), a pane of glass
 export const COST = { flesh: 14, vehicle: 18, glass: 0.6 };
 // surfaces that can send a round flying off at a grazing angle (0 = never, 1 = readily)

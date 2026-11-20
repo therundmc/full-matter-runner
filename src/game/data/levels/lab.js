@@ -240,7 +240,10 @@ export default {
     // 36 bend: a road of its own under the lab, a scripted corner down a side street onto a lower one
     ['convertible', 66, 36.75, 0, { drive: true, route: 'bend' }], ['road_closed', 106.4, 35, 90],
     ['sign_detour', 89.5, 38.5, 0], ['wall_lamp', 70.5, 32.08, 0], ['wall_lamp', 86.5, 32.08, 0],
-    ['streetlight', 112.5, 44.72, 90], ['streetlight', 136.5, 44.72, 90],
+    ['streetlight', 112.5, 44.72, 90], ['streetlight', 136.5, 44.72, 90], ['produce_crates', 98.6, 38.9, 40],
+    ['hydrant', 99.75, 40.9, 0], ['box_stack', 100.2, 42.6, 0], ['trash_can', 99.6, 43.8, 0],
+    ['bin_bag', 100.6, 44, 0], ['fruit_cart', 101.7, 46.6, 45], ['scooter_mint', 104.2, 48.4, 0],
+    ['dumpster_pink', 108.5, 48.9, 0], ['produce_crates', 112, 48.6, 0], ['laundry_line', 100, 41.2, 0],
     // 37 toll: the lower road opens round three islands, a wooden arm on the north lane, a steel boom on the south one
     ['convertible', 152, 48.75, 0, { drive: true, route: 'bend' }], ['crash_cushion_narrow', 164.637, 43, 0],
     ['toll_island', 169.969, 43, 0], ['toll_booth', 171, 43, 0], ['crash_cushion_narrow', 164.637, 47.5, 0],
