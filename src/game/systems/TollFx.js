@@ -8,8 +8,11 @@
 // LOOKS ONLY: it never moves a thing (the booth's sprite is swapped and swapped back), scaled by the QUALITY option.
 // DOM-free.
 import { CHASE } from '../data/chase.js';
+import { CAT } from '../Config.js';
 import { quality } from './Quality.js';
-import { spriteOpt } from '../../engine/Assets.js';
+import { spriteOpt, chunk } from '../../engine/Assets.js';
+import { rand, chance } from '../../engine/math.js';
+import Debris from '../entities/Debris.js';
 
 const { Body } = Matter;
 const BASKET = [-34, 8];  // px from a booth's middle to its exact-change basket (tools/generate_assets.py p_toll_booth)
@@ -55,6 +58,12 @@ export default class TollFx {
     P.chips?.(x, y, a, 1.5, this.n(A.chips / 2), '#d0242c', A.speed * 0.8);
     P.chips?.(x, y, a, 1.5, this.n(A.chips / 2), '#ece8de', A.speed * 0.8);
     w.light?.(x, y, A.flash[0], A.flash[1], A.flash[2]);
+    // (and its bigger splinters, real loose bits thrown on down the plaza: they meet walls only, never a car)
+    for (let i = 0, n = this.n(A.bits); i < n && w.addDebris; i++) {
+      const b = a + rand(-0.9, 0.9), sp = rand(0.4, 1.1) * A.speed, col = chance(0.4) ? '#c8a070' : chance(0.5) ? '#d0242c' : '#ece8de';
+      w.addDebris(new Debris(w, chunk(col, Math.floor(rand(3, 7)), 1), x + rand(-4, 4), y + rand(-14, 14), rand(0, 6.28),
+        Math.cos(b) * sp, Math.sin(b) * sp, rand(-1.2, 1.2), { mask: CAT.WALL | CAT.EDGE, material: 'wood', kg: 0.3, mu: 0.5, air: 0.03 }));
+    }
     w.sound?.('armCrack', x, y, 1); // placeholder (assets/sound/PLACEHOLDERS.md)
     const b = boothOver(w.props, x - 100, y);
     if (b) this.duck(b, A.duck);
@@ -74,7 +83,7 @@ export default class TollFx {
   crash({ car, gate, x, y, side }) {
     const K = this.C.crash, w = this.world, P = w.particles;
     w.carFx?.boom('toll', { x, y }, Body.getVelocity(car.body), car);
-    P.glass?.(x, y, Math.PI, 1.6, this.n(30), 260);
+    P.glass?.(x, y, Math.PI, 1.6, this.n(18), 260);
     const gy = gate?.y ?? y;
     for (let i = 0; i < 3; i++) {
       P.hot?.(x + 2, gy + (i - 1) * 24, this.n(K.sparks / 3), { kick: 380, up: [80, 300], hops: 2, mark: 0.4, life: [0.3, 1], a: Math.PI + side * 0.6, spread: 1.4 });
@@ -82,6 +91,8 @@ export default class TollFx {
     P.chips?.(x, gy, Math.PI + side * 0.8, 1.6, this.n(K.bits), '#c8242c', 260);
     P.chips?.(x, gy, Math.PI - side * 0.8, 1.6, this.n(K.bits), '#5a606c', 240);
     w.sound?.('boomCrash', x, y, 1); // placeholder (assets/sound/PLACEHOLDERS.md)
+    // (the roof over the gates seen through while it burns under it)
+    for (const p of w.props) if (p.type === 'toll_canopy' && Math.abs(p.x - x) < p.W && Math.abs(p.y - y) < p.H) p.clearUntil = w.time + K.clear;
   }
 
   // a step, after the physics: the ducked booths back up, what grinds on the islands' kerbs, a basket struck

@@ -336,20 +336,21 @@ export const CHASE = {
   // Nothing is attacked or told by them meanwhile.
   // His car through a wooden arm (what it costs him: the arm's `cost`, data/props.js): a breath of slow motion
   // (`beat`, systems/ChaseCam.js), the picture kicked `push` px on, shaken; the arm's looks (`arm`, systems/TollFx.js):
-  // `splinters` of its wood and `chips` of its red and white paint thrown on at `speed` px/s, a flash [radius px,
-  // colour, s], the attendant in the booth over that lane ducked `duck` s.
+  // `splinters` of its wood and `chips` of its red and white paint thrown on at `speed` px/s with `bits` bigger loose
+  // splinters, a flash [radius px, colour, s], the attendant in the booth over that lane ducked `duck` s.
   // One of theirs stopped on a steel boom, THE CRASH (`crash`, Toll.onWreck): thrown back `back` px/step and `across`
   // px/step out to its side, spinning `spin` rad/step, loose for `fly` s; `dents` blows fold its nose, `parts` of it
   // lost, the picture shaken `shake`; its fire-ball (CARFX.boom.toll), glass, `sparks` off the boom and `bits` of it
-  // (systems/TollFx.js); the kill's strong beat whatever the cooldown (systems/ChaseCam.js).
+  // (systems/TollFx.js), the roof over it seen through `clear` s; the kill's own beat whatever the cooldown, the
+  // view cut out and drawn back toward it (systems/ChaseCam.js, CHASE.cinema.kill.toll).
   // A car on an island's kerb: its yellow paint chipped (`kerb`: chips a s at most); a booth's exact-change basket
   // hit (`coins`: within `r` px of it): `n` coins sprayed, once a basket
   toll: {
     tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, follow: -240, lateral: 0.14, steer: 5, every: 46, run: 110, from: 70, fade: 0.15,
     pop: 1.5, sign: 30,
     beat: { slow: 0.4, in: 0.04, hold: 0.2, out: 0.18, push: 5, shake: 0.22 },
-    arm: { splinters: 40, chips: 44, speed: 320, flash: [110, '#ffe2b0', 0.14], duck: 1.8 },
-    crash: { back: 2.6, across: 3.2, spin: 0.2, fly: 0.9, dents: 14, parts: 4, shake: 0.55, sparks: 70, bits: 10 },
+    arm: { splinters: 28, chips: 32, bits: 8, speed: 320, flash: [110, '#ffe2b0', 0.14], duck: 1.8 },
+    crash: { back: 2.6, across: 3.2, spin: 0.2, fly: 0.9, dents: 14, parts: 4, shake: 0.55, sparks: 45, bits: 8, clear: 2.5 },
     kerb: { chips: 30 },
     coins: { r: 26, n: 26 },
   },
