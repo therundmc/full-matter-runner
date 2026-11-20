@@ -225,7 +225,7 @@ export const CHASE = {
   //   his doors (`lead` px ahead of his middle), then the swipe at `v` px/step for `dur` s. A lane change or a shove
   //   away dodges it; a shove INTO it during the wind-up lands first
   //   block: from ahead in his own lane, in its slot `settle` s: `wind` s told (its brake lights), then it runs
-  //   `drop` px/step slower than he does for `dur` s: onto his nose unless he changes lanes
+  //   `drop` px/step slower than he was going as it was told, for `dur` s: onto his nose unless he changes lanes
   //   hurt: s a car shoved (and not wrecked) keeps its distance (the far slot) and makes no attack
   //   knock: what the physics did to it differing from what it was driving by more than `dv` px/step: it lost it for
   //   `stun` s (a hit), the physics alone moving it

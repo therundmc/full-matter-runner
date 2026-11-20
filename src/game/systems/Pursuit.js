@@ -523,7 +523,8 @@ export default class Pursuit {
     } else if (A?.kind === 'brake') {
       v.brake = 1;
       vy = clamp((sl.y - v.y) * C.lateral, -C.steer, C.steer);
-      if (phase === 'go') vx = Math.max(0, pv - C.block.drop);
+      // (from the speed he had as it was told: following his down as each knock took it, it brought him to a crawl)
+      if (phase === 'go') vx = Math.max(0, (A.from ?? pv) - C.block.drop);
     }
     // slow, the wheel turns further (pulling out from behind something)
     const most = C.heading + clamp(1 - car.s / CHASE.cruise, 0, 1) * C.pullOut;
@@ -1137,7 +1138,7 @@ export default class Pursuit {
   // brake by its brake lights; `side`: the way the swipe goes (-1: -y)
   startAttack(car, kind, tg) {
     const w = this.world, v = car.v;
-    this.attack = { car, kind, t: 0, side: Math.sign(tg.y - v.y) || 1, hit: false, flash: 0 };
+    this.attack = { car, kind, t: 0, side: Math.sign(tg.y - v.y) || 1, hit: false, flash: 0, from: Math.max(0, tg.vel.x) };
     w.sound('tellClick', v.x, v.y, 0.8);
     w.sound(kind === 'ram' ? 'tyreSkid' : 'lorryBrake', v.x, v.y, 0.5);
     w.events.emit('pursuerTell', { car: v, kind });

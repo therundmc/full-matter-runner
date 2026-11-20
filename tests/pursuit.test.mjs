@@ -880,7 +880,15 @@ test('attacks: the blocker ahead in his lane shows its brake lights, then drops 
       s.w.events.on('ride', (e) => { if (e.beat === 'hit') hit = true; });
       run(s, 1.3, null, () => { low = Math.min(low, s.d.v); return false; });
       if (dodge) assert.ok(!hit && low > 6.5, `a lane change: clear of it (${low.toFixed(1)})`);
-      else assert.ok(gap() < g0 - 30 || hit, `it came back at him (${gap().toFixed(0)} from ${g0.toFixed(0)})`);
+      else {
+        assert.ok(gap() < g0 - 30 || hit, `it came back at him (${gap().toFixed(0)} from ${g0.toFixed(0)})`);
+        // a jolt that takes his speed, never a crawl: it drops back from the speed he had as it was told, not from
+        // what is left of his after each knock (it followed him down to a standstill, the two crawling for seconds:
+        // the QA robot's runs lost 5 to 12 s of the route to it)
+        assert.ok(low > 0.3 * s.d.cruise, `he is never brought to a crawl (${low.toFixed(1)} px/step at the slowest)`);
+        run(s, 1.2);
+        assert.ok(s.d.v > 0.85 * s.d.cruise, `and back at speed soon after (${s.d.v.toFixed(1)} px/step)`);
+      }
       assert.equal(s.w.killed, null);
     }
   } finally { CHASE.gunman.range = g; }
