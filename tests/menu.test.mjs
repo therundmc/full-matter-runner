@@ -392,7 +392,7 @@ test('menu: a page that changes under the selection puts it back on a selectable
   assert.equal(selected(n), 'NEW GAME', 'hovering nothing changes nothing');
 });
 
-test('menu: no AIM style line anywhere (F7 alone cycles it); AIM MARK is a toggle on the VIDEO page, off until turned on; the pause reaches it too', () => {
+test('menu: no AIM style line anywhere (the aim is LOCK); AIM MARK is a toggle on the VIDEO page, off until turned on; the pause reaches it too', () => {
   for (const root of ['main', 'pause']) {
     const c = ctx(), m = new Menu(root, c);
     choose(m, 'OPTIONS');

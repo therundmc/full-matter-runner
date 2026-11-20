@@ -20,7 +20,7 @@ import { drawHUD } from './ui/HUD.js';
 import { drawLoading, drawIntro, drawDead, drawOutro, drawContinued, describeDeath, INTRO, introBeats, introTint, SHUTTER_SOUND } from './ui/Screens.js';
 import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
-import { AIM, nextStyle } from './data/aim.js';
+import { AIM } from './data/aim.js';
 import { assistAim } from './systems/AimCue.js';
 import Rumble from './systems/Rumble.js';
 import Menu, { selectable, levelNotes } from './ui/Menu.js';
@@ -134,7 +134,6 @@ export default class Game {
     if (this.post) this.post.onLost = () => this.resize(); // the card dropped it: the canvas back to the window's size
     this.lensOn = true;                // always, where it can be had; F6 (the developer's) flips it to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
-    this.aimNote = 0;                  // ... and the F7 one (the aim's style)
     // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
     const mark = devParam('mark');
     if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
@@ -231,9 +230,8 @@ export default class Game {
     this.save();
   }
 
-  // the aim's settings as the world reads them: its style (render/AimArt.js, Player.startLunge's LOCK) and LOCK's floor chevron
+  // the aim's setting as the world reads it: LOCK's floor chevron (render/AimArt.js)
   aimTo(world) {
-    world.aimStyle = this.settings.aim;
     world.aimMark = !!this.settings.aimMark;
   }
 
@@ -581,11 +579,6 @@ export default class Game {
       this.resize(); // (the canvas' size goes with it: fit)
       this.lensNote = this.time + 1.6;
     }
-    // debug: the next way of showing the aim (data/aim.js; the setting `aim` keeps it, no menu row)
-    if (inp.hit('F7')) {
-      this.setSetting('aim', nextStyle(this.settings.aim));
-      this.aimNote = this.time + AIM.note;
-    }
     if (this.state === 'hitlist') {
       // the hit list between two levels: the marker crosses the dead man out (heard from the picture, HitList.js),
       // then a key or a click goes on to the next level, or to the menu after the last
@@ -816,7 +809,7 @@ export default class Game {
 
   // The right stick's virtual cursor (data/controls.js PAD_AIM): a point round the player, nearer or further with the
   // push, put where the mouse would be, so that the aim, the camera's look-ahead and the cursor all follow it. With
-  // the stick at rest the aim stays put, and turns to where he walks after a moment. No aim assist, but the LOCK concept's.
+  // the stick at rest the aim stays put, and turns to where he walks after a moment. No aim assist, but LOCK's.
   padAim(dt) {
     const inp = this.input, p = this.world?.player;
     if (inp.device !== 'pad' || !p?.alive || this.state !== 'play') return;
@@ -830,8 +823,8 @@ export default class Game {
       A.idle += dt;
       if (m && A.idle > PAD_AIM.follow) A.angle += angDiff(A.angle, Math.atan2(m.y, m.x)) * Math.min(1, dt * 10);
     }
-    // the LOCK concept's soft assist (systems/AimCue.js): a man close to the stick's way takes the aim
-    const to = this.settings.aim === 'lock' ? assistAim(this.world, A.angle) : null;
+    // LOCK's soft assist (systems/AimCue.js): a man close to the stick's way takes the aim
+    const to = assistAim(this.world, A.angle);
     const at = this.camera.worldToScreen(to ? to.x : p.x + Math.cos(A.angle) * A.reach, to ? to.y : p.y + Math.sin(A.angle) * A.reach);
     inp.mouse.x = at.x;
     inp.mouse.y = at.y;
@@ -1041,12 +1034,6 @@ export default class Game {
       o.fillStyle = '#3cff7a';
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
     }
-    if (this.aimNote > t) {
-      o.font = `${Math.round(14 * H / 720)}px monospace`;
-      o.textAlign = 'left';
-      o.fillStyle = '#3cff7a';
-      o.fillText(`F7  AIM ${AIM.names[this.settings.aim]}`, 12, H - 32 * H / 720);
-    }
     if (!['loading', 'outro', 'ending', 'cinematic', 'fall', 'continued'].includes(this.state)) this.drawCursor(o, t);
   }
 
@@ -1217,9 +1204,9 @@ export default class Game {
     const s = this.canvas.height / 720;
     // at the wheel, out of his arc (systems/CarGun.js): a still grey cross, his gun cannot point there
     const gun = this.state === 'play' && this.world?.drive?.on ? this.world.drive.gun : null, off = gun?.aimed && !gun.aimed.ok;
-    // any aim concept but the cross (data/aim.js): the cue is at the gun, in the world (render/AimArt.js); the mouse
-    // keeps a small dot where it is, the gamepad's stick has no point to show
-    if (this.state === 'play' && this.settings.aim !== 'cross') {
+    // in play the cue is in the world (LOCK, render/AimArt.js); the mouse keeps a small dot where it is, the
+    // gamepad's stick has no point to show
+    if (this.state === 'play') {
       if (this.input.device === 'pad') return;
       const r = Math.max(1, Math.round(AIM.dot.r * s)), e = Math.max(1, Math.round(AIM.dot.edge * s));
       ctx.fillStyle = AIM.ink;

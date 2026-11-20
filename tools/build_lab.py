@@ -109,8 +109,8 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    over the door (systems/Drive.js grab, CharacterAnim grabPose; the camera pushed in), every time he
                    gets in (getting out puts it back on the seat); then he drives it as at 19
     23 AIM         a room north of CUEBALL's (cols 64-73, rows 1-5), through a doorway in the east wall of the
-                   takedowns room (col 63, row 3): the ways of showing the aim to try, above all with a gamepad
-                   (data/aim.js, render/AimArt.js; F7 cycles them, Settings `aim` keeps one). Four dummies at
+                   takedowns room (col 63, row 3): the aim cue, LOCK, to try, above all with a gamepad (data/aim.js,
+                   render/AimArt.js; its mark on the man, the AIM MARK floor chevron, the pad's assist). Four dummies at
                    2, 4, 7 and 9 m, one of them behind a wall's end, a crate in the line of the last; a 1911, a
                    SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun. The melee lock (LOCK with a
                    melee weapon: a man in reach is held at the player's side too, he turns onto him before the click
@@ -498,7 +498,7 @@ for x, kind in ((61.3, 'pistol'), (61.9, 'bat'), (62.5, 'knife')):
 
 lv.area('23 aim')
 # the aim's cue (src/game/data/aim.js): men at four distances, one behind a wall's end, a crate before the last; a
-# thin gun, a wide one, a fast one and a blade to see what each concept tells of them
+# thin gun, a wide one, a fast one and a blade to see what LOCK tells of each
 lv.paint('label_aim', 61.6, 3.6)
 for (x, y), kind in (((64.6, 1.5), 'pistol'), ((65.4, 1.5), 'shotgun'), ((64.6, 2.2), 'uzi'), ((65.4, 2.2), 'bat')):
     lv.drop(kind, x, y, 0)

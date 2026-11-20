@@ -1,11 +1,11 @@
-// The aim's cue (data/aim.js, systems/AimCue.js): what it tells for a gun, a blade, the car gun; the LOCK concept's
-// man and the gamepad's soft assist; the lab's station.
+// The aim's cue, LOCK (data/aim.js, systems/AimCue.js): what it tells for a gun, a blade, the car gun; LOCK's man
+// and the gamepad's soft assist; the lab's station.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { AIM, AIM_STYLES, nextStyle } = await load('game/data/aim.js');
-const { aimCue, lineOfFire, lockTarget, assistAim } = await load('game/systems/AimCue.js');
+const { AIM } = await load('game/data/aim.js');
+const { aimCue, lineOfFire, lockTarget, assistAim, meleeLock } = await load('game/systems/AimCue.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { default: lab } = await load('game/data/levels/lab.js');
 
@@ -30,19 +30,6 @@ function world(p, hits = [], more = {}) {
   };
 }
 
-test('aim: the concepts are named, the cross first (the default), and F7 walks them round', () => {
-  assert.equal(AIM_STYLES[0], 'cross');
-  assert.ok(AIM_STYLES.length >= 4 && AIM_STYLES.length <= 6);
-  for (const s of AIM_STYLES) assert.ok(/^[A-Z]+$/.test(AIM.names[s]), s);
-  let s = 'cross';
-  const seen = [];
-  for (let i = 0; i < AIM_STYLES.length; i++) { seen.push(s); s = nextStyle(s); }
-  assert.deepEqual(seen, AIM_STYLES);
-  assert.equal(s, 'cross');
-  assert.equal(nextStyle('cross', -1), AIM_STYLES.at(-1));
-  assert.equal(nextStyle('garbage'), AIM_STYLES[1]);
-});
-
 test('aim: the cue never wears a guard\'s red', () => {
   for (const k of ['rest', 'hot', 'off', 'bone']) {
     const [r, g, b] = [1, 3, 5].map((i) => parseInt(AIM[k].slice(i, i + 2), 16));
@@ -54,7 +41,6 @@ test('aim: a gun\'s line starts at the muzzle, stops on the first solid thing, a
   const p = player('pistol'), guard = man(140, 0), pane = {}, crate = {};
   const onMan = aimCue(world(p, [{ kind: 'glass', target: pane, at: 40 }, { kind: 'char', target: guard, at: 110 }]));
   assert.deepEqual([onMan.x, onMan.kind, onMan.hit, onMan.target, Math.round(onMan.len)], [20, 'gun', true, guard, 110]);
-  assert.equal(onMan.half, WEAPONS.pistol.spread);
   const onCrate = aimCue(world(p, [{ kind: 'prop', target: crate, at: 60 }, { kind: 'char', target: guard, at: 110 }]));
   assert.deepEqual([onCrate.hit, onCrate.target, Math.round(onCrate.len)], [true, null, 60]);
   const open = aimCue(world(p));
@@ -62,14 +48,13 @@ test('aim: a gun\'s line starts at the muzzle, stops on the first solid thing, a
   // the muzzle poked into a wall: the line dies there
   const poked = aimCue(world(p, [], { lineOfSight: () => false }));
   assert.deepEqual([poked.len, poked.hit], [0, true]);
-  assert.ok(aimCue(world(player('shotgun'))).half > onMan.half * 4, 'a shotgun throws wider');
 });
 
-test('aim: a blade or his fists: a short cue from his front, as wide as the swing, no line traced', () => {
+test('aim: a blade or his fists: a short cue from his front, no line traced', () => {
   for (const type of ['bat', 'knife', null]) {
     const p = player(type), d = p.def;
     const q = aimCue(world(p, [], { traceBullet() { throw new Error('traced'); } }));
-    assert.deepEqual([q.kind, q.x, q.half, q.target], ['melee', p.radius, d.arc / 2, null]);
+    assert.deepEqual([q.kind, q.x, q.target], ['melee', p.radius, null]);
     assert.ok(q.len > 0 && q.len <= d.range, `${d.name}: ${q.len}`);
   }
 });
@@ -210,7 +195,7 @@ test('lock: its mark is one of the marks kept to compare, each with its numbers'
   const L = AIM.lock;
   assert.ok(L.marks.includes(L.mark));
   for (const m of L.marks) assert.ok(L[m] && L[m].alpha.length === 2 && L[m].alpha[0] < L[m].alpha[1], m);
-  assert.ok(L.chevron.alpha[0] < L.chevron.alpha[1] && L.chevron.size <= AIM.notch.size, 'the floor chevron is light, brighter on a man');
+  assert.ok(L.chevron.alpha[0] < L.chevron.alpha[1] && L.chevron.at > L.chevron.wall, 'the floor chevron is light, brighter on a man');
 });
 
 const { drawAim } = await load('game/render/AimArt.js');
@@ -218,20 +203,34 @@ const { drawAim } = await load('game/render/AimArt.js');
 function painted(w) {
   const px = [];
   const ctx = { save() {}, restore() {}, globalAlpha: 1, fillStyle: '', fillRect(x, y, sw) { if (sw === 1) px.push([x, y, this.fillStyle]); } };
-  drawAim(ctx, w, w.aimStyle, 0);
+  drawAim(ctx, w, 0);
   return px;
 }
 
 test('lock: the floor chevron is drawn only with the AIM MARK option; the ticks on the man always', () => {
   const p = player('bat');
-  const w = { ...world(p), aimStyle: 'lock', aimMark: false };
+  const w = { ...world(p), aimMark: false };
   assert.equal(painted(w).length, 0, 'nobody near the line, the option off: nothing');
   const mark = painted({ ...w, aimMark: true });
-  assert.ok(mark.length > 6 && mark.every(([x, , col]) => x > AIM.notch.at - 8 && x <= AIM.notch.at + AIM.lock.chevron.size + 1 && col === AIM.rest),
-    'a cyan chevron out along the aim, at the notch\'s distance');
+  assert.ok(mark.length > 6 && mark.every(([x, , col]) => x > AIM.lock.chevron.at - 8 && x <= AIM.lock.chevron.at + AIM.lock.chevron.size + 1 && col === AIM.rest),
+    'a cyan chevron out along the aim, at its distance');
   // a man held: his corner ticks, with or without the option
   const g = man(60, 0), held = { ...w, chars: [p, g] };
   const ticks = painted(held);
   assert.ok(ticks.length > 0 && ticks.every(([x]) => Math.abs(x - 60) >= AIM.lock.corners.box - AIM.lock.corners.corner));
   assert.ok(painted({ ...held, aimMark: true }).length > ticks.length);
+});
+
+const { loadSettings } = await load('game/systems/Settings.js');
+
+test('lock: an old save holding an aim style (`aim: \'wedge\'`) loads fine, and the aim is still LOCK', () => {
+  const data = { 'fmr.settings.v1': JSON.stringify({ aim: 'wedge', aimMark: false }) };
+  const s = loadSettings({ getItem: (k) => data[k] ?? null, setItem() {} });
+  assert.ok(!('aim' in s), 'the old key is dropped');
+  // the world as Game.aimTo sets it from those settings: LOCK's corner ticks on the man near the line, its melee lock
+  const p = player('bat'), g = man(30, 4, { isEnemy: true, knocked: 0 });
+  const w = { ...world(p), chars: [p, g], enemies: [g], aimMark: s.aimMark };
+  const ticks = painted(w);
+  assert.ok(ticks.length > 0 && ticks.every(([x]) => Math.abs(x - 30) >= AIM.lock.corners.box - AIM.lock.corners.corner), 'his corner ticks');
+  assert.equal(meleeLock(w, p, p.def, 0)?.man, g, 'the bat held onto him');
 });
