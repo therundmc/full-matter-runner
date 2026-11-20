@@ -935,23 +935,22 @@ must('chainlink_gate', (YARD_S[0] + YARD_S[1] + 1) / 2, R1 + 3.12, 0, on='_')
 for (kind, c, r, deg) in (('pallet_stack', 467.4, 51.6, 10), ('oil_drum', 472.8, 51.4, 0), ('oil_drum', 473.4, 51.9, 0),
                           ('crate', 470.6, 53.2, 20), ('dumpster', 466.9, 54.0, 0)):
     put(kind, c, r, deg, on='_')
-lv.prop('pipe_water', 480.0, R1 + 2.93, 180)                             # the long shed
-lv.prop('wall_vent', 483.6, R1 + 2.93, 180)
-lv.prop('roller_door', 487.5, R1 + 2.93, 180)
-lv.prop('wall_lamp', 490.2, R1 + 2.94, 180)
-lv.prop('graffiti', 477.0, R1 + 2.94, 180)
-low.update(('h', k, R1 + 1) for k in range(486, 490))
-put('dumpster', 476.4, R1 + 2.4, 0)
-for (kind, c, r) in (('bin_bag', 478.0, 49.45), ('cardboard_box', 474.6, 49.5), ('oil_drum', 491.5, 49.45), ('bin_bag', 452.8, 49.5)):
-    put(kind, c, r)
+put('bin_bag', 452.8, 49.5)
+# (the used car lot past the motel: its apron flush with the sidewalk, the showroom's glass front behind it, a door in
+# its middle; dressed with the rest of Miami below)
+LOT_S = (486, 494)
+lv.fill(LOT_S[0], R1 + 1, LOT_S[1], R1 + 2, '_')
+lv.fill(LOT_S[0] + 1, R1 + 4, LOT_S[1] - 1, R1 + 5, '+')
+for c in range(LOT_S[0] + 1, LOT_S[1]):
+    lv.put(c, R1 + 3, 'L' if c == (LOT_S[0] + LOT_S[1]) // 2 else 'G')
 for c in (458.5, 482.5):
     must('streetlight', c, R1 + 1.28, 270)
 must('sign_freeway', RAMP_X - 3.0, R1 + 1.7, 0)
 lv.dress('papers', LEG1_W, R1 + 1, RAMP_X - 1, R1 + 2, 12)
 lv.cat(472.3, 49.5)
 for (kind, c, r) in (('ac_unit', 430.6, 52.6), ('vent', 437.2, 51.8), ('duct', 446.0, 52.2), ('chimney', 452.8, 53.4),
-                     ('ac_unit', 459.4, 52.4), ('vent', 462.6, 51.9), ('hatch', 478.6, 52.6), ('ac_unit', 484.2, 52.2),
-                     ('vent', 489.0, 51.8), ('duct', 492.8, 53.2)):
+                     ('ac_unit', 459.4, 52.4), ('vent', 462.6, 51.9), ('hatch', 478.6, 52.6), ('ac_unit', 482.6, 53.2),
+                     ('vent', 490.0, 55.4), ('duct', 494.8, 55.2)):
     lv.roof(kind, c, r)                                                   # on the sheds' flat roofs
 
 # ---------------------------------------------------------------- leg 1: the on-ramp and the merge
@@ -981,6 +980,88 @@ dashes(RAMP_X, TOLL_X, R0 + 2.5, 12, kind='raised_marker', at=444, length=0.25)
 for (kind, c, r, deg) in (('road_crack_a', 506.0, 46.4, 0), ('road_patch_b', 519.5, 44.4, 0), ('road_crack_b', 538.0, 47.0, 90),
                           ('road_patch_c', 552.0, 45.0, 0)):
     lv.paint(kind, c, r, deg)
+
+# ---------------------------------------------------------------- leg 1 dressed: Sunset Bay, 1985
+# (docs/LEVEL2.md "Segment 1, part two"; sprites "Miami, 1985" in tools/generate_assets.py.) The picture at the wheel
+# runs from the freeway's near lane to the fronts' foot: what tells the place is on the bank and on the sidewalk.
+# NORTH, the freeway's bank: a camp out from under the bridge (a tarp, a mattress, a fire in a drum, a cart), a
+# chain-link fence along the bank's foot with a hole cut in it by the camp, royal palms, the sun-tan billboard on its
+# catwalk, a burnt-out car that came off the freeway through its rail; on the ramp's bank the radio's billboard and the
+# crash cushion somebody hit. SOUTH: the cold store's mint canopy, the motel's back (its pole sign, MOTEL and VACANCY
+# in neon, a pink canopy, hibiscus), a used car lot (a coupe up on its display ramp under two light poles and the
+# pennants, AUTO SALES on its pole); on the ramp an old crash (tyre marks into a dented length of rail, glass and a
+# hubcap on the shoulder), a call box, royal palms lit from their feet beyond the rail, hibiscus on the bank. The
+# ramp's slabs: an expansion joint every 6 m, oil down the lanes.
+lv.area('miami: the camp under the bridge (north bank)')
+lv.paint('mattress_dumped', 453.7, 42.05, 4)
+lv.patron('tramp', 453.6, 42.0, 0, 'sleep')
+must('tent_tarp', 456.7, 42.0, 0, on='"')
+must('barrel_fire', 459.4, 42.2, on='"')
+lv.fire(459.4, 42.2)
+lv.patron('tramp', 459.4, 41.55, 90, 'clasp')                             # warming his hands over it
+put('shopping_cart', 461.5, 41.75, 20, on='"')
+put('bin_bag', 458.0, 42.6, on='"')
+lv.paint('litter_a', 462.6, 42.2)
+lv.paint('litter_b', 452.9, 42.4, 180)
+lv.area('miami: the freeway\'s bank (palms, the billboard, the burnt car, the fence)')
+WRECK = (486.0, 41.85)                       # the car that came off the freeway, through its rail, and burned here
+lv.props[:] = [p for p in lv.props if not (p[1] == 'guardrail' and abs(p[3] - (F1 + 1.15)) < 0.01 and 478.5 < p[2] < 491.5)]
+boxes[:] = [b for b in boxes if not (abs((b[1] + b[3]) / 2 - (F1 + 1.15)) < 0.05 and 478.5 < (b[0] + b[2]) / 2 < 491.5)]
+
+
+def end_to_end(kind, col, row, deg=0):
+    """A length of rail or fence laid touching its neighbours (as `rail` lays them)."""
+    boxes.append(Level.box(kind, col, row, deg))
+    lv.prop(kind, col, row, deg)
+
+
+end_to_end('guardrail_dented', 481.0, F1 + 1.15, 180)                    # bent in where it went through
+must('car_burnt', WRECK[0] + 0.6, WRECK[1], 180, on='"')
+lv.paint('litter_b', 491.0, 42.3)
+for c in list(range(462, 481, 4)) + [489, 493]:                        # the fence along the bank's foot (the camp's
+    end_to_end('chainlink_hole' if c == 466 else 'chainlink_fence', c + 2.0, R0 - 0.27)   # way through it)
+must('royal_palm', 468.0, 42.0, on='"')
+must('royal_palm_b', 493.6, 41.8, on='"')
+lv.prop('billboard_tan', 477.0, 42.3 - 50 / 32)                          # (hung: its legs on the bank, its face over the rail)
+lv.prop('billboard_radio', 511.0, 42.3 - 50 / 32)
+must('crash_cushion_hit', 522.4, 42.1, 0, on='"=')
+lv.paint('litter_a', 503.6, 42.25, 90)
+lv.area('miami: the cold store, the motel\'s back, the used car lot (south)')
+lv.prop('deco_canopy_mint', 465.9, R1 + 3 - 20 / 32)                    # over the cold store's office door
+must('royal_palm_b', 466.9, R1 + 1.55)
+lv.paint('tree_grate', 466.9, R1 + 1.55)
+must('pole_sign_motel', 472.7, R1 + 1.45)
+lv.prop('neon_sign_motel', 474.6, R1 + 2.91)                             # (neon reads one way up: never turned)
+must('hibiscus_hedge', 476.6, R1 + 2.42)
+lv.prop('neon_sign_flamingo', 477.4, R1 + 2.91)
+lv.prop('deco_canopy_pink', 480.4, R1 + 3 - 20 / 32)
+must('hibiscus_hedge_pink', 483.9, R1 + 2.42)
+lv.prop('neon_sign_vacancy', 483.6, R1 + 2.91)
+must('pole_sign_autos', 485.0, R1 + 1.45)
+lv.paint('display_ramp', 490.6, R1 + 2.0)
+must('car2', 490.6, R1 + 2.05, 0, on='_', lights=False)                 # an 80s coupe up on its ramp, for sale
+for c in (487.8, 493.6):
+    must('lot_light', c, R1 + 1.25, 0, on='_')
+for (c, r, deg) in ((489.2, R1 + 2.05, 30), (492.2, R1 + 2.05, 150), (490.7, R1 + 1.3, 0)):
+    lv.prop('pennant_string', c, r, deg)                                 # strung from the poles to the showroom's door
+for c in range(LOT_S[0], LOT_S[1] + 1):                                  # its kerb, dropped at the way in
+    lv.paint('kerb_n_low' if 489 <= c <= 491 else 'kerb_n', c + 0.5, R1 + 1 + 1 / 32)
+lv.area('miami: the ramp (an old crash, a call box, palms and hibiscus on its bank, its slabs)')
+lv.props[:] = [p for p in lv.props if not (p[1] == 'guardrail' and abs(p[3] - (R1 + 2.15)) < 0.01 and 526.5 < p[2] < 531.5)]
+boxes[:] = [b for b in boxes if not (abs((b[1] + b[3]) / 2 - (R1 + 2.15)) < 0.05 and 526.5 < (b[0] + b[2]) / 2 < 531.5)]
+end_to_end('guardrail_dented', 529.0, R1 + 2.15, 180)
+lv.paint('tyre_marks', 526.0, 47.73)
+lv.paint('crash_debris', 531.6, R1 + 1.45)
+must('call_box', 538.5, R1 + 1.7, 0, on='=')
+lv.prop('sign_gantry', 548.5, F0 + 7.0)                                  # over the merge: the toll told, lit from below
+for (kind, c) in (('royal_palm_b', 507.5), ('royal_palm', 525.0), ('royal_palm_b', 541.5), ('royal_palm', 556.0)):
+    must(kind, c, R1 + 3.6, on='"')
+must('hibiscus_hedge_pink', 533.6, R1 + 3.45, on='"')
+must('hibiscus_hedge', 550.0, R1 + 3.45, on='"')
+for c in range(RAMP_X + 5, TOLL_X - 1, 6):
+    lv.paint('expansion_joint', c, R0 + 3.0)
+for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (541.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1])):
+    lv.paint('oil_streak', c, r)
 
 # ---------------------------------------------------------------- THE TOLL (cols 560 on; docs/LEVEL2.md segment 2)
 # The four lanes side by side the merge leaves (the freeway's two, leg 1's two) spread to the plaza's grid
@@ -1231,6 +1312,11 @@ lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   
 lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
 lights += [[x, MID, 10, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in range(TOLL0 + 4, W, 30)]   # the freeway's
 lights += [[CANOPY_X, MID + d, 9, '#e8f0ff', 0.22] for d in (-6, 0, 6)]  # the plaza under its lit roof
+# leg 1 in 1985 (the neon, the billboards, the drum's fire and the lot are their props' own lights): the palms lit
+# from their feet, pink and cyan in turn, the green signs from below, more sodium over the merge (it was the dark end)
+lights += [[c, r, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5] for (k, (c, r)) in enumerate(((466.9, 48.8), (468.0, 42.3), (493.6, 42.1), (507.5, 50.3), (525.0, 50.3), (541.5, 50.3), (556.0, 50.3)))]
+lights += [[c, r, 2.2, '#e8fff0', 0.4] for (c, r) in ((RAMP_X - 3.0, 49.2), (RAMP_X + 21.0, 48.3), (RAMP_X + 13.0, 48.3))]
+lights += [[531.0, 41.5, 8, '#ffb46a', 0.32], [541.0, 44.5, 9, '#ffa860', 0.3], [552.0, 45.5, 8, '#ffa860', 0.34], [557.0, 40.0, 8, '#ffb46a', 0.3]]
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
 # under it)
