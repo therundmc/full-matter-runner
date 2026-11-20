@@ -402,7 +402,8 @@ class Post {
         uTime: t % 1000, uFringe: u.fringe, uZoom: u.zoom, uFrame: u.frame, uGlitch: u.glitch, uCurve: u.curve, uScan: u.scan,
         uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette,
         uGlowK: glow ? u.glow.strength : 0, uRaysK: rays ? u.rays.strength : 0, uEdge: soft ? u.edge : 0, uBlur: soft ? u.blur : 0,
-        uSharp: H > S.height * 1.01 ? H / S.height : 0, // the scene smaller than the window: brought up sharp (scene()) uRadial: u.radial, uWaveWidth: u.waveWidth,
+        uSharp: H > S.height * 1.01 ? H / S.height : 0, // the scene smaller than the window: brought up sharp (scene())
+        uRadial: u.radial, uWaveWidth: u.waveWidth,
         uToneKnee: u.tone.knee, uToneSoften: u.tone.soften,
         uSat: u.grade.sat, uCon: u.grade.con, uTintK: u.grade.tintK,
         uRushShare: R.lines.share, uRushRun: R.lines.run, uRushGlow: R.lines.glow,

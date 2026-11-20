@@ -329,6 +329,7 @@ export default class Game {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
     this.forget(retry, resume);
     this.world?.dispose?.(); // the last run's canvases let go before the new one makes its own
+    this.interp.still(); // (its bodies held there would keep the old world, all its buffers, alive through the new one)
     this.world = new World(this, LEVELS[this.levelId]);
     this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
@@ -429,6 +430,7 @@ export default class Game {
     this.quiet();
     this.world?.dispose?.();
     this.world = null;
+    this.interp.still(); // the bodies it held from the last step: they kept the whole world alive at the title
     this.opening = new Opening(null);
     this.rumble.unbind();
     this.sandbox.detach();

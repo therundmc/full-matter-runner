@@ -265,7 +265,7 @@ export default class Lens {
       focus: this.zoom > 0.0005 && this.zoomAt ? at(this.zoomAt.x, this.zoomAt.y) : centre,
       frame: this.frame > 0 ? 1 : 0,
       glitch: this.glitch,
-      waves, waveWidth: c.wave.width,
+      waves, waveWidth: flat ? 0 : c.wave.width, // (at the wheel no wave bends the picture either: 0, none)
       heat,
       smear: [this.smear.x * (H / W), this.smear.y],
       radial: this.radial, centre,
