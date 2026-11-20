@@ -69,10 +69,18 @@ SIZES = dict(
     toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
     gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),
     overpass=None,   # the freeway's bridge over the side street (generate_assets.py FWY_PROPS): hung high, never in the way
-    # MIAMI 1985 (generate_assets.py MIAMI_PROPS): generic dressing (a palm's or a lamp's box its trunk / post)
+    # ART DECO 1985 (generate_assets.py DECO_PROPS): generic dressing (a palm's or a lamp's box its trunk / post)
     palm_fan=(9, 9), palm_fan_small=(9, 9), hibiscus_bush=(24, 24), hibiscus_bush_red=(24, 24), planter_deco_pink=(44, 44),
     planter_deco_teal=(44, 44), deco_lamp=(6, 6), police_car=(136, 54), deco_office_pink=(156, 80), deco_office_teal=(156, 80),
-    billboard_motel=None, billboard_radio=None,
+    billboard_motel=None,
+    # Miami, 1985 (generate_assets.py MIAMI_PROPS): generic street dressing (a palm or a sign by its pole, the burnt car by
+    # its shell; hung: the billboards, the canopies, the pennants, the awnings)
+    royal_palm=(16, 16), royal_palm_b=(16, 16), hibiscus_hedge=(92, 20), hibiscus_hedge_pink=(92, 20), billboard_tan=None,
+    billboard_radio=None, pole_sign_motel=(8, 8), pole_sign_autos=(8, 8), car_burnt=(136, 54), tent_tarp=(64, 44),
+    barrel_fire=(20, 20), chainlink_fence=(128, 4), chainlink_hole=(128, 4), guardrail_dented=(128, 6),
+    crash_cushion_hit=(60, 50), call_box=(5, 5), pennant_string=None, lot_light=(6, 6), sign_gantry=None, awning_pink=None, awning_mint=None,
+    awning_peach=None, awning_lavender=None, deco_canopy_pink=None, deco_canopy_mint=None, deco_canopy_peach=None,
+    deco_canopy_lavender=None, neon_sign_motel=None, neon_sign_vacancy=None, neon_sign_flamingo=None,
     # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
     shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
     tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
@@ -103,7 +111,8 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                neon_sign_diner=44, neon_sign_cafe=32,
                security_mirror=10, cig_rack=26, price_board=22, tape_rack=28, notice_board=20, coin_changer=10, hand_dryer=8,
                graffiti=26, wall_clock=7, cleaning_rack=20,
-               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7, roller_door=96)
+               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7, roller_door=96,
+               neon_sign_motel=38, neon_sign_vacancy=44, neon_sign_flamingo=24)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -122,9 +131,12 @@ FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour
           'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow',
           'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
           'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan')
+# ... and Miami's (MIAMI_PAINT): a dumped mattress, litter, an old crash's tyre marks and debris, a dealer's display
+# ramp, a concrete ramp's joints, an oil streak
+FLOOR += ('mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris', 'display_ramp', 'expansion_joint', 'oil_streak')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
-# MIAMI 1985's (MIAMI_PAINT): rain standing on the asphalt, the neon in it
+# ART DECO 1985's (DECO_PAINT): rain standing on the asphalt, the neon in it
 FLOOR += ('puddle_neon', 'puddle_neon_b')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
 FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
