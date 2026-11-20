@@ -11,10 +11,12 @@ import { load } from './setup.mjs';
 const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Toll, laneY, nearestLane, woodFor, steelFor, reach } = await load('game/systems/Toll.js');
+const { default: Toll, laneY, nearestLane, woodFor, steelFor, reach, mouthX, onBoom } = await load('game/systems/Toll.js');
 const { default: Drive } = await load('game/systems/Drive.js');
 const { default: Pursuit } = await load('game/systems/Pursuit.js');
-const { default: ChaseCam } = await load('game/systems/ChaseCam.js');
+const { default: ChaseCam, gatesIn, tollCommitted } = await load('game/systems/ChaseCam.js');
+const { SHOTS } = await load('game/data/staging.js');
+const { whole } = await load('game/systems/Direction.js');
 const { legsOf, legAt } = await load('game/systems/Route.js');
 const { CHASE } = await load('game/data/chase.js');
 const { PROPS } = await load('game/data/props.js');
@@ -91,7 +93,7 @@ function world(c0, c1) {
     w.props.push(new Prop(w, type, col * TILE, row * TILE, (deg * Math.PI) / 180));
   }
   events.on('kill', (e) => w.kills.push(e));
-  for (const k of ['tollGate', 'pursuerWreck', 'chaseBeat']) events.on(k, (e) => w.told.push({ k, ...e }));
+  for (const k of ['tollGate', 'pursuerWreck', 'chaseBeat', 'tollCrash']) events.on(k, (e) => w.told.push({ k, ...e }));
   return w;
 }
 
@@ -298,6 +300,115 @@ test('toll: through a wooden arm he goes on at a small cost, the arm torn off, t
   assert.ok(w.chaseCam.beat.slow < 1 && w.chaseCam.beat.slow >= 0.3, 'light: a breath');
 });
 
+// ---------------------------------------------------------------- choosing his lane: the slow motion
+// the chase's director with the world, its clock on the real one (a game step lasts DT / scale real s)
+function directed(s) {
+  const cc = s.w.chaseCam;
+  return () => { cc.step(); cc.update(DT / Math.max(0.1, cc.scale)); };
+}
+
+test('toll: choosing: the gates so many s off at his speed, and committed once in the fan on a wooden lane\'s line, going straight on', () => {
+  const K = CHASE.cinema.choose, v = 13.3, P = { ...T, x: GX };
+  assert.ok(Math.abs(gatesIn(P, GX - v * 60, v) - 1) < 1e-9, 'a second at 90 km/h');
+  assert.equal(gatesIn(P, GX + 1, v), null, 'past them');
+  const wood = T.gates.indexOf('wood'), steel = T.gates.indexOf('steel'), x = (T.fan[0] + 2) * TILE;
+  const on = (k, dy = 0, u = 0, at = x) => tollCommitted(P, { x: at, y: laneY(T, k, at) + dy, u }, K);
+  assert.ok(on(wood), 'on a wooden lane\'s line in the fan');
+  assert.ok(on(wood, K.commit - 1), 'within `commit` px of it');
+  assert.ok(!on(wood, K.commit + 4), 'not off it');
+  assert.ok(!on(wood, 0, K.still + 1), 'not while still going across');
+  assert.ok(!on(steel), 'never a steel lane');
+  assert.ok(!on(wood, 0, 0, (T.fan[0] - 1) * TILE), 'not before the fan: the lanes are side by side there');
+  assert.ok(tollCommitted(P, { x: GX + 2, y: 0, u: 3 }, K), 'past the gates: over');
+  // its framing: a whole zoom further out (2 px a world px at 1080, an even one: the fine sprites stay whole)
+  assert.equal(SHOTS[K.shot].pull, 1);
+  assert.equal(3 * whole(SHOTS[K.shot].zoom, 3, 2), 2, '1080: 3 -> 2');
+  assert.equal(2 * whole(SHOTS[K.shot].zoom, 2, 2), 2, '720: already the least, no cut');
+  assert.ok(K.slow <= 0.35 && K.lead >= 1.1 && K.lead <= CHASE.toll.tell, 'a real slow motion, once its tells are up');
+});
+
+test('toll: choosing: the world slows `lead` s before the gates, the view framing them, the wheel handed more; steered onto a wooden lane it lets go, once a plaza', () => {
+  const K = CHASE.cinema.choose, k = T.gates.indexOf('steel', 2), s = start(T.fan[0] - 26, T.from[k], { speed: 13.3 }), { d, v, w } = s;
+  const cc = w.chaseCam, tick = directed(s);
+  let openAt = null, wheel = null, shot = null, endAt = null;
+  // (straight on first: it opens by itself)
+  run(s, 2, { each: () => { tick(); if (cc.beat?.kind === 'choose') { openAt = v.x; wheel = cc.wheel; shot = cc.shot(); return true; } return false; } });
+  assert.ok(openAt !== null, 'it opens');
+  assert.ok(Math.abs((GX - openAt) / (d.v * 60) - K.lead) < 0.05, `${((GX - openAt) / (d.v * 60)).toFixed(2)} s before the gates`);
+  assert.ok(w.toll.plazas[0].k > 0, 'its tells up');
+  assert.ok(wheel && wheel.most === K.wheel && wheel.rate >= 1, 'the wheel in real time, and more of it');
+  assert.equal(shot?.name, K.shot);
+  assert.ok(shot.at.x > v.x + 100, 'the view drawn on toward the gates');
+  assert.ok(Math.abs(shot.at.y - T.lanes.reduce((a, r) => a + r, 0) / 4 * TILE) < 1, 'across, on the plaza\'s middle');
+  // (now he steers for the wooden lane the robot is sent down)
+  let low = 1;
+  run(s, 6, { steer: true, each: () => {
+    tick();
+    low = Math.min(low, cc.scale);
+    if (endAt === null && cc.beat?.kind === 'choose' && !cc.beat.held) endAt = v.x;
+    return v.x > GX + 4 * TILE;
+  } });
+  assert.ok(low <= K.slow + 0.01, `slowed to x${low.toFixed(2)}`);
+  assert.ok(endAt !== null && endAt < mouthX(T), `let go once committed, before the mouths (col ${(endAt / TILE).toFixed(1)})`);
+  assert.ok(endAt >= T.fan[0] * TILE, 'in the fan');
+  assert.equal(w.killed, null, 'through');
+  assert.ok(w.told.filter((e) => e.k === 'chaseBeat' && e.kind === 'choose').length === 1, 'once');
+  assert.ok(w.toll.plazas[0].chosen);
+});
+
+test('toll: choosing: never steered, it lets go `last` s before the lanes\' mouths (his to make at full speed), and before its cap', () => {
+  const K = CHASE.cinema.choose, k = T.gates.indexOf('steel', 2), s = start(T.fan[0] - 26, T.from[k], { speed: 13.3 }), { d, v, w } = s;
+  const cc = w.chaseCam, tick = directed(s);
+  let endX = null, held = 0;
+  run(s, 4, { each: () => {
+    tick();
+    if (cc.beat?.kind === 'choose' && cc.beat.left < 0) held = cc.beat.t;
+    if (cc.beat?.kind === 'choose' && cc.beat.left >= 0 && endX === null) endX = v.x;
+    return endX !== null;
+  } });
+  assert.ok(endX !== null, 'over');
+  const left = (mouthX(T) - endX) / (d.v * 60);
+  assert.ok(Math.abs(left - K.last) < 0.05, `${left.toFixed(2)} s before the mouths`);
+  assert.ok(held < K.in + K.cap && held > 1, `held ${held.toFixed(2)} s real, under its cap`);
+  assert.equal(w.killed, null);
+});
+
+test('toll: choosing: none in the opening, dead or past the gates; the kill beat never cuts into it', () => {
+  const s = start(T.fan[0] - 26, T.from[3], { speed: 13.3 }), { w, d } = s, cc = w.chaseCam, tick = directed(s);
+  d.dead = true;
+  run(s, 1.5, { each: () => { tick(); return !!cc.beat; } });
+  assert.equal(cc.beat, null, 'dead: none');
+  const s2 = start(T.at + 6, T.from[0], { speed: 13.3 }), tick2 = directed(s2);
+  run(s2, 0.5, { each: () => { tick2(); return !!s2.w.chaseCam.beat; } });
+  assert.equal(s2.w.chaseCam.beat, null, 'past the gates: none');
+  const s3 = start(T.fan[0] - 26, T.from[3], { speed: 13.3 }), cc3 = s3.w.chaseCam, tick3 = directed(s3);
+  run(s3, 2, { each: () => { tick3(); return cc3.beat?.kind === 'choose'; } });
+  const car = s3.P.spawn(s3.v.x + 200, T.from[0] * TILE, 0, 'chase', 13.3, 'gunner');
+  s3.w.events.emit('pursuerWreck', { car: car.v, x: car.v.x, y: car.v.y });
+  assert.equal(cc3.beat?.kind, 'choose', 'a kill meanwhile: the choosing goes on');
+});
+
+// ---------------------------------------------------------------- the crash on a steel boom
+test('toll: one of theirs stopped on a steel boom: thrown back off it spinning, its nose folded, the boom bent, told; the strong kill beat whatever the cooldown', () => {
+  const k = T.gates.indexOf('steel'), s = start(T.fan[0] - 26, T.from[3], { speed: 13.3 }), { w, P } = s;
+  const gate = w.toll.plazas[0].props[k];
+  assert.ok(onBoom(T, k, GX - 30, laneY(T, k, GX), 140) && !onBoom(T, k, GX - 30, laneY(T, k, GX) + 2 * TILE, 140) && !onBoom(T, T.gates.indexOf('wood'), GX - 30, laneY(T, T.gates.indexOf('wood'), GX), 140));
+  const car = P.spawn(GX - 70 - 4, laneY(T, k, GX) + 6, 0, 'chase', 0, 'gunner');
+  w.chaseCam.S = { strong: w.chaseCam.now, beat: -Infinity, kill: -Infinity, tier: 'strong', on: false }; // (a strong beat just now: the cooldown on)
+  P.wreck(car);
+  const e = w.told.find((q) => q.k === 'tollCrash');
+  assert.ok(e && e.car === car.v && e.lane === k, 'told');
+  assert.ok(car.v.tollCrash && gate.bent, 'the car marked, the boom bent');
+  const vel = Matter.Body.getVelocity(car.v.body);
+  assert.ok(vel.x < 0 && Math.abs(Matter.Body.getAngularVelocity(car.v.body)) > 0.1, 'thrown back, spinning');
+  assert.equal(w.chaseCam.beat?.kind, 'kill');
+  assert.equal(w.chaseCam.beat?.tier, 'strong', 'the strong beat');
+  // a car wrecked anywhere else: no crash of the toll's
+  const other = P.spawn(GX - 20 * TILE, T.from[0] * TILE, 0, 'chase', 0, 'gunner');
+  P.wreck(other);
+  assert.ok(!other.v.tollCrash && w.told.filter((q) => q.k === 'tollCrash').length === 1);
+});
+
 test('toll: nose-on into a steel boom is the crash, his death', () => {
   const k = T.gates.indexOf('steel'), s = start(T.fan[1] + 1, T.lanes[k], { speed: 13.3 }), { d, v, w } = s;
   run(s, 1.2, { each: () => d.dead });
@@ -339,6 +450,7 @@ for (const lane of T.gates.flatMap((g, i) => (g === 'wood' ? [i] : []))) {
     assert.equal(Math.abs(k - lane), 1, 'the one beside his');
     assert.ok(wrongAt.his > wrongAt.x - 2 * TILE, 'as he goes through, beside him or just behind');
     assert.ok(w.told.some((e) => e.k === 'pursuerWreck' && e.car === wrong.v), 'the kill beat told');
+    assert.ok(w.told.some((e) => e.k === 'tollCrash' && e.car === wrong.v) && wrong.v.tollCrash, 'THE CRASH on its boom');
     assert.ok(w.kills.length >= 1, 'its crew his kills');
     assert.ok(other.v.x > GX && other.state === 'chase', `the other one through (${other.state} at ${(other.v.x / TILE).toFixed(1)})`);
     assert.equal(T.gates[nearestLane(T, through.get(other), GX)], 'wood', 'through a wooden arm');
@@ -407,4 +519,13 @@ test('toll: a pursuer left far behind is not brought back up while the plaza is 
   assert.ok(jumpAt !== null, 'brought back up at last');
   assert.ok(jumpAt > GX + CHASE.toll.past - 1, `past the gates, not in the plaza (he was at col ${(jumpAt / TILE).toFixed(1)})`);
   assert.ok(car.state === 'chase', `and still after him (${car.state})`);
+});
+
+test('hud: an edge marker on the top edge under the road\'s line and its metres is put below them, never over them', async () => {
+  const { underRoad } = await load('game/ui/HUD.js');
+  const W = 1920, pad = 24, s = 1.5;
+  const over = underRoad({ x: W / 2 + 100, y: 30, angle: -1 }, W, pad, s), aside = underRoad({ x: 60, y: 30, angle: -2 }, W, pad, s);
+  assert.ok(over.y >= pad + 40 * s, `pushed below the line (${over.y})`);
+  assert.equal(aside.y, 30, 'away from it: left where it is');
+  assert.equal(underRoad(null, W, pad, s), null);
 });

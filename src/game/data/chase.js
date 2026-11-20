@@ -182,15 +182,35 @@ export const CHASE = {
   //   at `ease` 1/s, `most` px a step at most, in whole px; out of it, back to the leg's own framing the same way
   //   (within `done` px of it: held there exactly again). Never turned.
   //   pursuers: each one reaching the bend follows the same line, `space` px behind the car ahead of it there (his or
-  //   one of theirs; held back by `catch` px/step for each px short of it, braking `hold` px/step a second for it:
+  //   one of theirs; held back by `catch` px/step for each px short of it, braking `hold` px/step a second for it;
+  //   nearer than `close[0]` of it (in on his flank), at once down to `close[1]` of the speed of the one ahead:
   //   in a bend a knock between two of them wrecks nothing); on a leg he is not on yet, it is kept
   //   `clear` px past the end of the bend he will come out of (never sat on his way out), out of his lane
   //   apex: a breath of slow motion as each turn begins (systems/ChaseCam.js; null: none)
+  //   smash: THE ALLEY (the user, 2026-11-20: "une petite contre-allee ou tu defonces tout"): what stands on the
+  //   line is ploughed through, never a wall. A bolted thing is torn off (as on the road); a loose one up to `kg`
+  //   (a wheeled dumpster) is thrown by hand on ahead and aside (the light ones as Drive.fling; one heavier than
+  //   CHASE.hit.fling.kg at `heavy` [least, most] of the car's speed by its mass, spun `spin` rad/step), and it
+  //   bursts as it goes unless it is metal with more than `burst` hp (a drum, a dumpster stay whole). Each costs his
+  //   speed `cost` (`heavyCost` a heavy one, once a step), never under `floor` of the bend's own speed. A car he
+  //   meets (parked, a wreck) is SCRAPED along its flank: the contact never resolved (`pair.flank`: CarFx's shower
+  //   for as long as they overlap), the other car rocked `push` px/step off his flank, its alarm and its hazards, a
+  //   mirror torn off, a dent every `dent` s (`dents` at most) on both, `drag` of his speed a second. A pursuer
+  //   following him through meets the same; the first to touch a car set as a `snare` (level prop option) is
+  //   wrecked on it (the kill beat); one jammed there (`jam`: over `asked` px/step wanted, under `got` px/step got,
+  //   `t` s) is wrecked where it is. `beat`: the first thing he smashes in a bend opens the slow motion
+  //   (systems/ChaseCam.js 'smash': the world at `slow` for `hold` s real, the picture kicked `push` px; null: none)
   bend: {
     speed: 5.9, straight: 7.4, brake: 14, accel: 6, look: 70, radius: 6, pivot: 18, slip: 0.3, spring: [42, 7], merge: 240,
     camera: { lead: [0.17, 0.2], ease: 2.4, most: 4, done: 0.5 },
-    space: 170, catch: 0.06, hold: 40, clear: 320,
+    space: 170, catch: 0.06, hold: 40, clear: 320, close: [0.7, 0.55],
     apex: { slow: 0.72, in: 0.1, hold: 0.22, out: 0.3 },
+    smash: {
+      kg: 450, heavy: [0.45, 0.8], spin: 0.5, burst: 6, cost: 0.025, heavyCost: 0.09, floor: 0.6,
+      flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9 },
+      jam: { asked: 2, got: 0.6, t: 0.8 },
+      beat: { slow: 0.35, in: 0.05, hold: 0.6, out: 0.18, push: 5, shake: 0.3 },
+    },
   },
   kmh: 6.75,            // km/h a px/step (60 steps a second, 32 px a metre)
   // his gun out of the car (systems/CarGun.js): it never runs dry at the wheel (the user's call, 2026-11-19: no
@@ -328,8 +348,9 @@ export const CHASE = {
   lorry: { tell: 0.9, beep: 0.3, speed: 115, shake: 0.2, pad: 6, lamp: { r: 70, color: '#fff4e0' }, lab: { range: 420, stay: 2.5 } },
   // THE TOLL (event 3, systems/Toll.js; the level's `chase.toll`). Its gates told `tell` s before them at his speed
   // (`least` px out at least): bone arrows run down the wooden lanes (every `every` px, at `run` px/s, from `from` px
-  // ahead of his middle; `fade` s in), red brackets close on the steel booms, chevrons at the screen's edge for what
-  // is not on it yet; told until he is `past` px past them. A pursuer chooses its gate `decide` s out: a wooden lane
+  // ahead of his middle; `fade` s in; `pop` times bigger at the height of the choosing's slow motion), each lane's
+  // own signal over its mouth (`sign`: px across, a green arrow or a red X: render/PursuitArt.js), the same on the
+  // screen's edge while that mouth is off the picture (ui/HUD.js); told until he is `past` px past them. A pursuer chooses its gate `decide` s out: a wooden lane
   // (the one he is not heading for, when there are two), steering for its line `lead` s ahead (`lateral`: px/step
   // across for each px off it, twice the chase's: the islands leave it 60 cm a side; `steer` px/step across at most:
   // the fan's outer lines spread fast); one sent the wrong way
@@ -338,10 +359,24 @@ export const CHASE = {
   // going down his lane (no other wooden one on its side of him) keeps `follow` px off his middle, behind him.
   // Nothing is attacked or told by them meanwhile.
   // His car through a wooden arm (what it costs him: the arm's `cost`, data/props.js): a breath of slow motion
-  // (`beat`, systems/ChaseCam.js), the picture kicked `push` px on, shaken
+  // (`beat`, systems/ChaseCam.js), the picture kicked `push` px on, shaken; the arm's looks (`arm`, systems/TollFx.js):
+  // `splinters` of its wood and `chips` of its red and white paint thrown on at `speed` px/s with `bits` bigger loose
+  // splinters, a flash [radius px, colour, s], the attendant in the booth over that lane ducked `duck` s.
+  // One of theirs stopped on a steel boom, THE CRASH (`crash`, Toll.onWreck): thrown back `back` px/step and `across`
+  // px/step out to its side, spinning `spin` rad/step, loose for `fly` s; `dents` blows fold its nose, `parts` of it
+  // lost, the picture shaken `shake`; its fire-ball (CARFX.boom.toll), glass, `sparks` off the boom and `bits` of it
+  // (systems/TollFx.js), the roof over it seen through `clear` s; the kill's own beat whatever the cooldown, the
+  // view cut out and drawn back toward it (systems/ChaseCam.js, CHASE.cinema.kill.toll).
+  // A car on an island's kerb: its yellow paint chipped (`kerb`: chips a s at most); a booth's exact-change basket
+  // hit (`coins`: within `r` px of it): `n` coins sprayed, once a basket
   toll: {
-    tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, follow: -240, lateral: 0.14, steer: 5, every: 30, run: 90, from: 70, fade: 0.15,
+    tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, follow: -240, lateral: 0.14, steer: 5, every: 46, run: 110, from: 70, fade: 0.15,
+    pop: 1.5, sign: 30,
     beat: { slow: 0.4, in: 0.04, hold: 0.2, out: 0.18, push: 5, shake: 0.22 },
+    arm: { splinters: 28, chips: 32, bits: 8, speed: 320, flash: [110, '#ffe2b0', 0.14], duck: 1.8 },
+    crash: { back: 2.6, across: 3.2, spin: 0.2, fly: 0.9, dents: 14, parts: 4, shake: 0.55, sparks: 45, bits: 8, clear: 2.5 },
+    kerb: { chips: 30 },
+    coins: { r: 26, n: 26 },
   },
   // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane
   alley: { red: 0.7, pad: 10 },
@@ -394,10 +429,13 @@ export const CHASE = {
     //   of the last beat
     //   double: a second car stopped within `double` s of the last: the beat under way is held `more` s longer and
     //   `deep` deeper (one beat for the two; after a light one, the strong one)
+    //   toll: one crashed on a toll's steel boom (systems/Toll.js THE CRASH): this beat whatever the cooldown, the view
+    //   cut out and drawn back toward it (SHOTS tollCrash)
     kill: {
       again: 7, gap: 0.45, double: 1.6, more: 0.3, deep: 0.05,
       strong: { slow: 0.25, in: 0.05, hold: 0.55, out: 0.12, stop: 0.05, push: 7, shake: 0.35, shot: 'chaseKill' },
       light: { slow: 0.55, in: 0.04, hold: 0.16, out: 0.1, stop: 0, push: 4, shake: 0.15, shot: null },
+      toll: { slow: 0.2, in: 0.05, hold: 0.85, out: 0.15, stop: 0.07, push: 8, shake: 0.5, shot: 'tollCrash' },
     },
     // the lorry across his road (systems/Lorries.js): once a lorry, as it is told, backing or out, his car on a
     // collision course with where it will stand and `lead` s (game time, at his speed) or less from its flank: the
@@ -407,6 +445,14 @@ export const CHASE = {
     // its rate is not slowed with the world, and the sideways speed is this much the usual): the dodge is easier,
     // that is the point. `shave`: clear of its tail by less than this many px: sparks and a jolt (a near miss)
     lorry: { lead: 0.8, slow: 0.3, in: 0.08, out: 0.25, cap: 3.2, pad: 6, wheel: 1.45, shave: 14, shot: 'lorryGap' },
+    // a toll's plaza ahead (systems/Toll.js): once a plaza, `lead` s (game time, at his speed) before its gates, as its
+    // tells are up, the world slows to `slow` and the view cuts out to frame the gates (SHOTS tollChoose: a whole
+    // zoom further out, the view's middle `ahead` of the view's width further on than the drive's and across on the
+    // plaza's middle), the wooden lanes' arrows pop, the wheel answers in real time and takes the car `wheel` times
+    // further (as the lorry's), until he is COMMITTED (in the fan, on a wooden lane's line within `commit` px, going
+    // across at `still` px/step at most), `last` s (game, at his speed) before the lanes' mouths (the islands' noses:
+    // from there it is his to make at full speed), past the gates, dead, or `cap` real s have gone
+    choose: { lead: 1.3, slow: 0.3, in: 0.1, out: 0.22, cap: 2.8, last: 0.45, wheel: 1.45, commit: 16, still: 1.2, ahead: 0.25, shot: 'tollChoose' },
     // a pursuer's side swipe landing on his car (Pursuit ram): a short kick of slow motion, the picture thrown
     // away from it, sparks off the two flanks; once a swipe, none within `gap` s of the last
     rammed: { slow: 0.5, in: 0.03, hold: 0.12, out: 0.1, push: 6, shake: 0.3, sparks: 14, gap: 1.5 },

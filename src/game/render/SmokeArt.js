@@ -15,6 +15,8 @@ import { TILE, LIGHTING } from '../Config.js';
 import { SMOKE, RAIN } from '../data/atmosphere.js';
 import { shown } from '../fx/Particles.js';
 import { quality } from '../systems/Quality.js';
+import { bytesOf } from '../../engine/Bytes.js';
+import { PROF } from '../../engine/Profiler.js';
 
 function canvas(w, h) {
   const c = document.createElement('canvas');
@@ -78,6 +80,9 @@ export default class SmokeArt {
     this.warmed = false; // drawn once at the first frame, nothing or not: the graphics card prepares each way of
                          // drawing the first time it meets it (a hitch), better then than at the first shot fired
   }
+
+  // what its buffers hold, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) { return bytesOf(this, seen); }
 
   // its buffers let go (World.dispose)
   dispose() {
@@ -149,6 +154,7 @@ export default class SmokeArt {
       // takes off whatever the light multiplied in; the whole multiplied over the scene
       const v = this.veil.c.getContext('2d');
       v.putImageData(this.veil.img, 0, 0, 0, 0, TW, TH);
+      if (PROF.on) PROF.count('put', 1, TW * TH * 4); // (the perf overlay: pixels sent up)
       v.globalCompositeOperation = 'multiply';
       v.drawImage(lm, 0, 0, LW, LH, 0, 0, TW, TH);
       v.globalCompositeOperation = 'difference';
@@ -156,6 +162,7 @@ export default class SmokeArt {
       v.fillRect(0, 0, TW, TH);
       if (got.soot || first) {
         this.soot.c.getContext('2d').putImageData(this.soot.img, 0, 0, 0, 0, TW, TH);
+        if (PROF.on) PROF.count('put', 1, TW * TH * 4);
         v.globalCompositeOperation = 'multiply';
         v.drawImage(this.soot.c, 0, 0, TW, TH, 0, 0, TW, TH);
       }
@@ -167,10 +174,12 @@ export default class SmokeArt {
     // all), the white of powder and steam once: (glow x lm + pale) x lm
     const g = this.glow.c.getContext('2d');
     g.putImageData(this.glow.img, 0, 0, 0, 0, TW, TH);
+    if (PROF.on) PROF.count('put', 1, TW * TH * 4);
     g.globalCompositeOperation = 'multiply';
     g.drawImage(lm, 0, 0, LW, LH, 0, 0, TW, TH);
     if (got.pale || first) {
       this.pale.c.getContext('2d').putImageData(this.pale.img, 0, 0, 0, 0, TW, TH);
+      if (PROF.on) PROF.count('put', 1, TW * TH * 4);
       g.globalCompositeOperation = 'lighter';
       g.drawImage(this.pale.c, 0, 0, TW, TH, 0, 0, TW, TH);
       g.globalCompositeOperation = 'multiply';

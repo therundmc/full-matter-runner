@@ -1,6 +1,7 @@
 import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
 import { edgeMarker } from '../systems/Threats.js';
-import { laneY } from '../systems/Toll.js';
+import { laneY, mouthX } from '../systems/Toll.js';
+import { laneSign } from '../render/LaneSign.js';
 import { WEAPONS } from '../data/weapons.js';
 import { text, neon, thousands, tone, glitchText, clock, widthOf } from './Text.js';
 import { tierColor } from './KillFeed.js';
@@ -92,7 +93,7 @@ function paintHUD(ctx, game, t) {
     drawDrive(ctx, w.drive, pad, H - pad, s, t);
     drawRoad(ctx, w, W, pad, s);
     drawPart(ctx, w.checkpoints?.view, W, pad, s, t);
-    if (p.alive && game.state === 'play') { drawHunters(ctx, game, s, t); drawWarnings(ctx, game, s, t); }
+    if (p.alive && game.state === 'play') { drawHunters(ctx, game, s, t, pad); drawWarnings(ctx, game, s, t, pad); }
   }
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
@@ -164,6 +165,12 @@ function drawRoad(ctx, w, W, pad, s) {
   text(ctx, `${left} M`, W / 2, by + 16 * s, 12 * s, PALETTE.white, { alpha: 0.75 });
 }
 
+// a marker on the screen's top edge under the road's line and its metres (drawRoad) is put below them, not over them
+export function underRoad(m, W, pad, s) {
+  if (m && Math.abs(m.x - W / 2) < 230 * s) m.y = Math.max(m.y, pad + 46 * s);
+  return m;
+}
+
 // A checkpoint reached (systems/Checkpoints.js): the part's name stamped under the road's bar a moment, a little
 // crooked like the level's card and TO BE CONTINUED, a pink rule drawn out under it
 function drawPart(ctx, v, W, pad, s, t) {
@@ -178,12 +185,12 @@ function drawPart(ctx, v, W, pad, s, t) {
 }
 
 // Pursuers behind him or beside him off the picture: a small red chevron on the screen's edge toward each
-function drawHunters(ctx, game, s, t) {
+function drawHunters(ctx, game, s, t, pad) {
   const P = game.world.pursuit;
   if (!P) return;
   const W = game.canvas.width, H = game.canvas.height, cam = game.camera;
   for (const car of P.hunters()) {
-    const sp = cam.worldToScreen(car.v.x, car.v.y), m = edgeMarker(sp.x, sp.y, W, H, 20 * s);
+    const sp = cam.worldToScreen(car.v.x, car.v.y), m = underRoad(edgeMarker(sp.x, sp.y, W, H, 20 * s), W, pad, s);
     if (!m) continue;
     const z = s * 1.4;
     ctx.save();
@@ -204,43 +211,26 @@ function drawHunters(ctx, game, s, t) {
   }
 }
 
-// chevrons on the screen's edge at marker m (edgeMarker): n of them in col, inked, z their scale
-function chevrons(ctx, m, z, col, n, alpha = 1) {
-  ctx.save();
-  ctx.translate(m.x, m.y);
-  ctx.rotate(m.angle);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  for (const [c, lw, a] of [[PALETTE.ink, 4.5 * z, 1], [col, 2.2 * z, alpha]]) {
-    ctx.strokeStyle = c;
-    ctx.lineWidth = lw;
-    ctx.globalAlpha = FADE * a;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const x = -i * 9 * z;
-      ctx.moveTo(x - 5 * z, -8 * z); ctx.lineTo(x + 3 * z, 0); ctx.lineTo(x - 5 * z, 8 * z);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
 // What is about to shut the road ahead, off the picture (a lorry backing out: systems/Lorries.js): three red
 // chevrons on the screen's edge toward where its tail will be, beating with its beeper, and two bone ones toward the
-// way round it. A toll told (systems/Toll.js): the same toward each of its gates still ahead of the picture, three red
-// for a steel boom, two bone for a wooden arm
-function drawWarnings(ctx, game, s, t) {
-  const W = game.canvas.width, H = game.canvas.height, cam = game.camera;
+// way round it. A toll told (systems/Toll.js): each lane's own signal (a green arrow, a red X: render/PursuitArt.js
+// laneSign) on the screen's right edge at its height, while its mouth is still ahead of the picture (on it, the
+// world's own sign over the mouth says it)
+function drawWarnings(ctx, game, s, t, pad) {
+  const W = game.canvas.width, H = game.canvas.height, cam = game.camera, sz = 26 * s;
   for (const { P, k } of game.world.toll?.told() || []) {
+    const mx = mouthX(P);
     P.gates.forEach((g, i) => {
-      const sp = cam.worldToScreen(P.x, laneY(P, i, P.x)), m = sp.x > W && edgeMarker(sp.x, sp.y, W, H, 34 * s);
-      if (m) chevrons(ctx, m, s * 2.2, g === 'steel' ? '#ff2a4a' : '#efe6d2', g === 'steel' ? 3 : 2, k * (g === 'steel' ? 0.7 + 0.3 * Math.sin(t * 14) : 1));
+      const sp = cam.worldToScreen(mx, laneY(P, i, mx));
+      if (sp.x <= W) return;
+      const y = clamp(sp.y, pad + 46 * s + sz, H - pad - sz);
+      laneSign(ctx, W - pad - sz / 2, y, sz, g === 'wood', FADE * k * (g === 'wood' ? 1 : 0.75 + 0.25 * Math.sin(t * 14)));
     });
   }
   const S = game.world.lorries;
   if (!S) return;
   for (const T of S.told()) {
-    const at = S.tail(T.L, true), sp = cam.worldToScreen((T.x + at.x) / 2, (T.y + at.y) / 2), m = edgeMarker(sp.x, sp.y, W, H, 34 * s);
+    const at = S.tail(T.L, true), sp = cam.worldToScreen((T.x + at.x) / 2, (T.y + at.y) / 2), m = underRoad(edgeMarker(sp.x, sp.y, W, H, 34 * s), W, pad, s);
     if (!m) continue;
     const z = s * 2.2, on = S.blink(T.L);
     ctx.save();
@@ -261,7 +251,7 @@ function drawWarnings(ctx, game, s, t) {
     }
     ctx.restore();
     // the way round it, off the picture too: bone arrows on the edge at its height (a safe gap: docs/LEVEL2.md)
-    const g = T.L.gap && cam.worldToScreen(T.L.gap.x, T.L.gap.y), gm = g && edgeMarker(g.x, g.y, W, H, 34 * s);
+    const g = T.L.gap && cam.worldToScreen(T.L.gap.x, T.L.gap.y), gm = g && underRoad(edgeMarker(g.x, g.y, W, H, 34 * s), W, pad, s);
     if (!gm) continue;
     ctx.save();
     ctx.translate(gm.x, gm.y);

@@ -14,6 +14,7 @@
 import { TILE } from '../Config.js';
 import { FIRE } from '../data/fire.js';
 import { ignite as pierce } from './Gas.js';
+import { bytesOf } from '../../engine/Bytes.js';
 
 const COLD = 0, BURNING = 1, BURNT = 2;
 const AROUND = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [-1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, -1, Math.SQRT2]];
@@ -57,6 +58,9 @@ export default class FireSpread {
     world.events?.on('matchDrop', ({ x, y }) => this.ignite(x, y));
     world.events?.on('explosion', ({ x, y, radius }) => this.blast(x, y, radius));
   }
+
+  // what its arrays hold, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) { return bytesOf(this, seen); }
 
   // ---- what each cell would burn as
 

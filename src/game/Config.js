@@ -563,7 +563,7 @@ export const PALETTE = {
 // hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot). Walls are solid: rounds, blows
 // and impacts only wear them, by WALL_WEAR of their hit points at most; only a blast brings one down
 // (systems/Destruction.js damageWall), the sooner for that wear.
-export const WALL_HP = { '#': 7, 'X': 14 };
+export const WALL_HP = { '#': 7, 'X': 14, P: 12, M: 12, Y: 12, V: 12 };
 export const WALL_WEAR = 0.5;
 // width in px of the dark outline drawn along a wall's open faces (render/MapRenderer.js): what is painted on a wall
 // (holes, blood, spills) stays behind it, only the dark of a hole may bite into it (render/WallScars.js)

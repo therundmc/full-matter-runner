@@ -133,7 +133,7 @@ function scene(type, mag) {
   const w = {
     particles: sink, decals: sink, camera: sink, events: sink, time: 0, slowmo: noop, hitstop: noop, shake: noop, light: noop,
     sound: (name) => sounds.push(name), noise: (x, y, r, src, kind) => heard.push([r, kind]),
-    map: { solidAt: () => false, raycast: () => null, isWallChar: () => false, at: () => '.' }, lineOfSight: () => true,
+    map: { solidAt: () => false, raycast: () => null, isWallChar: () => false, at: () => '.' }, lineOfSight: () => true, sightLine: () => true,
     enemies: [], props: [], items: [], corpses: [],
   };
   const p = Object.create(Player.prototype);

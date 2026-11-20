@@ -37,14 +37,14 @@
 // lanes and the tracers.
 import { TILE, CAT, MASK } from '../Config.js';
 import { clamp, angDiff, approachAngle, rand, chance } from '../../engine/math.js';
-import { wake } from '../../engine/physics/Body.js';
+import { wake, kgOf } from '../../engine/physics/Body.js';
 import { CHASE } from '../data/chase.js';
 import { WEAPONS } from '../data/weapons.js';
 import Vehicle from '../entities/Vehicle.js';
 import { MUZZLE_IN, onSprite } from '../entities/CharacterAnim.js';
 import { sprite, sw } from '../../engine/Assets.js';
-import { seatOf, slideStep } from './Drive.js';
-import { routeOf, legAt, bandOf, bendStep, enterBend, nearestLane } from './Route.js';
+import { seatOf, slideStep, smashSpeed, bursts } from './Drive.js';
+import { routeOf, legAt, bandOf, bendStep, enterBend, nearestLane, project } from './Route.js';
 
 const { Body, Sleeping } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
@@ -583,11 +583,26 @@ export default class Pursuit {
     const K = CHASE.bend, st = car.bend, b = st.b, v = car.v, body = v.body, w = this.world, d = w.drive;
     if (body.frozen || body.isSleeping) this.loose(car);
     const vel = Body.getVelocity(body);
-    st.v = Math.min(st.v, Math.hypot(vel.x, vel.y) + CHASE.give);
+    // (what it pushes against costs it its speed, never under the smash's floor: CHASE.bend.smash; a car wrecked
+    // against it as it went is scraped by from then on, as his car does it)
+    st.v = Math.max(Math.min(st.v, Math.hypot(vel.x, vel.y) + CHASE.give), Math.min(st.v, b.speed * K.smash.floor));
+    for (const pair of w.physics.activePairs?.() || []) {
+      const o = pair.bodyA === body ? pair.bodyB : pair.bodyB === body ? pair.bodyA : null;
+      if (o && !pair.isSensor && o.entity?.isVehicle && o.entity.pursuer?.state === 'wrecked') { pair.isSensor = true; pair.flank = true; }
+    }
     let lead = d?.on && d.bend?.b === b && d.bend.p > st.p ? d.bend : null;
     for (const o of this.cars) if (o !== car && o.bend?.b === b && o.bend.p > st.p && (!lead || o.bend.p < lead.p)) lead = o.bend;
     const want = lead ? Math.max(0, lead.v + (lead.p - st.p - K.space) * K.catch) : Infinity;
     if (st.v > want) st.v = Math.max(want, st.v - K.hold * dt); // (short of its distance: it stands on the brake)
+    // (in on his flank, the bend's line one: it falls back at once, never side by side with him down a narrow way)
+    if (lead && lead.p - st.p < K.space * K.close[0]) st.v = Math.min(st.v, lead.v * K.close[1]);
+    // held up by what it hit, the line waits for it (as his car's); jammed (wedged across a narrow way, its speed
+    // asked and none got for `jam` s), it is wrecked there: what follows scrapes by it
+    const ahead = project(b.path, v.x + Math.cos(body.angle) * K.pivot, v.y + Math.sin(body.angle) * K.pivot, st.p, 96, 2);
+    if (st.p - ahead > st.v * 2 + 8) st.p = ahead + st.v * 2;
+    const J = K.smash.jam;
+    st.jam = st.v > J.asked && Math.hypot(vel.x, vel.y) < J.got ? (st.jam || 0) + dt : 0;
+    if (st.jam > J.t && !car.dummy) { this.wreck(car); return; }
     const pose = bendStep(st, b, dt, want, K);
     let dx = pose.x - v.x, dy = pose.y - v.y;
     const most = st.v * 1.5 + 2, len = Math.hypot(dx, dy);
@@ -637,6 +652,9 @@ export default class Pursuit {
       if (w.drive.lunge || car.ram <= 0) car.by = w.time;
       return;
     }
+    // in a bend, what is left on the line is ploughed through as his car did (CHASE.bend.smash): a parked car or a
+    // wreck scraped along (the first one set as a `snare` wrecks the first of them to touch it), a loose thing thrown
+    if (car.bend && this.smash(car, o, pair, e, vel)) return;
     // (in a bend the line is the script's: one of theirs knocked wrecks nothing; nor through a toll's plaza, where each
     // swerves for its gate)
     if ((car.bend || ((car.toll || e?.pursuer?.toll) && e?.pursuer)) && e?.isVehicle) return;
@@ -647,7 +665,8 @@ export default class Pursuit {
       return;
     }
     if (!o.isStatic || e?.def?.hung || e?.dead || e?.dying || this.tear(o, pair, vel, close)) return;
-    if (close >= this.C.wreck.hard * k) car.wreckHit = true;
+    // (in a bend the line is the script's: a wall it brushes is sparks, never its wreck; only a `snare` is: smash)
+    if (close >= this.C.wreck.hard * k && !car.bend) car.wreckHit = true;
   }
 
   // a car it runs into is woken and given to the physics a moment (frozen: its mass back in the contact)
@@ -663,6 +682,44 @@ export default class Pursuit {
     const e = o.entity, pole = this.C.wreck.poles.includes(e?.type);
     if (!e?.def?.static || e.def.lasting || pole || e.tipped) return false;
     if (close > CHASE.hit.tear) { pair.isActive = false; pair.isSensor = o.isSensor = true; e.break(Math.atan2(vel.y, vel.x), CHASE.hit.power); }
+    return true;
+  }
+
+  // In a bend (CHASE.bend.smash): a car not driven (parked, a wreck) is scraped along, never a wall, unless it is the
+  // level's `snare` and nobody has been caught on it yet in this bend: then this one is, wrecked there (the kill beat);
+  // a loose thing up to a dumpster's weight is thrown out of the line and bursts. True: dealt with
+  smash(car, o, pair, e, vel) {
+    const K = CHASE.bend.smash, w = this.world, b = car.bend.b;
+    if (e?.isVehicle && e !== w.drive?.van && (!e.pursuer || e.pursuer.state === 'wrecked')) {
+      if (e.snare && !b.snared && !car.dummy) {
+        b.snared = car;
+        car.wreckHit = 'snare';
+        e.startAlarm?.();
+        return true; // (resolved: it piles into it)
+      }
+      pair.isActive = false;
+      pair.isSensor = true;
+      pair.flank = true; // (its shower: systems/CarFx.js)
+      if (o.frozen || o.isStatic) return true; // (a parked car stays parked: it grinds along it)
+      if (o.isSleeping) Sleeping.set(o, false);
+      // (a wreck is rocked off its flank, across the way it goes, as his car does it)
+      const a = car.v.body.angle, ov = Body.getVelocity(o);
+      const side = Math.sign(-(o.position.x - car.v.x) * Math.sin(a) + (o.position.y - car.v.y) * Math.cos(a)) || 1;
+      Body.setVelocity(o, { x: ov.x - Math.sin(a) * side * K.flank.push, y: ov.y + Math.cos(a) * side * K.flank.push });
+      o.flyUntil = w.time + CHASE.hit.fly;
+      return true;
+    }
+    // (a thing: never a man in its way, who is run down as anywhere)
+    if (!e?.def || !e.break || e.isPlayer || e.isEnemy || e.isCivilian || e.def.lasting || o.isStatic || e.dead || e.dying || kgOf(o) > K.kg) return false;
+    pair.isActive = false;
+    pair.isSensor = true;
+    if (o.frozen) wake(o);
+    if (o.isSleeping) Sleeping.set(o, false);
+    const a = Math.atan2(vel.y, vel.x) + rand(-0.6, 0.6), sp = Math.hypot(vel.x, vel.y) * smashSpeed(kgOf(o));
+    Body.setVelocity(o, { x: Math.cos(a) * sp, y: Math.sin(a) * sp });
+    Body.setAngularVelocity(o, rand(-K.spin, K.spin));
+    o.flyUntil = w.time + 0.4;
+    if (bursts(e.def)) e.break(a, CHASE.hit.power);
     return true;
   }
 
@@ -714,7 +771,7 @@ export default class Pursuit {
   // takes it off his line
   wreck(car, crew = false) {
     if (car.state === 'wrecked') return;
-    const w = this.world, v = car.v, b = v.body, C = this.C.wreck;
+    const w = this.world, v = car.v, b = v.body, C = this.C.wreck, inBend = !!car.bend;
     car.state = 'wrecked';
     car.stun = 0;
     car.thrown = false;
@@ -738,9 +795,23 @@ export default class Pursuit {
     }
     // the men in it: the driver, unless he was shot (his kill told then), and the gunman if still in it
     this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck', undefined, crew);
-    this.leave(car);
+    // (in a bend's narrow way there is no exit: it piles up where it is, slewed round, most of its speed gone)
+    if (inBend) this.pileUp(car);
+    else this.leave(car);
     // (the chase's kill beat: systems/ChaseCam.js; how: 'shoved' when his car threw it there: the strong beat)
     w.events.emit('pursuerWreck', { car: v, x: v.x, y: v.y, how: w.time - car.by < AGAIN ? 'shoved' : 'wrecked' });
+  }
+
+  // wrecked in a bend (a snare, a wall): no exit across a road there is not; it slews round and piles into what is
+  // by it, pieces off it, the engine going up (CarFx on 'pursuerWreck')
+  pileUp(car) {
+    const v = car.v, b = v.body, w = this.world, vel = Body.getVelocity(b), a = Math.atan2(vel.y, vel.x);
+    car.gone = true;
+    Body.setVelocity(b, { x: vel.x * 0.35, y: vel.y * 0.35 });
+    Body.setAngularVelocity(b, (chance(0.5) ? 1 : -1) * rand(0.04, 0.07));
+    for (let i = 0; i < 3; i++) v.shed(v.x, v.y, a + rand(-1.2, 1.2), rand(120, 240), true);
+    w.particles.sparks(v.x, v.y, a, 1.4, 24, 340);
+    w.sound('carHit', v.x, v.y, 1);
   }
 
   // the men still in a car stopped for good, all at once: one kill each, but ONE for the streak (how.crew: no

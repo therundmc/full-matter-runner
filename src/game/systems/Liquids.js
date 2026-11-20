@@ -16,6 +16,7 @@ import { TILE } from '../Config.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { rand, angDiff, TAU, seeded } from '../../engine/math.js';
 import Shallow from '../../engine/physics/Shallow.js';
+import { bytesOf } from '../../engine/Bytes.js';
 
 const JUMP = 48;   // px in one step: a teleport, not a stride
 
@@ -61,6 +62,9 @@ export default class Liquids {
       else this.feed(x, y, area, kind);
     });
   }
+
+  // what its arrays hold, the flow's included, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) { return bytesOf([this, this.sim], seen); }
 
   // ---- the floor: its level and what it drinks
 

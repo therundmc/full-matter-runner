@@ -16,7 +16,7 @@ const SPRITE_LIST = [
     'bed', 'pool_table', 'arcade', 'crate', 'barrel', 'bookshelf', 'speaker', 'dj_booth', 'bar_counter', 'car',
     'dumpster', 'trash_can'].map((n) => `props/${n}`),
   ...['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purple', 'concrete', 'grass', 'asphalt', 'asphalt_line',
-    'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
+    'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick', 'stucco_pink', 'stucco_mint', 'stucco_peach', 'stucco_lilac'].map((n) => `tiles/${n}`),
   ...['door', 'door_locked', 'stall_door', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
     .map((n) => `structure/${n}`),
   // the door skins, one kind of door per place (data/doors.js DOORS.kinds), at FINE density (DOOR_SKINS below)
@@ -46,7 +46,12 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
 // level 2A's street (tools/generate_assets.py, "the road of level 2A"): what stands on its sidewalks, in its works and
 // over it, and the pieces a car loses (Vehicle.shed, data/destruction.js CAR_PARTS); what is painted on its ground
 // (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps. Its part two (the works and the detour, the
-// side street, the on-ramp, the toll: generate_assets.py RAMP_PROPS / RAMP_PAINT) is listed at the end of each
+// side street, the on-ramp, the toll: generate_assets.py RAMP_PROPS / RAMP_PAINT) is listed at the end of each, then
+// Miami, 1985 (MIAMI_PROPS / MIAMI_PAINT: generic dressing for any street of Sunset Bay, from royal_palm / mattress_dumped on)
+// then Miami, 1986, the alley (ALLEY_PROPS, from produce_crates on: the city's own too, generic: an alley, a market
+// corner, a sidewalk)
+// then the suburb going to Miami (SUBURB_PROPS / SUBURB_PAINT, from sabal_palm / palm_frond_fallen on: palms, the
+// suburb's furniture, the homeless's things, a fruit market, a car wash, a tyre yard)
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
@@ -55,7 +60,22 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'site_fence', 'roller_door', 'loading_dock', 'chainlink_gate', 'pallet_stack', 'oil_drum', 'sign_stop', 'guardrail',
   'guardrail_end', 'crash_cushion', 'crash_cushion_narrow', 'highway_lamp', 'sign_freeway', 'sign_wrong_way', 'sign_speed_55', 'sign_toll_ahead',
   'reflector_post', 'toll_island', 'toll_booth', 'toll_canopy', 'gate_arm_wood', 'gate_arm_bit_a', 'gate_arm_bit_b',
-  'gate_arm_bit_c', 'gate_steel', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change', 'overpass'];
+  'gate_arm_bit_c', 'gate_steel', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change', 'overpass',
+  'royal_palm', 'royal_palm_b', 'hibiscus_hedge', 'hibiscus_hedge_pink', 'deco_canopy_pink', 'deco_canopy_mint',
+  'deco_canopy_peach', 'deco_canopy_lavender', 'awning_pink', 'awning_mint', 'awning_peach', 'awning_lavender',
+  'pole_sign_motel', 'pole_sign_autos', 'billboard_tan', 'billboard_radio', 'lot_light', 'pennant_string', 'car_burnt',
+  'tent_tarp', 'barrel_fire', 'chainlink_fence', 'chainlink_hole', 'guardrail_dented', 'crash_cushion_hit', 'call_box', 'sign_gantry',
+  'produce_crates', 'box_stack', 'fruit_cart', 'news_stand', 'laundry_line', 'laundry_shirt', 'laundry_towel', 'laundry_sheet',
+  'neon_box_pink', 'neon_box_cyan', 'scooter_mint', 'scooter_pink', 'domino_table', 'dumpster_mint', 'dumpster_pink',
+  'dumpster_aqua', 'stucco_trim_pink', 'stucco_trim_mint', 'stucco_trim_peach', 'ac_drip', 'fire_escape', 'palm_fronds',
+  'graffiti_neon_a', 'graffiti_neon_b',
+  'sabal_palm', 'sabal_palm_b', 'sabal_palm_ragged', 'coconut_palm_lean', 'palm_young', 'palm_stump', 'bus_bench_bail',
+  'bus_bench_abogado', 'payphone_pastel', 'news_box_yellow', 'news_box_red', 'mailbox_blue', 'mailbox_post',
+  'pole_sign_strip', 'yard_fence', 'yard_fence_gate', 'carport', 'tv_antenna', 'lawn_flamingos', 'oleander_pink',
+  'oleander_white', 'cart_loaded', 'bedroll', 'bags_pile', 'doorway_camp', 'market_stall', 'market_stall_coco',
+  'fruit_crate_orange', 'fruit_crate_mango', 'fruit_crate_coconut', 'market_sign', 'carwash_sign', 'carwash_board',
+  'wash_bucket', 'hose_reel', 'tyre_stack', 'tyre_pile', 'tyre_loose', 'tyre_rack', 'tyre_sign', 'garden_wall_pink',
+  'garden_wall_mint', 'garden_wall_cream'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
@@ -68,12 +88,26 @@ const ROAD_PAINT = [
   'road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
   'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow', 'rumble_strip',
   'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
-  'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan'];
+  'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan',
+  'mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris', 'display_ramp', 'expansion_joint', 'oil_streak',
+  'palm_frond_fallen', 'sabal_frond_fallen', 'coconuts_fallen', 'driveway', 'lawn_dry_a', 'lawn_dry_b',
+  'cardboard_bed_blanket', 'cardboard_sign', 'litter_bottles', 'soap_puddle'];
 // (in ROAD_PAINT: level 1's street from hatch_kerb to skid_marks; from road_cut on, 2A's part two: the works, the ramp, the toll,
 // then the freeway's bridge over the side street and the gore where its lanes come alongside the ramp: FWY_PROPS; the
 // toll's made-to-measure lines last)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
-  'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop'];
+  'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop',
+  'billboard_tan', 'billboard_radio', 'pole_sign_motel', 'pole_sign_autos', 'barrel_fire', 'lot_light', 'sign_gantry', 'deco_canopy_pink',
+  'deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender', 'neon_box_pink', 'neon_box_cyan',
+  'payphone_pastel', 'pole_sign_strip', 'market_stall', 'market_stall_coco'];
+// ART DECO 1985 (tools/generate_assets.py DECO_PROPS / DECO_PAINT): generic dressing for Sunset Bay's roads (palms,
+// hibiscus, deco planters and lamp, an office, a trooper's car, a motel's billboard; puddles with the neon in them) and the
+// toll's own states (its attendant ducked, a boom bent: systems/TollFx.js, systems/Toll.js); the lit ones' emissive maps
+const DECO_PROPS = ['palm_fan', 'palm_fan_small', 'hibiscus_bush', 'hibiscus_bush_red', 'planter_deco_pink', 'planter_deco_teal',
+  'police_car', 'deco_office_pink', 'deco_office_teal', 'billboard_motel', 'deco_lamp', 'toll_booth_duck',
+  'gate_steel_bent'];
+const DECO_PAINT = ['puddle_neon', 'puddle_neon_b'];
+const DECO_GLOWING = ['deco_office_pink', 'deco_office_teal', 'billboard_motel', 'deco_lamp', 'toll_booth_duck'];
 // level 1's interiors (tools/generate_assets.py, "the rooms of level 1": INTERIOR_PROPS): what its shops, its
 // laundromat, the bar's back and its offices are full of, what hangs on their walls, two things painted on a floor
 const INTERIOR_PROPS = ['shop_shelf', 'wine_rack', 'beer_cases', 'lottery_stand', 'tv_stack', 'vcr_shelf', 'tv_box', 'repair_bench',
@@ -114,8 +148,13 @@ export const OPTIONAL_LIST = [
     'neon_sign_lips'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   // level 2A's back road: the lorry, the cafe's terrace, two more signs
   ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  // Miami's wall neon (at the world's density, as the other neon signs)
+  ...['neon_sign_motel', 'neon_sign_vacancy', 'neon_sign_flamingo'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  // Miami's neon (generate_assets.py ALLEY_NEON: light, at the world's density)
+  ...['neon_sign_botanica', 'neon_sign_cocktail'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
   ...[...ROAD_PROPS, ...ROAD_PAINT, ...ROAD_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
+  ...[...DECO_PROPS, ...DECO_PAINT, ...DECO_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...INTERIOR_PROPS, ...INTERIOR_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...FLAT_PROPS, ...FLAT_PAINT].map((n) => `props/${n}`),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
@@ -170,6 +209,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag',
   'lorry', 'awning', 'parasol', 'planter']);
 for (const n of [...ROAD_PROPS, ...ROAD_PAINT]) FINE_PROPS.add(n); // level 2A's street, all of it
+for (const n of [...DECO_PROPS, ...DECO_PAINT]) FINE_PROPS.add(n); // the art deco dressing too
 for (const n of INTERIOR_PROPS) FINE_PROPS.add(n); // level 1's interiors too
 for (const n of [...FLAT_PROPS, ...FLAT_PAINT]) FINE_PROPS.add(n); // the prologue's flat too
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
@@ -217,6 +257,13 @@ export async function loadAssets(onProgress) {
     img.src = `assets/sprites/${name}.png`;
   })));
   try { await document.fonts.load('16px joystix'); } catch (e) { /* font optional */ }
+}
+
+// the sprites loaded: how many, and their pixels in bytes (the perf overlay)
+export function spriteBytes() {
+  let bytes = 0;
+  for (const img of images.values()) bytes += (img.width || 0) * (img.height || 0) * 4;
+  return { n: images.size, bytes };
 }
 
 export function sprite(name) {

@@ -152,7 +152,7 @@ Events:
 |---|------|-------|--------------|
 | 1 | 0:06 | OUT OF THE ALLEY | One of theirs out ahead of him: its lamps first, a red lane where it crosses, into the far lane (told early: there is no brake). Keep out of that lane; then it is alongside: shove it into the parked cars. |
 | 2 | 0:20 | THE LORRY BACKING OUT | Told 0.9 s (its beeper and reversing lamps, red chevrons on the edge of the screen, a red lane, bone arrows on the way round), then it shuts the street in 1.4 s. No brake, no way under its tail: up the kerb through the terrace (the wheel, or a shove): tables, chairs, parasols, planters, awnings. Whoever follows him into it dies there. |
-| 3 | 0:30 | THE TOLL | Four lanes under a lit roof, a gate at the end of each: a wooden arm (a green arrow over its lane) flies off in its lengths at a tenth of his speed; a steel boom (a red X) is the crash. His own lane is steel: he steers, told 1.5 s out (bone arrows down the wooden lanes, red chevrons at the edge for the steel ones). The one behind him takes the wrong one and wrecks on a boom (his kill); another follows him through an arm. A breath of slow motion through the arm. (The section table below.) |
+| 3 | 0:30 | THE TOLL | Four lanes under a lit roof, a gate at the end of each: a wooden arm (a green arrow over its lane) flies off in its lengths at a tenth of his speed; a steel boom (a red X) is the crash. His own lane is steel: he steers, told 1.5 s out (bone arrows down the wooden lanes, each lane's own signal big over its mouth: a green arrow, a red X; the same on the screen's right edge while its mouth is off the picture), and THE CHOOSING (2026-11-20, the user: "un petit ralenti comme au camion"): 1.3 s out the world slows to x0.3, the view cuts out a whole zoom (2 px a world px at 1080) to frame the gates, the arrows pop, the wheel answers in real time and 1.45 x further, until he is on a wooden lane's line in the fan (or 0.45 s before the mouths, or 2.8 s), then one cut back. The one behind him takes the wrong one: THE CRASH on its boom (thrown back spinning, its nose folded, its lamps and windscreen gone, the boom bent, the biggest fire-ball of the chase, the roof seen through, the kill's own beat: x0.2, the view cut out and drawn back to it); another follows him through an arm. An arm bursts in splinters and paint chips with a crack, the attendant over that lane ducks; a breath of slow motion through his. (The section table below.) |
 | 4 | 0:46 | THEY MULTIPLY | Three cars, a gunman in each. Piers down the median, a lorry in the slow lane. |
 | 5 | 0:58 | THE TANKER | It folds across three lanes, its petrol runs back down the road, the fire runs up it: 4 s. One gap. It goes up behind him. |
 | 6 | 1:12 | FLYOVER OR UNDERPASS | The choice, told 3 s out by two signs: a bone arrow up, a bone arrow down. |
@@ -221,17 +221,32 @@ inside the ramp's guardrail: what never gives is never nose-on.
 | Cols | Section | North side | South side (ours) | What happens |
 |------|---------|------------|-------------------|--------------|
 | 446-473 | THE WORKS (the street) | the tyre shop's two shutters down (kerbs dropped), a lighting tower on each sidewalk end, the site fenced along both kerbs | the side street's mouth (corners rounded 1.5 m), the sidewalk shut by a barricade, a lighting tower | Six cones taper both lanes from the north kerb into the side street's mouth; an arrow board (its arrows down the side street), ROAD CLOSED with its two flashers, three water barriers, the road cut across both lanes (a fresh trench patch, the gas main's marks), a steel plate, the excavator on the milled band (its bucket at the barriers) and the dump truck waiting to be loaded (both seen from the turn, which sees no further), sand and asphalt heaps, jersey barriers at the far end. |
-| 440-451 (rows 16-42) | THE SIDE STREET | (west) the cut shop's blind wall, pipes, a dumpster and bin bags, a sodium lamp, a shed's shutter (graffiti), oil drums, the loading dock and its shutter (its apron's kerb dropped), pallets | (east) conduit, pipes, a wall lamp, the yard behind its chain-link gate (PRIVATE: a car, pallets, drums), a sodium lamp, a bin | Two-way, 8 m, no line: STOP (the line, the word, the sign) for whoever comes up it to the street and for whoever comes down it to the frontage road; patches, a crack, a cover breathing steam, a puddle, a cat, papers. The script drives down its middle (col 446), 40 km/h in the turns. |
-| 437-455 (rows 33.5-41.5) | THE FREEWAY'S BRIDGE | the deck over the side street (prop `overpass`, hung: it fades over him; its shadow painted under it), its abutments | | The second turn starts as he comes out from under it. |
-| 424-451 (leg 1) | THE T | the freeway's bank, the side street's mouth (corners rounded) | the body shop's two shutters, the warehouse opposite (ONE WAY east), a hydrant | He runs the STOP and turns left; the bend hands him to leg 1 in his lane at col 460. |
-| 452-497 | THE FRONTAGE ROAD | the freeway up on its bank (its near lane, its guardrail, a kerb under the grass, the yellow edge line), a freeway lamp (col 470) with an arm over each road | the cold store's two loading docks (the kerb dropped along them, pallets, a drum), the yard gate (col 468), the long shed (pipes, a shutter, a dumpster, bags), two sodium lamps; FREEWAY ENTRANCE at the sheds' corner (col 495) | Lane arrows at col 462, white dashes every 9 m. ONE MORE PURSUER from behind at col 468 (a rammer: the guardrails ahead are what to shove it into). |
-| 498-523 | THE ON-RAMP | the bank, delineators, WRONG WAY (facing whoever comes the wrong way), a freeway lamp (col 500) | the shoulder with its rumble strip and the white edge line, the guardrail along the top of the bank (its end toward the traffic at col 498), delineators, WRONG WAY, SPEED LIMIT 55, TOLL 1/2 MILE, a freeway lamp (col 515) | Dashes every 12 m with cat's eyes, yellow ones along the left edge. |
-| 524-559 | THE MERGE | the freeway's lanes come in alongside over 24 m (their paint slanted), the gore painted out between (a long white triangle, `gore_taper`), then four lanes side by side (rows 39.25, 41.75, ours 44.25, 46.75) | the shoulder, the guardrail, a freeway lamp (col 545) | MERGE painted in our left lane (col 539). The toll from col 560. |
+| 440-451 (rows 16-20) | THE SIDE STREET'S MOUTH | (west) the bar's block, its corner in pink stucco | (east) a sidewalk flared out (the tail swings there), OPEN 24 lit on it, a palm's fronds over the wall | The first turn; a sodium lamp. The first crates at its end are THE SMASH's slow motion. |
+| 444-448 (rows 18-42) | THE ALLEY | (west, col 443) pink stucco (P): the bar's back door, COCKTAILS in violet neon, a pink tube, an AC dripping, two stucco trims, a fire escape, the bridge's abutment (graffiti in neon paint) | (east, col 449) mint stucco (M): the botanica's back door, its cyan sign and tube, an AC dripping, THE PARKED CAR against it (rows 29-33), the abutment (graffiti) | Five metres between walls, the bend's line down its middle (col 446.5): what he ploughs through at 40-50 km/h (CHASE.bend.smash), in order: produce crates (the slow motion, x0.35 for 0.6 s), boxes, a bin, bags, two lines of washing across (torn down, the cloth flies), a fruit cart (fruit everywhere), a news rack (papers), the old men's domino table (they dive away), a scooter, a lit box sign, bottles, THE PARKED CAR scraped its whole length (sparks off both, a mirror off, dents, its alarm and hazards), a hydrant under the bridge (its geyser and mist in violet light), a wheeled dumpster clipped (it spins away), crates. The first pursuer to follow him scrapes the parked car too and is wrecked on it (`snare`, the kill beat); the others plough on past its wreck. |
+| 437-455 (rows 33.5-41.5) | THE FREEWAY'S BRIDGE | the deck over the alley (prop `overpass`, hung: it fades over him; its shadow painted under it), its abutments the alley's walls (plaster `#`) | | The second turn starts as he comes out from under it, out of the alley across the bank. |
+| 424-451 (leg 1) | THE T | the freeway's bank, the alley's foot | the body shop's two shutters, the warehouse opposite (ONE WAY east), a hydrant | He turns left out of it; the bend hands him to leg 1 in his lane at col 460.5. |
+| 452-497 | THE FRONTAGE ROAD | the freeway up on its bank (its near lane, its guardrail, a kerb under the grass, the yellow edge line), a freeway lamp (col 470) with an arm over each road; on the bank, SUNSET BAY 1985: a camp out from under the bridge (cols 452-462: a blue tarp, a mattress with a tramp asleep on it, a fire in a drum with a tramp warming his hands, a shopping cart, litter), a chain-link fence along the bank's foot with a hole cut in it (col 468), royal palms (468, 493.6), the COCOA GOLD sun-tan billboard on its catwalk lit by four lamps (cols 473-481), a burnt-out car that came off the freeway through its rail (the rail dented at 481, a gap to 491) | the cold store's two loading docks (the kerb dropped along them, pallets, a drum) and a mint deco canopy over its office door, a royal palm in a grate (467), the yard gate (col 468); THE MOTEL's back (472-485): its MOTEL / VACANCY pole sign, MOTEL, a flamingo and VACANCY in neon on its wall, a pink deco canopy, hibiscus red and pink; THE USED CAR LOT (486-494): AUTO SALES on its pole, an 80s coupe up on its display ramp on the apron, two light poles and pennants strung to the showroom's glass front; two sodium lamps; FREEWAY ENTRANCE at the lot's corner (col 495) | Lane arrows at col 462, white dashes every 9 m. ONE MORE PURSUER from behind at col 468 (a rammer: the guardrails ahead are what to shove it into). |
+| 498-523 | THE ON-RAMP | the bank, delineators, WRONG WAY (facing whoever comes the wrong way), a freeway lamp (col 500), the WAVE 98 FM billboard (cols 507-515), litter, the crash cushion at the bank's nose somebody hit (col 522: two barrels burst, the sand out) | the shoulder with its rumble strip and the white edge line, the guardrail along the top of the bank (its end toward the traffic at col 498), delineators, WRONG WAY, SPEED LIMIT 55, TOLL 1/2 MILE (the green signs lit from below), a freeway lamp (col 515), royal palms beyond the rail lit from their feet (pink and cyan in turn: 507.5, 525) | Dashes every 12 m with cat's eyes, yellow ones along the left edge; an expansion joint across the ramp every 6 m, oil down the lanes. |
+| 524-559 | THE MERGE | the freeway's lanes come in alongside over 24 m (their paint slanted), the gore painted out between (a long white triangle, `gore_taper`), then four lanes side by side (rows 39.25, 41.75, ours 44.25, 46.75); on the freeway's lanes (out of his reach: leg 1's `across`) a mattress lost off a truck, the rubber of whoever braked for it, glass | the shoulder, the guardrail, a freeway lamp (col 545); AN OLD CRASH: tyre marks swerving into the rail, its length dented (col 529), glass, shards and a hubcap on the shoulder; a call box (538.5); royal palms lit from their feet (541.5, 556), hibiscus on the bank | MERGE painted in our left lane (col 539). The sign gantry over the merge (col 548.5: TOLL PLAZA 1/4 MILE over the freeway's lanes, ALL LANES TOLL over ours, lit from below; it fades over him), more sodium (the merge was the dark end). The toll from col 560. |
 
 New sprites for it (tools/generate_assets.py "the freeway over the side street", FWY_PROPS: listed in engine/Assets.js
 and levelkit): `overpass` (the deck, 18 x 8 m, hung), `overpass_shadow` and `gore_taper` (floor paint). Not done: no
 ambient traffic on the freeway (systems/Traffic.js lanes run the whole map's width, not a leg's: a lane would drive
 through the blocks), so the freeway is dressing; the flagman (no civilian stands at a post outdoors).
+
+Sunset Bay in 1985 (2026-11-20, the user: "les assets vraiment style Miami annees 80, les lumieres"): leg 1 dressed
+with a set of GENERIC Miami props (tools/generate_assets.py "Miami, 1985": MIAMI_PROPS / MIAMI_PAINT / MIAMI_NEON,
+FINE but the wall neon; listed in engine/Assets.js, levelkit SIZES / FLOOR / ON_WALL, data/props.js, data/destruction.js),
+made to be laid along the street too: `royal_palm`, `royal_palm_b` (the pale trunk the pole, the crown hung high),
+`hibiscus_hedge`, `hibiscus_hedge_pink`, `deco_canopy_pink / _mint / _peach / _lavender` (a stucco eyebrow over a
+door, its neon lip lit), `awning_pink / _mint / _peach / _lavender`, `neon_sign_motel`, `neon_sign_vacancy`,
+`neon_sign_flamingo` (on a wall), `pole_sign_motel`, `pole_sign_autos`, `billboard_tan`, `billboard_radio` (hung,
+four lamps each), `lot_light`, `pennant_string` (hung), `sign_gantry` (hung over a road, two lit panels), `car_burnt`
+(lasting), `tent_tarp`, `barrel_fire` (its light; a level `fire` on it for the flames), `chainlink_fence`,
+`chainlink_hole`, `guardrail_dented` (lasting), `crash_cushion_hit`, `call_box`; floor paint `mattress_dumped`,
+`litter_a`, `litter_b`, `tyre_marks`, `crash_debris`, `display_ramp`, `expansion_joint`, `oil_streak`. The lighting:
+the props' own (neon pink and cyan, the billboards' white, the drum's fire, the lot's floods, the gantry), palms lit
+from their feet in turn pink and cyan, the green signs lit from below, sodium over the merge.
 
 ### Segment 2, the toll (built 2026-11-20)
 
@@ -243,12 +258,12 @@ across between two framings. 90 km/h (13.3 px/step) from col 560; the pursuers' 
 
 | Cols | Section | North side | South side (ours) | Lanes | What happens |
 |------|---------|------------|-------------------|-------|--------------|
-| 560-586 | THE APPROACH | verge, guardrail, rumble strip on the shoulder, a tall lamp (563), SPEED 55 | the same, TOLL AHEAD, a tall lamp (579) | 4 of 2.5 m: rows 39.25 / 41.75 / 44.25 / 46.75 | Leg 2. Two pursuers join from behind (cols 561 and 571); the first will take the wrong gate. TOLL in every lane (576), its number (581.5). Told 1.5 s out (col 574 at 90 km/h); the pursuers choose their gates 2 s out; nobody attacks from then to past the gates. |
-| 587-602 | THE FAN | the plaza's wide shoulder, a tall lamp (594) | the same (598) | 4 spreading from 2.5 m to 4.5 m apart (plaza_fan) | Leg 3: the plaza is 20 m wide, wider than the picture: the view follows him across (`track` 0.7). A crash cushion before each island's nose (col 601.7: it bursts), no wider than the island (`crash_cushion_narrow`: three barrels in single file; the 2.75 m one stood half a metre into every lane). |
-| 603-611 | THE PLAZA | the outer island (row 34) | the outer island (52); one of the staff smoking on the shoulder | 4 of 3 m: 36.25 / 40.75 / 45.25 / 49.75, five islands of 1.5 m between (34, 38.5, 43, 47.5, 52) | The roof over cols 605-611 (it fades over him), a lit booth on each of the four upper islands, each lane's signal on the island below it, EXACT CHANGE on the first. The gates at col 611.1, north first: WOOD, STEEL, WOOD, STEEL (ours, the fourth, is steel; leg 1's other lane, the third, wood). |
-| 611-626 | THE FAN BACK | plaza shoulder | plaza shoulder | 4 closing back to 2.5 m | Leg 4 from col 613 (just past the gates: theirs go for the approach's four lanes the paint closes to, never out wide into the cushions at 627). Past the gates their attacks start again. |
+| 560-586 | THE APPROACH | verge, guardrail, rumble strip on the shoulder, a tall lamp (563), SPEED 55; fan palms and hibiscus on the verge | the same, TOLL AHEAD, a tall lamp (579), palms, the suntan billboard (583, the ramp's `billboard_tan`) | 4 of 2.5 m: rows 39.25 / 41.75 / 44.25 / 46.75 | Leg 2. Two pursuers join from behind (cols 561 and 571); the first will take the wrong gate. TOLL in every lane (576), its number (581.5). Told 1.5 s out (col 574 at 90 km/h); the choosing's slow motion from 1.3 s out (col 579); the pursuers choose their gates 2 s out; nobody attacks from then to past the gates. |
+| 587-602 | THE FAN | the plaza's wide shoulder, a tall lamp (594), fan palms with hibiscus | the same (598); THE TOLL OFFICE (an art deco office in pink, its neon name, cols 588.5-593.5) and a state trooper's car parked at it (lights off, empty), the wheel kept above row 51.9 there (the plaza leg's `across`) | 4 spreading from 2.5 m to 4.5 m apart (plaza_fan) | Leg 3: the plaza is 20 m wide, wider than the picture: the view follows him across (`track` 0.7). A crash cushion before each island's nose (col 601.7: it bursts), no wider than the island (`crash_cushion_narrow`: three barrels in single file; the 2.75 m one stood half a metre into every lane). Sodium pools on it (it was dark navy), rain standing in puddles with the neon in them. |
+| 603-611 | THE PLAZA | the outer island (row 34) | the outer island (52); one of the staff smoking on the shoulder | 4 of 3 m: 36.25 / 40.75 / 45.25 / 49.75, five islands of 1.5 m between (34, 38.5, 43, 47.5, 52) | The roof over cols 605-611 (it fades over him), a 1985 Florida toll's: pastel art deco, the fascia in pink with teal speed lines and stepped fins over the islands (teal and pink the other way out), neon tubes along both (pink in, teal out, buzzing), the neon TOLL and SUNSET BAY on its deco sign, each lane's number in a teal neon porthole; deco lamps by it. A lit booth on each of the four upper islands (pastel teal, chrome, the attendant on his stool, a radio's lit dial, a fan, the coin basket: hit, it sprays), each lane's signal on the island below it, EXACT CHANGE on the first; oil down each lane under its booth, rubber before each gate, an art deco planter in flower at each island's end past the gates. The gates at col 611.1, north first: WOOD, STEEL, WOOD, STEEL (ours, the fourth, is steel; leg 1's other lane, the third, wood). |
+| 611-626 | THE FAN BACK | plaza shoulder, fan palms, a deco lamp | plaza shoulder, fan palms, the staff's smoker | 4 closing back to 2.5 m | Leg 4 from col 613 (just past the gates: theirs go for the approach's four lanes the paint closes to, never out wide into the cushions at 627). Past the gates their attacks start again. |
 | 627-651 | THE MERGE OUT | a crash cushion, the guardrail | the same | 4, the outer two ending over cols 640-652 (merge arrows at 633.5, a hatched gore over each) | Leg 5 from col 640 (where the outer two start to end: their slots on the middle two). A car left out wide is brought in ahead of each narrowing (the wheel held off the guardrails, `across` steps: never nose-on into a rail's end, never off the road through its cushions). |
-| 652-699 | THE FREEWAY'S START | guardrail, tall lamps | guardrail, FREEWAY, SPEED 55 | 2: the middle ones, 41.75 / 44.25 | Leg 5. The level ends at col 672: TO BE CONTINUED, NEXT: THE MOTORWAY. |
+| 652-699 | THE FREEWAY'S START | guardrail, tall lamps, a fan palm | guardrail, FREEWAY, SPEED 55, the FLAMINGO MOTEL's billboard (661: level 3 told) | 2: the middle ones, 41.75 / 44.25 | Leg 5. The level ends at col 672: TO BE CONTINUED, NEXT: THE MOTORWAY. |
 
 Segment boards: [1 back road](level2/s1_backroad.webp), [2 toll](level2/s2_toll.webp),
 [3 tanker](level2/s5_tanker.webp), [3b jump](level2/s3_jump.webp), [4 drain](level2/s4_canal.webp),
@@ -317,12 +332,17 @@ brushes.
     each inner corner rounded off by an arc of `radius`, systems/Outro.js routePath; its last point is put on the
     lane of `to` nearest it, its last segment along +x and long enough for the arc: 0.49 x its length >= radius),
     braking to `speed` in a turn (40 km/h), its tail out, smoke and rubber, a breath of slow motion at each turn
-    (ChaseCam 'bend'); W / S and the shove do nothing, the gun is his; nothing it brushes is the crash. At the end:
+    (ChaseCam 'bend'); W / S and the shove do nothing, the gun is his; nothing it brushes is the crash, nothing holds it
+    up (CHASE.bend.smash: a bolted thing torn off, a loose one up to a dumpster's weight thrown and burst, a car scraped
+    along its flank, never a wall; each costs a share of its speed, never under 60 % of the bend's; the first thing
+    smashed opens ChaseCam's 'smash', x0.35 for 0.6 s real). At the end:
     leg `to`, its lane, heading +x, its cruise picked up. Told on 'chaseBend' ({ phase: in | turn | out }).
   - Camera: through a bend it follows the car both ways, leading along the line, eased in whole px; then eases back
     to the next leg's framing (its `mid`, a third from the left) and holds it exactly again.
   - Pursuers: every one reaching `at` follows the same line, CHASE.bend.space px behind whoever is ahead of it (no
-    slots, no attacks, no tells while he or it is in a bend; a knock between two there wrecks nothing); out of it, slots
+    slots, no attacks, no tells while he or it is in a bend; a knock between two there, or a wall, wrecks nothing; in on
+    his flank it falls back at once; it ploughs through what is left as he does; the first to scrape a car set as a
+    `snare` is wrecked on it, one jammed in a narrow way is wrecked there, and the next scrape by); out of it, slots
     again. A car on another leg than his sees him where the route puts him on its own leg (Pursuit.tgFor): ahead of
     him, it waits CHASE.bend.clear px past his way out, out of his lane. A pursuer event's `miss: true` makes it skip
     the bend (on into what shuts the road: the hook for "one misses the turn").
@@ -334,7 +354,8 @@ brushes.
     never back), the QA robot's "farthest down the route". Events, lorries, signals stay keyed by column (x never goes
     back along the route: legs are disjoint and ordered); `end` is a column of the last leg.
   - A builder checks: nothing in a leg's lanes along its columns (`check_lanes` per leg), the bend's line clear of
-    walls (1.5 tiles) and props (1.3 tiles) (`check_bend`).
+    walls (1.5 tiles) and props (1.3 tiles) but what the car ploughs through (`SMASH`: torn or thrown, never LASTING,
+    tests/alley.test.mjs holds data/props.js to it) and the cars it scrapes (`SCRAPE`, 0.6 tiles off the line) (`check_bend`).
 
 ## Roadmap
 
@@ -743,6 +764,71 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   street: the retry at THE STREET), a heap warning across its 5 sessions.
 - 2026-11-20: 2A's checkpoints cut to the user's two parts: THE STREET (the start) and THE ON-RAMP (col 462, just
   out of the detour's turns); THE DETOUR and THE TOLL checkpoints removed.
+- 2026-11-20: LEG 1 IN 1985 (branch feature/ramp-miami; the user: "pousser encore plus les assets et les details... vraiment
+  style Miami annees 80, les lumieres"): the frontage road, the on-ramp and the merge dressed as Sunset Bay (the table
+  "Segment 1, part two" and the paragraph under it): the camp under the bridge's end with its barrel fire (Fires) and
+  two tramps, royal palms, the sun-tan and radio billboards, a burnt-out car through the freeway's rail, the motel's
+  back in pastel and neon, a used car lot (the coupe on its ramp, pennants, floods), an old crash on the ramp, a call
+  box, the sign gantry over the merge; 39 generic sprites (Miami, 1985) for the street to use too. Lanes, `across`,
+  the checkpoint at col 462 and the bend unchanged. QA 3 min seed 2 (god): PASS, 4 sessions, no death, 3 clears, only
+  the known `slow` warning (x37, mean step 7.8 ms; main the same run: x71, 8.6 ms).
+- 2026-11-20: THE TOLL IN 1985 (branch feature/toll-miami; the user: "plus de detail au peage; un petit ralenti comme au
+  camion pour comprendre qu'il faut aller a droite ou a gauche; style Miami annees 80, les lumieres; que ca pete plus").
+  THE CHOOSING (ChaseCam 'choose', CHASE.cinema.choose, SHOTS tollChoose): once a plaza, 1.3 s (game) before its gates,
+  x0.3, a cut out to the next even whole zoom (2 at 1080 and 900: the fine sprites stay whole; at 720 already the least)
+  with the view drawn on and across onto the plaza's middle (the four lanes' mouths on the picture), the wheel in real
+  time and 1.45 x (as the lorry's); over once he is on a wooden lane's line in the fan going straight (`commit` 16 px,
+  `still` 1.2 px/step), 0.45 s before the mouths, past the gates, dead or after 2.8 s real; one cut back (a shot's
+  `snap`, Direction.set). THE TELLS cut down: the red wash, the brackets and the edge chevrons are gone; each lane's own
+  signal (render/LaneSign.js: a green arrow, a red X) over its mouth, on the screen's right edge while the mouth is off
+  the picture; the bone arrows sparser (46 px) and 1.5 x bigger at the height of the slow motion. THE CRASH on a steel
+  boom (Toll.onWreck, 'tollCrash'; systems/TollFx.js looks): thrown back spinning, nose folded, lamps and windscreen
+  gone, the boom bent (`gate_steel_bent`), CARFX.boom.toll, glass, sparks and bits of the boom, the roof seen through
+  2.5 s (Prop `clearUntil`), the kill's own beat whatever the cooldown (CHASE.cinema.kill.toll: x0.2 0.85 s, SHOTS
+  tollCrash: cut out, drawn back toward it). An arm through: splinters, paint chips, loose bits, a crack, a flash, the
+  attendant in that lane's booth ducks (`toll_booth_duck`); an island's kerb scraped sheds its yellow paint; a booth's
+  basket struck sprays its coins. Placeholders armCrack, boomCrash, coinSpray. DRESSING (the table): new generic
+  sprites in tools/generate_assets.py "ART DECO 1985" (DECO_PROPS, FINE, listed in engine/Assets.js, levelkit, defs and
+  recipes): palm_fan(_small), hibiscus_bush(_red), planter_deco_pink / _teal, deco_lamp, police_car, deco_office_pink /
+  _teal, billboard_motel (THE FLAMINGO MOTEL: level 3), puddle_neon(_b); the toll's roof and booths repainted, the
+  sodium pools of the fan and the fan back. Lab station 37 gets the choosing too (the same plaza code). Tests:
+  tests/toll.test.mjs (choosing, its end, its cap, never in the opening / dead / past, a kill never cuts into it, the
+  crash). QA 3 min seed 2 (god): PASS, 4 sessions, no death, 3 clears, the known `slow` warning only (x21, mean step
+  4.95 ms). Known: the headless browser's screenshot dies on the zoomed-out crash at 1080 (the shots at 720); a pursuer
+  wrecked on the approach may slide on down his lane to the islands' noses (seen in one scripted run: held up 5 s).
+- 2026-11-20: THE ALLEY SMASH (branch feature/alley-smash; the user: "quand tu tournes, une petite contre-allee ou tu
+  defonces tout sur le passage, qui vole avec des effets ... une voiture qui passe, des etincelles de partout ... Michael
+  Bay ... Miami annees 80"). The side street past its mouth is a back alley 5 m wide between PINK and MINT STUCCO walls
+  (new wall tiles P / M / Y / V: pink, mint, peach, lilac stucco over block, world/TileMap.js WALLS, generic for any
+  building), the bend's line down its middle (col 446.5), the table above. ENGINE (systems/Drive.js, Pursuit.js,
+  CarFx.js, ChaseCam.js; CHASE.bend.smash): in a bend a loose thing up to 450 kg is thrown by hand and bursts (all but
+  metal over 6 hp), a car met is scraped along its flank (a sensor pair CarFx still showers for as long as they
+  overlap, a dent every 0.07 s on both, its alarm, a mirror torn off, `carScraped`), what it pushes against never
+  drags its speed under 60 % of the bend's; the first thing smashed opens ChaseCam 'smash' (x0.35 for 0.6 s real, over a
+  bend's breath); pursuers plough the same way, fall back at once when on his flank, are never wrecked by a wall in a
+  bend, the first to scrape a `snare` car (level prop option) is wrecked there (no exit: it piles up), one jammed is
+  wrecked where it is. SPRITES (tools/generate_assets.py "MIAMI, 1986: the back alley's", ALLEY_PROPS / ALLEY_NEON,
+  generic): produce_crates, box_stack, fruit_cart, news_stand, laundry_line (+ laundry_shirt / _towel / _sheet),
+  neon_box_pink / _cyan, scooter_mint / _pink, domino_table, dumpster_mint / _pink / _aqua, stucco_trim_pink / _mint /
+  _peach, ac_drip (seep `aircon`), fire_escape, palm_fronds, graffiti_neon_a / _b, neon_sign_botanica / _cocktail; tiles
+  stucco_pink / _mint / _peach / _lilac. Lab station 36: its turn a short smash alley. Tests: tests/alley.test.mjs.
+  QA 3 min seed 2 (god): PASS, 4 sessions, no death, 3 clears, the end reached; only the known `slow` (x39, mean 7.66
+  ms; main the same run: x35, 7.27 ms).
+- 2026-11-20: SPRITES FOR THE SUBURB GOING TO MIAMI (branch feature/street-miami-sprites; the user: "on s'approche de
+  Miami mais on reste encore un peu en banlieue", and the lorry's dodge through a cafe terrace "pas sur, il y en a trop a
+  Miami, peut-etre autre chose"). Paint only, nothing placed (tools/generate_assets.py "the suburb going to Miami",
+  SUBURB_PROPS / SUBURB_PAINT, FINE, listed in engine/Assets.js, levelkit SIZES / FLOOR, defs in data/props.js and
+  data/destruction.js, BIT `coconut`): palms sabal_palm / _b / _ragged (the suburb's scruffy cabbage palms),
+  coconut_palm_lean (its trunk painted, 3 m of lean), palm_young (in a tree_grate), palm_stump; the suburb's furniture
+  bus_bench_bail / _abogado, payphone_pastel (lit), news_box_yellow / _red, mailbox_blue, mailbox_post, pole_sign_strip
+  (PALM PLAZA: LIQUOR, PAWN, CHECKS CASHED, BODEGA; lit), yard_fence / _gate, garden_wall_pink / _mint / _cream, carport
+  (hung, translucent over a car), tv_antenna (hung), lawn_flamingos, oleander_pink / _white; the homeless's cart_loaded,
+  bedroll, bags_pile, doorway_camp; three alternatives to the terrace for the dodge (torn or flung, nothing `lasting`):
+  (a) a fruit market: market_stall / _coco (a bulb lit), fruit_crate_orange / _mango / _coconut, market_sign; (b) a car
+  wash: carwash_sign, carwash_board, wash_bucket, hose_reel, paint soap_puddle; (c) a tyre yard: tyre_stack, tyre_pile,
+  tyre_loose (rubber: they bounce), tyre_rack, tyre_sign. Floor paint palm_frond_fallen, sabal_frond_fallen,
+  coconuts_fallen, driveway, lawn_dry_a / _b, cardboard_bed_blanket, cardboard_sign, litter_bottles. Tests:
+  tests/suburb.test.mjs. Contact sheet and a mock-up in tmp/street-sprites/ (not committed).
 - 2026-11-20: his Uzi's rounds at the wheel start at its drawn muzzle (the user: they came out offset from the gun).
   CarGun fired from the seat + 20 px along the aim (10 to 16 px off the drawn muzzle, the hand's side and the gun's
   length never counted) and drew the flash and the streak where the body had it, a step behind the car as drawn.

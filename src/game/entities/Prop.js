@@ -979,6 +979,7 @@ export default class Prop {
       const c = Math.cos(a), s = Math.sin(a), dx = player.x - x, dy = player.y - y;
       under = Math.abs(dx * c + dy * s) < this.W * 0.45 && Math.abs(dy * c - dx * s) < this.H * 0.45 + 4;
     }
-    drawSprite(ctx, this.look, x, y, a, under ? 0.45 : 1);
+    // (and while something is to be seen under it: a crash under a toll's roof, systems/TollFx.js `clearUntil`)
+    drawSprite(ctx, this.look, x, y, a, under || this.clearUntil > this.world.time ? 0.45 : 1);
   }
 }

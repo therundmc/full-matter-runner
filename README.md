@@ -37,7 +37,7 @@ shoves the car on the aim's side; the mouse / right stick aims the Uzi, left cli
 
 Debug (dev builds only, `src/game/data/build.js` `BUILD.release` false, or `?dev=1`): F1 sandbox panel (drop guards,
 weapons, props, vehicles, blasts, water; god mode, freeze guards, slow time: a run that used it is not ranked), F2
-enemy vision cones, F3 whole-level overview, F4 physics overlay (FPS, frame times), F6 lens on / off (to compare: it is no option), F7 next aim cue.
+enemy vision cones, F3 whole-level overview, F4 physics overlay (FPS, frame times), F6 lens on / off (to compare: it is no option).
 
 ## Rules
 

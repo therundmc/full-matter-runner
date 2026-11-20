@@ -1,6 +1,6 @@
 // What the aim cue has to tell (data/aim.js; render/AimArt.js paints it): where the weapon in his hand points from,
 // which way, how wide it throws, what stops the line and whether that is a man; at the wheel, his gun's line out of
-// the car and whether it is in its arc (systems/CarGun.js). And the LOCK concept's man: the one nearest the aim line,
+// the car and whether it is in its arc (systems/CarGun.js). And LOCK's man: the one nearest the aim line,
 // in sight; with a melee weapon, wide at close range (meleeLock). DOM-free: it reads the world, changes nothing.
 import { AIM } from '../data/aim.js';
 import { PLAYER } from '../Config.js';
@@ -23,10 +23,9 @@ export function lineOfFire(world, team, x, y, a, skip, reach = AIM.reach) {
 }
 
 // The cue of this frame, or null when there is none to show (dead, down, vaulting, at the wheel with no gun out):
-//   { x, y, a, kind: 'gun' | 'melee', half, len, hit, target, off, skip, team }
-// x, y, a: the muzzle (the front of his body with a blade or his fists) and the way it points; half: rad of spread
-// either side (half a blade's swing); len: px to what stops the line (a blade: its reach); off: the car gun cannot
-// point there.
+//   { x, y, a, kind: 'gun' | 'melee', len, hit, target, off, skip, team }
+// x, y, a: the muzzle (the front of his body with a blade or his fists) and the way it points; len: px to what stops
+// the line (a blade: its reach); off: the car gun cannot point there.
 export function aimCue(world) {
   const p = world.player;
   if (!aiming(p)) return null;
@@ -36,19 +35,19 @@ export function aimCue(world) {
     if (!g?.aimed) return null;
     // (in its arc, from the muzzle where it is seen: CarGun.drawnMuzzle)
     const a = g.aimed.a, off = !g.aimed.ok, o = off ? g.root() : g.drawnMuzzle?.() ?? g.hand(a), skip = [p, g.van];
-    if (off) return { x: o.x, y: o.y, a, kind: 'gun', half: 0, len: AIM.offArc.len, hit: false, target: null, off, skip, team: p.team };
-    return { x: o.x, y: o.y, a, kind: 'gun', half: d.spread || 0, ...lineOfFire(world, p.team, o.x, o.y, a, skip), off, skip, team: p.team };
+    if (off) return { x: o.x, y: o.y, a, kind: 'gun', len: AIM.offArc.len, hit: false, target: null, off, skip, team: p.team };
+    return { x: o.x, y: o.y, a, kind: 'gun', ...lineOfFire(world, p.team, o.x, o.y, a, skip), off, skip, team: p.team };
   }
   if (p.riding || p.hidden) return null; // sat in a car that is not his drive, or out of the picture
   const a = p.angle, skip = p.shield ? [p, p.shield.target] : [p]; // (never the man he holds as a shield)
   if (d.kind !== 'gun') {
     const x = p.x + Math.cos(a) * p.radius, y = p.y + Math.sin(a) * p.radius;
-    return { x, y, a, kind: 'melee', half: (d.arc || 1) / 2, len: Math.max(4, d.range - p.radius + AIM.melee), hit: false, target: null, off: false, skip, team: p.team };
+    return { x, y, a, kind: 'melee', len: Math.max(4, d.range - p.radius + AIM.melee), hit: false, target: null, off: false, skip, team: p.team };
   }
   const m = p.muzzlePos();
   // a wall between him and his muzzle (the gun poking into it): the line dies there
-  if (!world.lineOfSight(p.x, p.y, m.x, m.y)) return { x: m.x, y: m.y, a, kind: 'gun', half: d.spread || 0, len: 0, hit: true, target: null, off: false, skip, team: p.team };
-  return { x: m.x, y: m.y, a, kind: 'gun', half: d.spread || 0, ...lineOfFire(world, p.team, m.x, m.y, a, skip), off: false, skip, team: p.team };
+  if (!world.lineOfSight(p.x, p.y, m.x, m.y)) return { x: m.x, y: m.y, a, kind: 'gun', len: 0, hit: true, target: null, off: false, skip, team: p.team };
+  return { x: m.x, y: m.y, a, kind: 'gun', ...lineOfFire(world, p.team, m.x, m.y, a, skip), off: false, skip, team: p.team };
 }
 
 // The throw he is winding up (Player.throwHold), or null: { x, y, a, k, len, hit, target, lock } from his hand along
@@ -62,7 +61,7 @@ export function throwCue(world) {
   return { x, y, a, k, ...f, lock };
 }
 
-// The man the LOCK concept brackets: the living enemy (a guard: never a bystander) nearest the way `a` out of (x, y),
+// The man LOCK marks: the living enemy (a guard: never a bystander) nearest the way `a` out of (x, y),
 // within `cone` rad of it and `reach` px, in plain sight (walls, smoke, curtains hide him). null when there is none. A
 // man further off the line loses to one nearer it; of two on the same line, the closer one.
 export function lockTarget(world, team, x, y, a, cone = AIM.lock.cone, reach = AIM.lock.reach) {
@@ -81,13 +80,13 @@ export function lockTarget(world, team, x, y, a, cone = AIM.lock.cone, reach = A
 }
 
 // LOCK's man with a melee weapon (fists included) in p's hand d, aiming `aim` (the mouse's or the stick's way, not his
-// drawn facing): { man, close } or null (another aim style, a gun, nobody). Close: a guard (never a bystander: he
+// drawn facing): { man, close } or null (a gun, nobody). Close: a guard (never a bystander: he
 // would wheel round onto every patron, nor one on his knees) standing within the weapon's reach + his radius +
 // PLAYER.lunge.lock.margin px and AIM.lock.wide rad of the aim, in sight; of several, the one nearest the aim line,
 // then the nearest. Else lockTarget's man within AIM.lock.cone and AIM.lock.melee px (close: false). The one place it
 // is decided: AimArt marks him, Player turns onto the close one and Player.startLunge swings at him.
 export function meleeLock(world, p, d, aim) {
-  if (world.aimStyle !== 'lock' || !d || d.kind === 'gun') return null;
+  if (!d || d.kind === 'gun') return null;
   const L = AIM.lock, margin = PLAYER.lunge.lock.margin;
   let best = null, score = Infinity;
   for (const c of world.enemies) {

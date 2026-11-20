@@ -6,7 +6,7 @@ import { NAMES, PLACES, LANDMARKS } from '../data/barks.js';
 
 const BLANK = /\{(\w+)\}/g;
 // doors, windows and walls (a wall blown open is a way through): between two places, named neither
-const BETWEEN = new Set(['D', 'L', 'G', 'F', 'X', '#']);
+const BETWEEN = new Set(['D', 'L', 'G', 'F', 'X', '#', 'P', 'M', 'Y', 'V']);
 
 // `line` with its blanks filled from vars, or null when one of them has nothing to fill it
 export function fill(line, vars = {}) {

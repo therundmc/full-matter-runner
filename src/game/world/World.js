@@ -17,6 +17,7 @@
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
 import { chance, clamp, angDiff } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
+import { PROF } from '../../engine/Profiler.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
 import { gripOn } from '../data/materials.js';
 import Audio from '../../audio/Audio.js';
@@ -82,6 +83,7 @@ import Pursuit from '../systems/Pursuit.js';
 import Signals from '../systems/Signals.js';
 import Lorries from '../systems/Lorries.js';
 import Toll from '../systems/Toll.js';
+import TollFx from '../systems/TollFx.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
@@ -107,8 +109,7 @@ export default class World {
     this.decals = new MapRenderer(this.map, level);
     this.renderer = new WorldRenderer(this);
     this.cues = false; // readability cues drawn (set by Game each frame: render/Readability.js cuesOn)
-    this.aimStyle = null; // the aim cue's style and LOCK's floor chevron, the player's settings (set by Game: aimTo)
-    this.aimMark = false;
+    this.aimMark = false; // LOCK's floor chevron, the player's setting (set by Game: aimTo)
     this.wallBodies = this.map.buildBodies();
     this.addBody(this.wallBodies);
     this.addBody(this.map.buildEdgeBodies()); // nobody walks off an open map border (traffic / passers-by excepted)
@@ -214,6 +215,7 @@ export default class World {
     // the chase's own slow motions and cuts (a pursuer stopped, the lorry across the road): where one can be driven
     this.chaseCam = this.pursuit || this.lorries || this.toll ? new ChaseCam(this) : null;
     this.carFx = new CarFx(this);     // a car in trouble: its smoke, the sparks where it scrapes, its fire-ball (looks)
+    this.tollFx = this.toll ? new TollFx(this) : null; // a toll's plaza hit: its arms' splinters, the crash on a boom (looks)
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
@@ -639,7 +641,9 @@ export default class World {
   }
 
   // ---------------- simulation ----------------
+  // (P: the profiler, while the perf overlay times the sections: systems/Perf.js SECTIONS)
   step(dt, input, aim) {
+    const P = PROF.on ? PROF : null;
     this.time += dt;
     if (this.timers.length) {
       const due = this.timers.filter((t) => t.t <= this.time);
@@ -647,22 +651,29 @@ export default class World {
       for (const t of due) t.fn();
     }
     // 1. intentions (input, AI)
+    P?.begin('player');
     if (this.outro) this.stepOutro(dt);
     else if (this.drive) this.drive.step(dt, input, aim); // at the wheel (systems/Drive.js)
     else if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
+    P?.end('player');
+    P?.begin('chase');
     this.pursuit?.step(dt);
     this.checkpoints?.step(dt);
     this.lorries?.step(dt);
     this.toll?.step(dt);
     this.chaseCam?.step();
     this.signals.step();
+    P?.end('chase');
+    P?.begin('ai');
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
     this.ambient?.update(dt);
     for (const c of this.chars) if (c.alive) c.animate(dt); // the drawn body after this step's aim (Facing.js)
+    P?.end('ai');
 
     // 2. physics (characters walking into loose props and door leaves push them with their limited force first)
+    P?.begin('phys');
     this.propPhysics.prePush(dt);
     this.doorWork.prePush(dt);
     this.physics.step(dt, this.time);
@@ -673,6 +684,7 @@ export default class World {
       this.wallBodies = this.map.buildBodies();
       this.addBody(this.wallBodies);
     }
+    P?.end('phys');
 
     // 3. entities reacting to the new state
     for (const it of this.items) if (!it.dead) it.update(dt);
@@ -686,14 +698,21 @@ export default class World {
       this.drive.after(dt);
       Audio.motor('drive', this.drive?.motor(dt) ?? null);
     }
+    P?.begin('chase');
     this.pursuit?.after(dt);
+    P?.end('chase');
+    P?.begin('fx');
     this.carFx.update(dt);
+    this.tollFx?.update(dt);
     for (const e of this.emitters) { e.t -= dt; e.fn(e, dt); }
     this.particles.update(dt);
     this.decals.update(dt);
+    P?.end('fx');
     this.scoring.update(dt);
     this.impacts.update(dt);
+    P?.begin('liquid');
     this.liquids.update(dt);
+    P?.end('liquid');
     this.propPhysics.update(dt);
     this.alarms.update(dt);
     this.power.update();
@@ -701,8 +720,10 @@ export default class World {
     this.sirens.update(dt);
     this.ambience.update(dt);
     this.tutorial?.update();
+    P?.begin('fire');
     this.fireSpread.update(dt);
     this.fires.update(dt);
+    P?.end('fire');
     this.slips.update();
     this.sprinklers.update(dt);
     this.jukebox.update(dt);
@@ -715,7 +736,9 @@ export default class World {
     this.litter.update(dt);
     this.curtains.update(dt);
     this.weather.update();
+    P?.begin('smoke');
     this.smoke.update(dt);
+    P?.end('smoke');
     this.threats.update(this.view());
 
     // 4. cleanup

@@ -33,7 +33,11 @@ export default class Direction {
   // the shot from now on (a SHOTS name, or null) and what it looks at ({ x, y }, or null); cut: no easing (the
   // level opens on it; base: the camera's pixel zoom, as in rest)
   set(name, at = null, cut = false, base = 0) {
+    const was = this.shot;
     this.shot = this.shots[name] || null;
+    // (a shot marked `snap` lets go in one cut, its framing with its zoom: one that drew the view far off what is
+    // looked at once it is over, at the wheel, would leave the car off the picture while it eased back)
+    if (was?.snap && was !== this.shot) this.pull = 0;
     if (this.shot) this.keep = this.shot.keep ?? 0;
     if (at) this.at = { x: at.x, y: at.y };
     this.wants = at && this.shot ? this.shot.pull : 0;

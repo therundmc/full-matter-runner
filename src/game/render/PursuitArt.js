@@ -6,7 +6,7 @@
 //   drawChaseTells (after the lighting: telegraphs read in the dark; docs/LEVEL2.md, "nothing else red on the road"):
 //   the alley car's RED LANE across the road; a gunman's tell in its three beats (a white glint at the muzzle, a thin
 //   red line fattening into a wedge toward the bracket on the lane band where it will land, the shot's bone tracer);
-//   a lorry backing out; a toll told (bone arrows down the wooden lanes, red on the steel ones: drawToll)
+//   a lorry backing out; a toll told (bone arrows down the wooden lanes, each lane's signal over its mouth: drawToll)
 //   drawChaseWind (after the lighting too): the streaks of air past his car at speed (systems/Drive.js `wind`): one
 //   world px thick, whole px, bone, each fading in and out
 import { BODY_SCALE } from '../Config.js';
@@ -14,7 +14,8 @@ import { sprite, drawSprite } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { CHASE } from '../data/chase.js';
 import { WEAPONS } from '../data/weapons.js';
-import { laneY } from '../systems/Toll.js';
+import { laneY, mouthX } from '../systems/Toll.js';
+import { laneSign } from './LaneSign.js';
 
 const PISTOL = WEAPONS.pistol; // the gunmen's 1911 (systems/Pursuit.js pistolOf)
 
@@ -84,7 +85,7 @@ function drawHand(ctx, gun, p) {
 export function drawChaseTells(ctx, w, t) {
   const P = w.pursuit;
   if (w.lorries) drawLorries(ctx, w.lorries, t);
-  if (w.toll) drawToll(ctx, w.toll, t);
+  if (w.toll) drawToll(ctx, w.toll, t, w.chaseCam?.choosing ?? 0);
   if (!P) return;
   ctx.save();
   for (const L of P.lanes) drawLane(ctx, L, t);
@@ -157,48 +158,35 @@ function drawLorries(ctx, S, t) {
 }
 
 // A toll told (systems/Toll.js, CHASE.toll): bone arrows running down each wooden lane toward its arm, along the
-// lane's line as it spreads to the plaza (from just ahead of his car to the gate; none once the arm is gone); a red
-// wash with hard edges over the last stretch of each steel lane, a bracket closing on its boom
-function drawToll(ctx, S, t) {
-  const C = CHASE.toll, beat = 0.5 + 0.5 * Math.sin(t * 14);
+// lane's line as it spreads to the plaza (from just ahead of his car to the gate; none once the arm is gone), and each
+// lane's own signal big over its mouth (laneSign: a green arrow, a red X); all of it `pop` times bigger as the
+// choosing's slow motion takes hold (ChaseCam.choosing). No more than that: the gates and their lights say the rest
+function drawToll(ctx, S, t, pop = 0) {
+  const C = CHASE.toll, beat = 0.5 + 0.5 * Math.sin(t * 14), z = 1 + (C.pop - 1) * pop;
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const { P, k, d } of S.told()) {
-    const x0 = d?.van ? d.van.x + C.from : P.x - 600;
+    const x0 = d?.van ? d.van.x + C.from : P.x - 600, mx = mouthX(P) - C.sign;
     P.gates.forEach((g, i) => {
-      const gate = P.props[i], gy = laneY(P, i, P.x);
-      if (g === 'wood') {
-        if (!gate || gate.dead || gate.dying) return;
-        ctx.strokeStyle = `rgba(${BONE},${(0.62 + 0.3 * beat) * k})`;
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        for (let x = P.x - 24 - (C.every - ((t * C.run) % C.every)); x >= x0; x -= C.every) {
-          const y = laneY(P, i, x), a = Math.atan2(laneY(P, i, x + 8) - y, 8), c = Math.cos(a), sn = Math.sin(a);
-          const at = (u, v) => [x + u * c - v * sn, y + u * sn + v * c];
-          ctx.moveTo(...at(-6, -9)); ctx.lineTo(...at(4, 0)); ctx.lineTo(...at(-6, 9));
+      const gate = P.props[i], open = g === 'wood' && gate && !gate.dead && !gate.dying;
+      if (open) {
+        // (an ink edge under the bone: read on the pale plaza as on the night's asphalt)
+        for (const [col, lw] of [[`rgba(20,16,26,${0.55 * k})`, 4.6 * z], [`rgba(${BONE},${(0.7 + 0.3 * beat) * k})`, 2.4 * z]]) {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          for (let x = P.x - 24 - (C.every - ((t * C.run) % C.every)); x >= x0; x -= C.every) {
+            if (Math.abs(x - mx) < C.sign * z) continue; // (not under its sign)
+            const y = laneY(P, i, x), a = Math.atan2(laneY(P, i, x + 8) - y, 8), c = Math.cos(a), sn = Math.sin(a);
+            const at = (u, v) => [x + u * c - v * sn, y + u * sn + v * c];
+            ctx.moveTo(...at(-6 * z, -9 * z)); ctx.lineTo(...at(4 * z, 0)); ctx.lineTo(...at(-6 * z, 9 * z));
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
-        return;
       }
-      const hw = 44, len = 72, u = 0.6 + 0.4 * beat;
-      ctx.fillStyle = `rgba(${RED},${(0.14 + 0.1 * beat) * k})`;
-      ctx.fillRect(P.x - len, gy - hw, len, hw * 2);
-      ctx.strokeStyle = `rgba(${RED},${0.9 * k})`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(P.x - len, gy - hw); ctx.lineTo(P.x, gy - hw);
-      ctx.moveTo(P.x - len, gy + hw); ctx.lineTo(P.x, gy + hw);
-      ctx.stroke();
-      const hx = 10 + 6 * (1 - u), hy = hw + 6 * (1 - u), cn = 8;
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = `rgba(${RED},${(0.6 + 0.4 * u) * k})`;
-      ctx.beginPath();
-      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        const x = P.x + sx * hx, y = gy + sy * hy;
-        ctx.moveTo(x - sx * cn, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * cn);
-      }
-      ctx.stroke();
+      if ((g === 'wood' && !open) || (d?.van && d.van.x - d.van.w / 2 > mx)) return; // (its arm gone, or he is past it)
+      laneSign(ctx, mx, laneY(P, i, mx), C.sign * (1 + 0.3 * pop), g === 'wood', k * (g === 'wood' ? 1 : 0.75 + 0.25 * beat));
     });
   }
   ctx.restore();

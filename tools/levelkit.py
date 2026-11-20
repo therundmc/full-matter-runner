@@ -23,8 +23,8 @@ import os
 import random
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SOLID = set(' #X')
-WALLS = set('#X')
+SOLID = set(' #XPMYV')   # (P, M, Y, V: stucco walls in pastels, src/game/world/TileMap.js WALLS)
+WALLS = set('#XPMYV')
 OPENINGS = set('DLGF')
 GUARDS = set('pushrbkmji')
 # the kinds of door (keep in step with DOORS.kinds in src/game/data/doors.js)
@@ -69,6 +69,34 @@ SIZES = dict(
     toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
     gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),
     overpass=None,   # the freeway's bridge over the side street (generate_assets.py FWY_PROPS): hung high, never in the way
+    # ART DECO 1985 (generate_assets.py DECO_PROPS): generic dressing (a palm's or a lamp's box its trunk / post)
+    palm_fan=(9, 9), palm_fan_small=(9, 9), hibiscus_bush=(24, 24), hibiscus_bush_red=(24, 24), planter_deco_pink=(44, 44),
+    planter_deco_teal=(44, 44), deco_lamp=(6, 6), police_car=(136, 54), deco_office_pink=(156, 80), deco_office_teal=(156, 80),
+    billboard_motel=None,
+    # Miami, 1985 (generate_assets.py MIAMI_PROPS): generic street dressing (a palm or a sign by its pole, the burnt car by
+    # its shell; hung: the billboards, the canopies, the pennants, the awnings)
+    royal_palm=(16, 16), royal_palm_b=(16, 16), hibiscus_hedge=(92, 20), hibiscus_hedge_pink=(92, 20), billboard_tan=None,
+    billboard_radio=None, pole_sign_motel=(8, 8), pole_sign_autos=(8, 8), car_burnt=(136, 54), tent_tarp=(64, 44),
+    barrel_fire=(20, 20), chainlink_fence=(128, 4), chainlink_hole=(128, 4), guardrail_dented=(128, 6),
+    crash_cushion_hit=(60, 50), call_box=(5, 5), pennant_string=None, lot_light=(6, 6), sign_gantry=None, awning_pink=None, awning_mint=None,
+    awning_peach=None, awning_lavender=None, deco_canopy_pink=None, deco_canopy_mint=None, deco_canopy_peach=None,
+    deco_canopy_lavender=None, neon_sign_motel=None, neon_sign_vacancy=None, neon_sign_flamingo=None,
+    # Miami, 1986, the alley (generate_assets.py ALLEY_PROPS): the city's own; what hangs on a wall face or overhead: None
+    produce_crates=(38, 28), box_stack=(32, 26), fruit_cart=(56, 30), news_stand=(34, 14), neon_box_pink=(34, 10),
+    neon_box_cyan=(34, 10), scooter_mint=(54, 18), scooter_pink=(54, 18), domino_table=(28, 28), dumpster_mint=(58, 34),
+    dumpster_pink=(58, 34), dumpster_aqua=(58, 34), stucco_trim_pink=None, stucco_trim_mint=None, stucco_trim_peach=None,
+    ac_drip=None, graffiti_neon_a=None, graffiti_neon_b=None, neon_sign_botanica=None, neon_sign_cocktail=None,
+    laundry_line=None, fire_escape=None, palm_fronds=None,
+    # the suburb going to Miami (generate_assets.py SUBURB_PROPS): a palm, a pay phone or a sign by its post; hung: None
+    sabal_palm=(12, 12), sabal_palm_b=(12, 12), sabal_palm_ragged=(12, 12), coconut_palm_lean=(10, 10), palm_young=(6, 6),
+    palm_stump=(16, 16), bus_bench_bail=(62, 22), bus_bench_abogado=(62, 22), payphone_pastel=(5, 5), news_box_yellow=(14, 11),
+    news_box_red=(14, 11), mailbox_blue=(16, 14), mailbox_post=(5, 5), pole_sign_strip=(8, 8), yard_fence=(128, 4),
+    yard_fence_gate=(128, 4), garden_wall_pink=(96, 10), garden_wall_mint=(96, 10), garden_wall_cream=(96, 10), carport=None,
+    tv_antenna=None, lawn_flamingos=(28, 18), oleander_pink=(48, 40), oleander_white=(48, 40), cart_loaded=(22, 14),
+    bedroll=(26, 10), bags_pile=(44, 22), doorway_camp=(68, 40), market_stall=(78, 44), market_stall_coco=(78, 44),
+    fruit_crate_orange=(18, 12), fruit_crate_mango=(18, 12), fruit_crate_coconut=(18, 12), market_sign=(42, 14),
+    carwash_sign=(70, 6), carwash_board=(22, 14), wash_bucket=(12, 12), hose_reel=(26, 16), tyre_stack=(22, 22),
+    tyre_pile=(52, 36), tyre_loose=(20, 20), tyre_rack=(62, 18), tyre_sign=(46, 14),
     # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
     shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
     tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
@@ -99,7 +127,10 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                neon_sign_diner=44, neon_sign_cafe=32,
                security_mirror=10, cig_rack=26, price_board=22, tape_rack=28, notice_board=20, coin_changer=10, hand_dryer=8,
                graffiti=26, wall_clock=7, cleaning_rack=20,
-               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7, roller_door=96)
+               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7, roller_door=96,
+               neon_sign_motel=38, neon_sign_vacancy=44, neon_sign_flamingo=24,
+               stucco_trim_pink=96, stucco_trim_mint=96, stucco_trim_peach=96, ac_drip=24, graffiti_neon_a=62,
+               graffiti_neon_b=62, neon_sign_botanica=60, neon_sign_cocktail=64)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -118,8 +149,17 @@ FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour
           'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow',
           'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
           'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan')
+# ... and Miami's (MIAMI_PAINT): a dumped mattress, litter, an old crash's tyre marks and debris, a dealer's display
+# ramp, a concrete ramp's joints, an oil streak
+FLOOR += ('mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris', 'display_ramp', 'expansion_joint', 'oil_streak')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
+# ART DECO 1985's (DECO_PAINT): rain standing on the asphalt, the neon in it
+FLOOR += ('puddle_neon', 'puddle_neon_b')
+# ... and the suburb going to Miami's (SUBURB_PAINT): fallen fronds and coconuts, a drive, lawns gone to seed, a bed and a
+# sign on the sidewalk, bottles, a car wash's puddle
+FLOOR += ('palm_frond_fallen', 'sabal_frond_fallen', 'coconuts_fallen', 'driveway', 'lawn_dry_a', 'lawn_dry_b',
+          'cardboard_bed_blanket', 'cardboard_sign', 'litter_bottles', 'soap_puddle')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
 FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
           'cutlery_spill', 'runner_corner')

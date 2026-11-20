@@ -309,8 +309,8 @@ export default class Player extends Character {
   }
 
   // a melee swing just started: drawn to the guard in front of him, if one stands close (systems/Lunge.js): the aim
-  // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur. With the LOCK aim cue, the man
-  // it holds close (`lockOn`: faceLock) takes the whole turn, the drawn body snapped onto him on this frame, and the step
+  // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur. The man LOCK holds close
+  // (`lockOn`: faceLock) takes the whole turn, the drawn body snapped onto him on this frame, and the step
   // is taken from this very step and over before the blow lands (World.after(windup)): one base step short of the
   // windup, so that it lands on him
   startLunge(d, lockOn) {
@@ -518,11 +518,11 @@ export default class Player extends Character {
     return W ? clamp((W.t - THROW.tap) / (THROW.charge - THROW.tap), 0, 1) : 0;
   }
 
-  // the way the throw goes { a, lock }: along his aim, or with the LOCK aim straight at the man it holds (within its
-  // cone and THROW.lock px)
+  // the way the throw goes { a, lock }: straight at the man LOCK holds (within its cone and THROW.lock px), else
+  // along his aim
   throwAim() {
     const w = this.world;
-    const lock = w.aimStyle === 'lock' ? lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, THROW.lock) : null;
+    const lock = lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, THROW.lock);
     return { a: lock ? Math.atan2(lock.y - this.y, lock.x - this.x) : this.angle, lock };
   }
 

@@ -38,6 +38,8 @@ export const SEEPS = {
   keg: { drip: { kind: 'beer', at: [10, 2], drop: 16, every: [1.8, 3.2], cap: 1.3, most: 900, r: 3 } },
   // the bar's ice bin sweating through its drain plug
   ice_bin: { drip: { kind: 'water', at: [5, 9.5], drop: 12, every: [2.4, 3.8], cap: 1.2, most: 1800, r: 2.5 } },
+  // a window air-conditioner over an alley (data/props.js ac_drip): its condensate, a drop every second or so
+  aircon: { drip: { kind: 'water', at: [1, 9], drop: 12, every: [0.9, 1.8], cap: 1.4, most: null, r: 3, sound: 'dripPlink' } },
   // a water cooler's tap that never quite shuts
   water_cooler: { drip: { kind: 'water', at: [0, 9], drop: 10, every: [2.8, 4.4], cap: 1.1, most: 1500, r: 2.5 } },
   // a mop bucket, grey water to its rim

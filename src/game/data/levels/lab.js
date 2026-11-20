@@ -13,7 +13,7 @@ export default {
   subtitle: 'SANDBOX  -  A STATION FOR EVERY SYSTEM',
   passive: true,
   // routes of their own for cars to drive (a prop's option `route`: { legs, bends }, systems/Route.js)
-  routes: {'bend': {'legs': [{'from': 0, 'to': 100, 'lanes': [34.25, 36.75], 'mid': 35.5, 'kerbs': [33, 38], 'across': [[94, 105, 33, 38]]}, {'from': 100, 'to': 200, 'lanes': [46.25, 48.75], 'mid': 47.0, 'kerbs': [45, 50]}], 'bends': [{'at': 92, 'path': [[92, 36.75], [100, 36.75], [100, 48.75], [116, 48.75]], 'radius': 6, 'to': 1}], 'toll': {'at': 174.1, 'lanes': [45.25, 49.75], 'from': [46.25, 48.75], 'fan': [158, 164], 'gates': ['wood', 'steel']}}},
+  routes: {'bend': {'legs': [{'from': 0, 'to': 100, 'lanes': [34.25, 36.75], 'mid': 35.5, 'kerbs': [33, 38], 'across': [[94, 105, 33, 38]]}, {'from': 100, 'to': 200, 'lanes': [46.25, 48.75], 'mid': 47.0, 'kerbs': [45, 50]}], 'bends': [{'at': 92, 'path': [[92, 36.75], [100, 36.75], [100, 48.75], [116, 48.75]], 'radius': 6, 'to': 1}], 'toll': {'at': 174.1, 'lanes': [45.25, 49.75], 'from': [46.25, 48.75], 'fan': [158, 164], 'nose': 166.0, 'gates': ['wood', 'steel']}}},
   exit: { x: 56.6, y: 22.9, r: 1.2, route: [[52.0, 21.0], [48.0, 23.0], [30.0, 23.0]], radius: [3, 3], slide: [1, 0.5], fade: 13, open: true },
   facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '38,9': 180, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '57,13': 270, '72,9': 180, '67,2': 180, '67,4': 180, '69,5': 180, '72,1': 180, '73,4': 180, '20,28': 0, '22,27': 90, '18,28': 0, '38,28': 180, '40,28': 180, '42,28': 180, '51,27': 0, '53,29': 180, '54,27': 90, '61,28': 180, '62,28': 180, '63,28': 180, '64,28': 180, '65,28': 180, '69,28': 90, '68,28': 90, '73,27': 180, '73,28': 180, '73,29': 180 },
   jobs: { '43,5': 'pool', '48,3': 'hall', '12,15': 'hall', '20,28': 'door' },
@@ -240,7 +240,10 @@ export default {
     // 36 bend: a road of its own under the lab, a scripted corner down a side street onto a lower one
     ['convertible', 66, 36.75, 0, { drive: true, route: 'bend' }], ['road_closed', 106.4, 35, 90],
     ['sign_detour', 89.5, 38.5, 0], ['wall_lamp', 70.5, 32.08, 0], ['wall_lamp', 86.5, 32.08, 0],
-    ['streetlight', 112.5, 44.72, 90], ['streetlight', 136.5, 44.72, 90],
+    ['streetlight', 112.5, 44.72, 90], ['streetlight', 136.5, 44.72, 90], ['produce_crates', 98.6, 38.9, 40],
+    ['hydrant', 99.75, 40.9, 0], ['box_stack', 100.2, 42.6, 0], ['trash_can', 99.6, 43.8, 0],
+    ['bin_bag', 100.6, 44, 0], ['fruit_cart', 101.7, 46.6, 45], ['scooter_mint', 104.2, 48.4, 0],
+    ['dumpster_pink', 108.5, 48.9, 0], ['produce_crates', 112, 48.6, 0], ['laundry_line', 100, 41.2, 0],
     // 37 toll: the lower road opens round three islands, a wooden arm on the north lane, a steel boom on the south one
     ['convertible', 152, 48.75, 0, { drive: true, route: 'bend' }], ['crash_cushion_narrow', 164.637, 43, 0],
     ['toll_island', 169.969, 43, 0], ['toll_booth', 171, 43, 0], ['crash_cushion_narrow', 164.637, 47.5, 0],
