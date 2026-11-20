@@ -1092,6 +1092,45 @@ for (kind, c, r) in (('sign_toll_ahead', 562.6, 51.0), ('sign_speed_55', 568.6, 
                      ('sign_speed_55', 670.6, 38.2)):
     lv.prop(kind, c, r)
 
+lv.area('the toll: Sunset Bay, 1985 (palms, hibiscus, the deco office and its trooper, the billboards, the wet)')
+# MIAMI_PROPS (tools/generate_assets.py). What is seen of the plaza is its road (the view is 11 m high): the dressing
+# is on it and at its edges. An art deco planter in flower at the end of each island past the gates (in the plaza's
+# leg: between its lanes' bands), fan palms on the plaza's wide shoulders and along the verges with hibiscus at their
+# feet, deco lamps by the roof, the toll office on the south shoulder before the islands with a trooper's car parked
+# at it (the wheel kept off them: the plaza leg's `across`), a billboard for the Flamingo Motel (level 3) over the
+# freeway's verge and a radio's on the approach's, rain standing in puddles with the neon in them, oil under each
+# booth, rubber before each gate.
+for (i, r) in enumerate(ISLANDS):
+    lv.prop('planter_deco_pink' if i % 2 else 'planter_deco_teal', GATE_X + 1.2, r)
+for (c, r, kind) in ((589.5, 32.3, 'palm_fan'), (597.0, 31.9, 'palm_fan_small'), (615.5, 32.2, 'palm_fan'),
+                     (623.0, 32.6, 'palm_fan_small'), (603.2, 54.3, 'palm_fan_small'), (614.5, 53.7, 'palm_fan'),
+                     (622.0, 54.1, 'palm_fan_small'), (567.0, 34.3, 'palm_fan'), (573.0, 51.8, 'palm_fan_small'),
+                     (585.0, 34.2, 'palm_fan_small'), (631.0, 34.3, 'palm_fan'), (639.0, 51.8, 'palm_fan'),
+                     (647.0, 34.4, 'palm_fan_small'), (657.0, 37.2, 'palm_fan'), (667.0, 48.7, 'palm_fan_small')):
+    lv.prop(kind, c, r)
+    inside = 588 <= c < 627                                            # (on the plaza's shoulder: toward its road, off the rail)
+    lv.prop('hibiscus_bush' if int(c) % 2 else 'hibiscus_bush_red', c + 0.9, r + (0.5 if r > MID else -0.5) * (-1.2 if inside else 1))
+for (c, r) in ((604.6, 32.7), (606.0, 53.4), (612.6, 32.7)):
+    lv.prop('deco_lamp', c, r)
+lv.prop('deco_office_pink', 591.0, 53.5)                               # its sign to the road
+lv.prop('police_car', 597.2, 53.9)                                     # nobody in it, lights off
+lv.prop('hibiscus_bush', 588.0, 51.9)
+lv.prop('billboard_motel', 661.0, 48.9)                                # hung over the verge, read from the freeway
+lv.prop('billboard_radio', 583.0, 51.6)
+for (kind, c, r) in (('puddle_neon', 604.0, 41.4), ('puddle_neon_b', 613.6, 46.6), ('puddle_neon_b', 596.0, 37.8),
+                     ('puddle_neon', 619.0, 39.9), ('puddle_neon_b', 590.5, 45.8), ('puddle_neon', 600.5, 52.6)):
+    lv.paint(kind, c, r)
+for (k, r) in enumerate(PLAZA):
+    lv.paint('oil_stain_b' if k % 2 else 'oil_stain_a', CANOPY_X - 0.4 + (k % 2) * 0.9, r + 0.2)   # under each booth's lane
+    lv.paint('skid_marks', GATE_X - 2.4 - (k % 2) * 0.8, r + (0.15 if k % 2 else -0.2))             # rubber before its gate
+
+# its lights (the night section adds them): sodium pools on the fan and the fan back (they were dark), the neon of the
+# roof's fascias on the road (pink in, teal out), each booth's window, the office's sign, the billboards' lamps
+TOLL_LIGHTS = [[c, r, 7, '#ffb46a', 0.22] for (c, r) in ((590, 36.5), (590, 49.5), (598, 43.0), (617, 37.5), (617, 48.5), (624, 43.0))]
+TOLL_LIGHTS += [[604.4, r, 5, '#ff4aa6', 0.3] for r in (38.5, 47.5)] + [[611.8, r, 5, '#38f0dc', 0.28] for r in (38.5, 47.5)]
+TOLL_LIGHTS += [[CANOPY_X + 0.3, r + 0.9, 3, '#ffd890', 0.25] for r in ISLANDS[:4]]
+TOLL_LIGHTS += [[591.0, 52.0, 4, '#38f0dc', 0.3], [661.0, 47.6, 6, '#ff8ac8', 0.2], [583.0, 50.4, 6, '#8af0e8', 0.2]]
+
 
 def bend_line(pts, r, step=0.25):
     """The points along a bend's line (tiles), as systems/Outro.js routePath lays it: straight lines, each inner corner
@@ -1231,6 +1270,7 @@ lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   
 lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
 lights += [[x, MID, 10, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in range(TOLL0 + 4, W, 30)]   # the freeway's
 lights += [[CANOPY_X, MID + d, 9, '#e8f0ff', 0.22] for d in (-6, 0, 6)]  # the plaza under its lit roof
+lights += TOLL_LIGHTS                                                    # (the toll's block: its neon, pools, windows)
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
 # under it)
@@ -1269,7 +1309,7 @@ LEGS = [
     {'from': TOLL0, 'to': FAN[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE,
      'across': [[TOLL0, FAN[0] - 1, RAIL[0] + 0.22, RAIL[1] - 0.22]]},
     {'from': FAN[0], 'to': PLAZA_TO, 'lanes': list(PLAZA), 'mid': MID, 'cruise': TOLL_CRUISE, 'track': 0.7,
-     'across': [[FAN[0], PLAZA_TO - 1, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22]]},
+     'across': [[FAN[0], PLAZA_TO - 1, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22], [FAN[0], 600, 0, 51.9]]},   # (off the office)
     {'from': PLAZA_TO, 'to': DROP[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE,
      'across': [[PLAZA_TO, AFTER[1] - 3, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22],
                 [AFTER[1] - 2, DROP[0] - 1, RAIL[0] + 0.22, RAIL[1] - 0.22]]},
@@ -1300,8 +1340,9 @@ chase = {
     'next': 'THE MOTORWAY',     # what comes after it, on the card that closes the demo (Game: TO BE CONTINUED)
     # THE TOLL (systems/Toll.js, CHASE.toll; event 3 of docs/LEVEL2.md): the gates at col `at`, lane by lane north
     # first: the plaza's rows (`lanes`), the same lanes' rows on the approach (`from`), the columns they spread over
-    # (`fan`: the way told and driven, straight from its end on), each one's gate (`gates`: 'wood' | 'steel')
-    'toll': {'at': GATE_X, 'lanes': list(PLAZA), 'from': list(APPROACH), 'fan': [FAN[0], FAN[1] - 4], 'gates': list(GATES)},
+    # (`fan`: the way told and driven, straight from its end on), the islands' noses (`nose`: the lanes' mouths, where
+    # each lane's signal is told big), each one's gate (`gates`: 'wood' | 'steel')
+    'toll': {'at': GATE_X, 'lanes': list(PLAZA), 'from': list(APPROACH), 'fan': [FAN[0], FAN[1] - 4], 'nose': NOSE, 'gates': list(GATES)},
     # by the column of the car's middle. 'alley' (systems/Pursuit.js) waits at `car` [col, row] facing north, lamps on;
     # 'lorry' (systems/Lorries.js): the lorry waits at `lorry` [col, row] its cab to the north, and backs `back` tiles
     # south across the lanes; `gap` [col, row]: the way round its tail, shown by bone arrows

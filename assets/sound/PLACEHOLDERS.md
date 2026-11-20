@@ -106,3 +106,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | shieldThrow | the man held as a shield thrown forward along the aim (Player.throwShield) | a heavy shove: cloth snapping, a grunt of effort, a man's stumbling steps thrown off balance |
 | panClang | a frying pan or a kettle knocked off the stove or the worktop lands (systems/Clutter.js; two `metal` cuts for now) | a cast-iron pan clanging on a tiled floor and ringing down, what was in it slopping out |
 | dripPlink | a drop falls from a weeping joint or into a full pail (systems/Seeps.js, a SEEPS drip's `sound`; silent for now) | one drop of water plinking into a zinc pail / onto a wet lino floor, close and small |
+| armCrack | a car through a toll's wooden gate arm, the arm bursting in splinters (systems/TollFx.js arm) | a painted wooden boom snapped by a car at 90 km/h: a sharp crack, splintering wood, the pieces clattering on asphalt |
+| boomCrash | one of the pursuers' cars nose-on into a toll's steel boom (systems/TollFx.js crash), over its fire-ball | a car folding on a steel barrier at speed: a huge metal crunch, glass bursting, the boom's steel ringing, debris |
+| coinSpray | a car striking a toll booth's exact-change basket, its coins sprayed (systems/TollFx.js update) | a handful of coins thrown across asphalt: a bright scatter of rolling, ringing quarters |

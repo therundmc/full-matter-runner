@@ -74,6 +74,14 @@ const ROAD_PAINT = [
 // toll's made-to-measure lines last)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
   'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop'];
+// MIAMI 1985 (tools/generate_assets.py MIAMI_PROPS / MIAMI_PAINT): generic dressing for Sunset Bay's roads (palms,
+// hibiscus, deco planters and lamp, an office, a trooper's car, billboards; puddles with the neon in them) and the
+// toll's own states (its attendant ducked, a boom bent: systems/TollFx.js, systems/Toll.js); the lit ones' emissive maps
+const MIAMI_PROPS = ['palm_fan', 'palm_fan_small', 'hibiscus_bush', 'hibiscus_bush_red', 'planter_deco_pink', 'planter_deco_teal',
+  'police_car', 'deco_office_pink', 'deco_office_teal', 'billboard_motel', 'billboard_radio', 'deco_lamp', 'toll_booth_duck',
+  'gate_steel_bent'];
+const MIAMI_PAINT = ['puddle_neon', 'puddle_neon_b'];
+const MIAMI_GLOWING = ['deco_office_pink', 'deco_office_teal', 'billboard_motel', 'billboard_radio', 'deco_lamp', 'toll_booth_duck'];
 // level 1's interiors (tools/generate_assets.py, "the rooms of level 1": INTERIOR_PROPS): what its shops, its
 // laundromat, the bar's back and its offices are full of, what hangs on their walls, two things painted on a floor
 const INTERIOR_PROPS = ['shop_shelf', 'wine_rack', 'beer_cases', 'lottery_stand', 'tv_stack', 'vcr_shelf', 'tv_box', 'repair_bench',
@@ -116,6 +124,7 @@ export const OPTIONAL_LIST = [
   ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
   ...[...ROAD_PROPS, ...ROAD_PAINT, ...ROAD_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
+  ...[...MIAMI_PROPS, ...MIAMI_PAINT, ...MIAMI_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...INTERIOR_PROPS, ...INTERIOR_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...FLAT_PROPS, ...FLAT_PAINT].map((n) => `props/${n}`),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
@@ -170,6 +179,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag',
   'lorry', 'awning', 'parasol', 'planter']);
 for (const n of [...ROAD_PROPS, ...ROAD_PAINT]) FINE_PROPS.add(n); // level 2A's street, all of it
+for (const n of [...MIAMI_PROPS, ...MIAMI_PAINT]) FINE_PROPS.add(n); // Miami's dressing too
 for (const n of INTERIOR_PROPS) FINE_PROPS.add(n); // level 1's interiors too
 for (const n of [...FLAT_PROPS, ...FLAT_PAINT]) FINE_PROPS.add(n); // the prologue's flat too
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)

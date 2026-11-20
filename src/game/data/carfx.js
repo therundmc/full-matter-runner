@@ -115,6 +115,10 @@ export const CARFX = {
     // a burning wreck slammed into what lines the road
     crash: { R: 84, flash: 2.8, flashT: 0.26, front: 1.6, core: [48, 3, 5, 13], carry: 0.3, lobes: 4, lobesT: 0.05, lobe: [12, 2], sootT: 0.1, soot: 1.25,
       puffs: 12, sparks: 70, embers: 36, glass: 22, debris: [5, 160, 380, 1.5, 3.2], tyre: 0.4, pool: [4, 0.6, 1.2, 3], pops: [2, 0.3, 1.1], shake: 0.55 },
+    // one of theirs into a toll's steel boom (systems/Toll.js THE CRASH, systems/TollFx.js): the biggest of them, held
+    // where it struck (the wreck is thrown back off the boom), its pieces flung far down the plaza
+    toll: { R: 112, flash: 3.2, flashT: 0.34, front: 1.9, core: [64, 3.2, 6, 15], carry: 0.1, lobes: 6, lobesT: 0.05, lobe: [14, 2.2], sootT: 0.1, soot: 1.5,
+      puffs: 16, sparks: 90, embers: 44, glass: 34, debris: [7, 200, 460, 1.6, 3.4], tyre: 0.4, pool: [5, 0.6, 1.4, 3.4], pops: [3, 0.3, 1.4], shake: 0.7 },
     // over a car's real explosion (it has its own fire-ball, flash light, shake and scorch: this is what is thrown)
     car: { R: 120, flash: 0, flashT: 0, front: 0, core: [26, 3, 6, 14], carry: 0, lobes: 5, lobesT: 0.07, lobe: [12, 1.7], sootT: 0.16, soot: 1.2,
       puffs: 14, sparks: 60, embers: 30, glass: 30, debris: [7, 180, 430, 2, 4], tyre: 0, pool: [6, 0.6, 2, 5], pops: [3, 0.5, 2.2], shake: 0 },

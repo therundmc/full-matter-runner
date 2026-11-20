@@ -134,6 +134,9 @@ export const META = {
   // ... a car in trouble (systems/CarFx.js): placeholders
   carGrind: { pri: 1, dur: 0.35, gap: 0.12, max: 2, gain: 0.45 }, rimGrind: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.4 },
   carPop: { pri: 2, dur: 0.5, gap: 0.1, max: 2, gain: 0.7 },
+  // ... a toll's plaza hit (systems/TollFx.js): placeholders
+  armCrack: { pri: 2, dur: 0.4, gap: 0.1, max: 2, gain: 0.75 }, boomCrash: { pri: 4, dur: 1.2, gap: 0.3, max: 1, gain: 1, duck: 0.5 },
+  coinSpray: { pri: 1, dur: 0.5, gap: 0.3, max: 1, gain: 0.5 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
@@ -461,6 +464,11 @@ const FOLEY = {
   carGrind: [['sheet', 0.45, 0.7], ['metal', 0.3, 0.6, 0.05, 0.6]],
   rimGrind: [['metal', 0.35, 1.3], ['sheet', 0.2, 1.1, 0.04]],
   carPop: [['thud', 0.8, 0.9], ['metalBreak', 0.4, 1.1, 0.02]],
+  // PLACEHOLDERS for a toll's plaza (systems/TollFx.js): a wooden arm snapped by a car, one of theirs into a steel
+  // boom, the coins of an exact-change basket on the asphalt
+  armCrack: [['woodBreak', 0.9, 1.1], ['click', 0.5, 0.8, 0.01]],
+  boomCrash: [['sheet', 1, 0.6], ['thud', 1, 0.5], ['metalBreak', 0.8, 0.7, 0.02], ['glass', 0.6, 1, 0.05]],
+  coinSpray: [['click', 0.5, 2.2], ['click', 0.4, 2.6, 0.04], ['click', 0.3, 2.4, 0.09]],
   // PLACEHOLDERS for the back road (systems/Lorries.js, Drive.fx): the lorry's reversing beeper and its air brakes,
   // an awning or a parasol torn down, tyres letting go (faint: the motor's own squeal covers it), spray out of a puddle
   lorryBeep: [['click', 0.7, 1.9], ['click', 0.5, 1.9, 0.06]],

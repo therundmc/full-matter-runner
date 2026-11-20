@@ -736,7 +736,7 @@ routes = {'bend': {
              {'from': 100, 'to': W, 'lanes': [46.25, 48.75], 'mid': 47.0, 'kerbs': [45, 50]}],
     'bends': [{'at': 92, 'path': [[92, 36.75], [100, 36.75], [100, 48.75], [116, 48.75]], 'radius': 6, 'to': 1}],
     # 37 TOLL's gates, north lane first (the approach's lanes `from`, the plaza's `lanes`, where they spread: `fan`)
-    'toll': {'at': T_GATE, 'lanes': list(T_LANES), 'from': [46.25, 48.75], 'fan': [158, 164], 'gates': ['wood', 'steel']},
+    'toll': {'at': T_GATE, 'lanes': list(T_LANES), 'from': [46.25, 48.75], 'fan': [158, 164], 'nose': T_NOSE, 'gates': ['wood', 'steel']},
 }}
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')

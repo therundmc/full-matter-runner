@@ -69,6 +69,10 @@ SIZES = dict(
     toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
     gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),
     overpass=None,   # the freeway's bridge over the side street (generate_assets.py FWY_PROPS): hung high, never in the way
+    # MIAMI 1985 (generate_assets.py MIAMI_PROPS): generic dressing (a palm's or a lamp's box its trunk / post)
+    palm_fan=(9, 9), palm_fan_small=(9, 9), hibiscus_bush=(24, 24), hibiscus_bush_red=(24, 24), planter_deco_pink=(44, 44),
+    planter_deco_teal=(44, 44), deco_lamp=(6, 6), police_car=(136, 54), deco_office_pink=(156, 80), deco_office_teal=(156, 80),
+    billboard_motel=None, billboard_radio=None,
     # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
     shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
     tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
@@ -120,6 +124,8 @@ FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour
           'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
+# MIAMI 1985's (MIAMI_PAINT): rain standing on the asphalt, the neon in it
+FLOOR += ('puddle_neon', 'puddle_neon_b')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
 FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
           'cutlery_spill', 'runner_corner')

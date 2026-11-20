@@ -390,8 +390,11 @@ export const PROPS = {
   toll_booth: { static: true, lasting: true, material: 'metal', glass: true, w: 92, h: 38, hp: 99, chips: '#d8d4c8', sound: 'metal', blocksPath: true,
     light: { r: 70, color: '#ffe2a8', intensity: 0.6, x: 13 } },
   toll_canopy: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 188, h: 636, hp: 99, chips: '#4e5562', sound: 'metal',
-    light: [{ r: 150, color: '#e8f0ff', intensity: 0.6, y: -216 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: -72 },
-      { r: 150, color: '#e8f0ff', intensity: 0.6, y: 72 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: 216 }] },
+    light: [{ r: 150, color: '#e8f0ff', intensity: 0.6, y: -216, flicker: 'buzz' }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: -72 },
+      { r: 150, color: '#e8f0ff', intensity: 0.6, y: 72 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: 216 },
+      // its neon: pink along the fascia the traffic comes in under, teal along the one it leaves under
+      { r: 120, color: '#ff4aa6', intensity: 0.4, x: -88, y: -150 }, { r: 120, color: '#ff4aa6', intensity: 0.4, x: -88, y: 150 },
+      { r: 120, color: '#38f0dc', intensity: 0.35, x: 88, y: -150 }, { r: 120, color: '#38f0dc', intensity: 0.35, x: 88, y: 150 }] },
   // (`cost`: the share of his speed a car loses tearing it off, Drive.react; in its own pieces: data/destruction.js)
   gate_arm_wood: { static: true, material: 'wood', w: 110, h: 4, hp: 3, chips: '#d0242c', sound: 'wood', cost: 0.1 },
   gate_arm_bit_a: { material: 'wood', w: 42, h: 4, hp: 2, kg: 3, mu: 0.5, chips: '#d0242c', sound: 'wood' },
@@ -403,6 +406,27 @@ export const PROPS = {
   lane_signal_stop: { overhead: true, height: 0.02, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#26262e', sparks: true, glass: true, sound: 'metal',
     light: { r: 44, color: '#ff2c2c', intensity: 0.5 } },
   sign_exact_change: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8b828', sound: 'metal', bends: 6 },
+  // MIAMI 1985 (tools/generate_assets.py MIAMI_PROPS): generic dressing for any road of Sunset Bay. Fan palms (their
+  // crown hung over, the trunk the body), hibiscus bushes and art deco planters a car goes through, a lamp post with
+  // its frosted globe; a small art deco office and a state trooper's car parked (nothing gives: keep them off a road's
+  // drivable width), billboards high on their legs (out of reach)
+  palm_fan: { material: 'wood', r: 4.5, hp: 12, static: true, chips: '#2f8a4c', sound: 'wood', overhead: true, dirt: true, height: 0.06, pole: ['#5a3e26', 6] },
+  palm_fan_small: { material: 'wood', r: 4.5, hp: 12, static: true, chips: '#5f9a3c', sound: 'wood', overhead: true, dirt: true, height: 0.05, pole: ['#5a3e26', 5] },
+  hibiscus_bush: { static: true, vault: true, material: 'wood', r: 12, hp: 3, chips: '#ff5aa0', dirt: true, sound: 'wood' },
+  hibiscus_bush_red: { static: true, vault: true, material: 'wood', r: 12, hp: 3, chips: '#e8283c', dirt: true, sound: 'wood' },
+  planter_deco_pink: { static: true, vault: true, material: 'stone', w: 44, h: 44, hp: 14, chips: '#f0a0bc', dirt: true, sound: 'stone', blocksPath: true },
+  planter_deco_teal: { static: true, vault: true, material: 'stone', w: 44, h: 44, hp: 14, chips: '#58c4b8', dirt: true, sound: 'stone', blocksPath: true },
+  deco_lamp: { material: 'metal', r: 3, hp: 4, static: true, fixture: true, chips: '#58c4b8', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.02,
+    light: { r: 150, color: '#ffe2b8', intensity: 0.7 } },
+  police_car: { static: true, lasting: true, material: 'metal', w: 136, h: 54, hp: 99, chips: '#e6e6ea', sparks: true, glass: true, sound: 'metal', blocksPath: true },
+  deco_office_pink: { static: true, lasting: true, material: 'stone', w: 156, h: 80, hp: 99, chips: '#f0a0bc', sound: 'stone', blocksPath: true,
+    light: { r: 110, color: '#38f0dc', intensity: 0.55, y: -42, flicker: 'buzz' } },
+  deco_office_teal: { static: true, lasting: true, material: 'stone', w: 156, h: 80, hp: 99, chips: '#58c4b8', sound: 'stone', blocksPath: true,
+    light: { r: 110, color: '#38f0dc', intensity: 0.55, y: -42, flicker: 'buzz' } },
+  billboard_motel: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'wood', w: 376, h: 104, hp: 99, chips: '#ff4aa6', sound: 'wood',
+    light: [{ r: 130, color: '#ff8ac8', intensity: 0.45, x: -90, y: -20, flicker: 'buzz' }, { r: 130, color: '#ffe8c8', intensity: 0.45, x: 90, y: -20 }] },
+  billboard_radio: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'wood', w: 376, h: 104, hp: 99, chips: '#38f0dc', sound: 'wood',
+    light: [{ r: 130, color: '#8af0e8', intensity: 0.45, x: -90, y: -20, flicker: 'buzz' }, { r: 130, color: '#ffe8c8', intensity: 0.45, x: 90, y: -20 }] },
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },

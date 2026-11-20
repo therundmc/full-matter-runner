@@ -11,6 +11,10 @@
 //   rammed  a pursuer's side swipe landing on his car (Pursuit's 'pursuerRam'): a short kick
 //   bend    a scripted corner of the route (systems/Drive.js 'chaseBend', each turn as it begins): a breath of slow
 //           motion (CHASE.bend.apex), never cutting into another beat
+//   choose  a toll's plaza ahead (systems/Toll.js), once a plaza: as its tells are up and its gates `lead` s off, the
+//           world slows, the view cuts out to frame the gates, the wooden lanes' arrows pop, the wheel answers in real
+//           time and takes the car further (as the lorry's), until he is committed to a wooden lane (tollCommitted),
+//           `last` s before the lanes' mouths, past the gates, dead, or the cap
 //   toll    his car through a toll's wooden arm (systems/Toll.js 'tollGate'): a breath of slow motion, the picture
 //           kicked on (CHASE.toll.beat), never cutting into another beat
 // A beat is a time scale (`scale`: eased down over its `in`, held, back over its `out`; Game runs the world at it as
@@ -20,7 +24,9 @@
 // `step` runs with the world (game time: what starts and ends a beat), `update` on the REAL clock (its ramps).
 // DOM-free.
 import { CHASE } from '../data/chase.js';
+import { TILE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
+import { laneY, nearestLane, mouthX } from './Toll.js';
 
 // ---------------------------------------------------------------- pure
 // What a pursuer stopped at `now` (real s) gets. S: { strong, beat, kill: when the last strong beat, the last beat
@@ -46,6 +52,21 @@ export function lorryBox(L) {
   const cx = L.x0 + L.dx * L.dist, cy = L.y0 + L.dy * L.dist, long = L.p.def.w / 2, wide = L.p.def.h / 2;
   const hx = Math.abs(L.dx) > Math.abs(L.dy) ? long : wide, hy = Math.abs(L.dx) > Math.abs(L.dy) ? wide : long;
   return { x0: cx - hx, x1: cx + hx, y0: cy - hy, y1: cy + hy };
+}
+
+// Game s before plaza P's gates for a car at x (world px) going v px/step; null: past them
+export function gatesIn(P, x, v) {
+  const gx = P.at * TILE;
+  return x > gx ? null : (gx - x) / Math.max(1, v * 60);
+}
+
+// Has a car ({ x, y: its middle, u: px/step across }) chosen its way through plaza P: in the fan (its lanes apart),
+// on a wooden lane's line within `commit` px and no longer going across (`still` px/step at most); or past the gates
+export function tollCommitted(P, car, K = CHASE.cinema.choose) {
+  if (car.x > P.at * TILE) return true;
+  if (car.x < P.fan[0] * TILE) return false;
+  const k = nearestLane(P, car.y, car.x, 'wood');
+  return k >= 0 && Math.abs(laneY(P, k, car.x) - car.y) <= K.commit && Math.abs(car.u) <= K.still;
 }
 
 // A beat's time scale t real s in (b: { slow, in, hold, out }; `left`: the hold over, s since): 1 once it is over
@@ -79,11 +100,17 @@ export default class ChaseCam {
 
   get active() { return !!this.beat; }
 
-  // what a slow motion of the lorry's gives the wheel (systems/Drive.js): its rate back in real time, `most` times
-  // the sideways speed; null: the wheel as usual
+  // what a slow motion of the lorry's or the toll's choosing gives the wheel (systems/Drive.js): its rate back in real
+  // time, `most` times the sideways speed; null: the wheel as usual
   get wheel() {
     const b = this.beat;
-    return b?.kind === 'lorry' ? { rate: 1 / clamp(this.scale, 0.1, 1), most: this.C.lorry.wheel } : null;
+    return b?.kind === 'lorry' || b?.kind === 'choose' ? { rate: 1 / clamp(this.scale, 0.1, 1), most: this.C[b.kind].wheel } : null;
+  }
+
+  // 0..1: how far the toll's choosing has slowed the world (its tells pop with it: render/PursuitArt.js)
+  get choosing() {
+    const b = this.beat;
+    return b?.kind === 'choose' ? clamp((1 - this.scale) / (1 - b.slow), 0, 1) : 0;
   }
 
   // ---------------------------------------------------------------- the kills
@@ -92,9 +119,10 @@ export default class ChaseCam {
     if (!this.live || !car) return;
     const K = this.C.kill, S = this.S, w = this.world, b = this.beat;
     S.on = b?.kind === 'kill';
-    const tier = killBeat(this.now, S, K);
+    // (a pursuer crashed on a toll's steel boom, systems/Toll.js: the strong beat whatever the cooldown)
+    const tier = car.tollCrash && !(b?.kind === 'kill' && S.on) ? 'strong' : killBeat(this.now, S, K);
     S.kill = this.now;
-    if (!tier || (b && b.kind === 'lorry')) return; // (the lorry's slow motion is not cut into)
+    if (!tier || (b && (b.kind === 'lorry' || b.kind === 'choose'))) return; // (those slow motions are not cut into)
     if (tier === 'more') {
       b.hold += K.more;
       b.slow = Math.max(0.1, b.slow - K.deep);
@@ -151,8 +179,35 @@ export default class ChaseCam {
 
   // ---------------------------------------------------------------- with the world (game time)
   step() {
-    const w = this.world, C = this.C.lorry, d = w.drive, b = this.beat;
-    if (!w.lorries || !d?.on) return;
+    const w = this.world, d = w.drive;
+    if (!d?.on) return;
+    if (w.toll) this.choose(d);
+    if (w.lorries) this.lorry(d);
+  }
+
+  // a toll's plaza ahead: the choosing's slow motion opened `lead` s out, once a plaza (as soon as its tells are up),
+  // let go once he is committed to a wooden lane or past the gates
+  choose(d) {
+    const K = this.C.choose, b = this.beat, v = d.van, car = { x: v.x, y: v.y, u: d.u };
+    if (b?.kind === 'choose') {
+      // (or `last` s before the lanes' mouths at his speed: from there it is his to make at full speed)
+      if (b.held && (tollCommitted(b.P, car, K) || (mouthX(b.P) - v.x) / Math.max(1, d.v * 60) <= K.last)) { b.held = false; b.left = 0; }
+      return;
+    }
+    if (b || !this.live) return;
+    for (const P of this.world.toll.plazas) {
+      const lead = P.chosen || !P.k ? null : gatesIn(P, v.x, d.v);
+      if (lead === null || lead > K.lead) continue;
+      P.chosen = true;
+      this.open({ kind: 'choose', tier: 'strong', slow: K.slow, in: K.in, hold: K.cap, out: K.out, shot: K.shot, at: null, held: true, P });
+      this.world.events.emit('chaseBeat', { kind: 'choose', tier: 'strong', x: P.x, y: v.y });
+      return;
+    }
+  }
+
+  // the lorries across his road
+  lorry(d) {
+    const w = this.world, C = this.C.lorry, b = this.beat;
     const v = d.van, car = { x: v.x, y: v.y, w: v.w, h: v.h, v: d.v };
     for (const L of w.lorries.list) {
       if (L.state === 'wait') { L.slowed = L.shaved = false; continue; }
@@ -207,7 +262,17 @@ export default class ChaseCam {
   // the camera's shot (Game.stagedShot): while the beat holds, not on its way out (the cut back comes as time does)
   shot() {
     const b = this.beat;
+    if (b?.kind === 'choose' && b.left < 0) return this.chooseShot(b);
     if (!b?.shot || !b.at || b.left >= 0) return null;
     return { name: b.shot, at: { x: b.at.x, y: b.at.y } };
+  }
+
+  // the choosing's view (its shot pulls all the way): along the road the drive's own framing `ahead` of the view's
+  // width further on (Drive.frame: the car a third of it from the left; d.viewW, the view's width as it was last
+  // framed), across on the plaza's middle
+  chooseShot(b) {
+    const d = this.world.drive, P = b.P, vw = d.viewW || CHASE.camera.view * 16 / 9;
+    const y = P.lanes.reduce((a, r) => a + r, 0) / P.lanes.length * TILE;
+    return { name: b.shot, at: { x: d.van.x + vw * (0.5 - CHASE.camera.at + this.C.choose.ahead), y } };
   }
 }

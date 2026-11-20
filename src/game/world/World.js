@@ -81,6 +81,7 @@ import Pursuit from '../systems/Pursuit.js';
 import Signals from '../systems/Signals.js';
 import Lorries from '../systems/Lorries.js';
 import Toll from '../systems/Toll.js';
+import TollFx from '../systems/TollFx.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
@@ -209,6 +210,7 @@ export default class World {
     // the chase's own slow motions and cuts (a pursuer stopped, the lorry across the road): where one can be driven
     this.chaseCam = this.pursuit || this.lorries || this.toll ? new ChaseCam(this) : null;
     this.carFx = new CarFx(this);     // a car in trouble: its smoke, the sparks where it scrapes, its fire-ball (looks)
+    this.tollFx = this.toll ? new TollFx(this) : null; // a toll's plaza hit: its arms' splinters, the crash on a boom (looks)
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
@@ -681,6 +683,7 @@ export default class World {
     }
     this.pursuit?.after(dt);
     this.carFx.update(dt);
+    this.tollFx?.update(dt);
     for (const e of this.emitters) { e.t -= dt; e.fn(e, dt); }
     this.particles.update(dt);
     this.decals.update(dt);
