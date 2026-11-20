@@ -59,7 +59,8 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   it), each TOLD. THE RAM, from abreast: 0.5 s of wind-up (its lamps flash, it draws away from him leaning out),
   then the swipe at his flank (a jolt, his tail kicked out, never his death); a lane change dodges it, a shove INTO
   it during the wind-up lands first. THE BRAKE, from ahead in his lane: its brake lights 0.45 s, then it runs 3.2
-  px/step slower than he does for 0.9 s: onto his nose unless he changes lanes. Hurt by a shove (not wrecked), a car
+  px/step slower than he was going as it was told, for 0.9 s: onto his nose unless he changes lanes (a jolt that
+  takes his speed; it no longer follows his speed down after each knock, which brought both cars to a crawl). Hurt by a shove (not wrecked), a car
   keeps its distance 2.5 s (the far slot), smoking. Each car has a STYLE set by its event: `gunner` (tells shots,
   rams when nobody else does), `rammer` (never tells, alone it sits abreast), `blocker` (alone it sits ahead of
   him). The wheel of each follows a line that slides (300 px/s), no jump from one line to the next.
@@ -231,10 +232,10 @@ across between two framings. 90 km/h (13.3 px/step) from col 560; the pursuers' 
 | Cols | Section | North side | South side (ours) | Lanes | What happens |
 |------|---------|------------|-------------------|-------|--------------|
 | 560-586 | THE APPROACH | verge, guardrail, rumble strip on the shoulder, a tall lamp (563), SPEED 55 | the same, TOLL AHEAD, a tall lamp (579) | 4 of 2.5 m: rows 39.25 / 41.75 / 44.25 / 46.75 | Leg 2. Two pursuers join from behind (cols 561 and 571); the first will take the wrong gate. TOLL in every lane (576), its number (581.5). Told 1.5 s out (col 574 at 90 km/h); the pursuers choose their gates 2 s out; nobody attacks from then to past the gates. |
-| 587-602 | THE FAN | the plaza's wide shoulder, a tall lamp (594) | the same (598) | 4 spreading from 2.5 m to 4.5 m apart (plaza_fan) | Leg 3: the plaza is 20 m wide, wider than the picture: the view follows him across (`track` 0.7). A crash cushion before each island's nose (col 601.7: it bursts). |
+| 587-602 | THE FAN | the plaza's wide shoulder, a tall lamp (594) | the same (598) | 4 spreading from 2.5 m to 4.5 m apart (plaza_fan) | Leg 3: the plaza is 20 m wide, wider than the picture: the view follows him across (`track` 0.7). A crash cushion before each island's nose (col 601.7: it bursts), no wider than the island (`crash_cushion_narrow`: three barrels in single file; the 2.75 m one stood half a metre into every lane). |
 | 603-611 | THE PLAZA | the outer island (row 34) | the outer island (52); one of the staff smoking on the shoulder | 4 of 3 m: 36.25 / 40.75 / 45.25 / 49.75, five islands of 1.5 m between (34, 38.5, 43, 47.5, 52) | The roof over cols 605-611 (it fades over him), a lit booth on each of the four upper islands, each lane's signal on the island below it, EXACT CHANGE on the first. The gates at col 611.1, north first: WOOD, STEEL, WOOD, STEEL (ours, the fourth, is steel; leg 1's other lane, the third, wood). |
-| 611-626 | THE FAN BACK | plaza shoulder | plaza shoulder | 4 closing back to 2.5 m | Past the gates their attacks start again. |
-| 627-651 | THE MERGE OUT | a crash cushion, the guardrail | the same | 4, the outer two ending over cols 640-652 (merge arrows at 633.5, a hatched gore over each) | Leg 4. A car left out wide meets a crash cushion and the rail's thin end: a jolt, never the crash. |
+| 611-626 | THE FAN BACK | plaza shoulder | plaza shoulder | 4 closing back to 2.5 m | Leg 4 from col 613 (just past the gates: theirs go for the approach's four lanes the paint closes to, never out wide into the cushions at 627). Past the gates their attacks start again. |
+| 627-651 | THE MERGE OUT | a crash cushion, the guardrail | the same | 4, the outer two ending over cols 640-652 (merge arrows at 633.5, a hatched gore over each) | Leg 5 from col 640 (where the outer two start to end: their slots on the middle two). A car left out wide is brought in ahead of each narrowing (the wheel held off the guardrails, `across` steps: never nose-on into a rail's end, never off the road through its cushions). |
 | 652-699 | THE FREEWAY'S START | guardrail, tall lamps | guardrail, FREEWAY, SPEED 55 | 2: the middle ones, 41.75 / 44.25 | Leg 5. The level ends at col 672: TO BE CONTINUED, NEXT: THE MOTORWAY. |
 
 Segment boards: [1 back road](level2/s1_backroad.webp), [2 toll](level2/s2_toll.webp),
@@ -687,3 +688,33 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   lane_taper, plaza_fan (made to measure), label_toll; levelkit MOUNTS (a booth, a signal on its island). QA robot:
   down the wooden lane the toll sends him. Lab station 37 TOLL (the lower road of 36 carried on east: a wooden arm on
   the north lane, a steel boom on his). Tests: tests/toll.test.mjs.
+- 2026-11-20: PART TWO REVIEWED (branch fix/chase-part2-review: the detour, leg 1 and the toll played end to end by
+  script in the headless browser). THE LORRY KILLING EVERY QA RUN since 930af82 was the robot, not the game: it never
+  read the lorry's tell (its lanes picked at random, one time in ten the south sidewalk), so getting past was luck,
+  and 930af82 (leg 1 and its props only; leg 0's chase block unchanged) moved the seeded rolls so seeds 2 and 11 lost
+  it every time; a driver who steers for the bone arrows at the tell gets round by the terrace with or without the
+  pursuers. The robot now reads it (tools/qa/bot.js: the lorry's `gap`, held until its tail is passed, no shove away
+  from it): its god-mode stall on the lorry (W held into the dead end, nothing crashing it there) is gone with it.
+  FOUND AND FIXED: a pursuer's BRAKE followed his speed down after each knock (3.2 px/step under what was left of
+  it): both cars crawled at 15 to 40 % of his cruise for seconds, on the street and down the whole on-ramp (5 to 12 s
+  lost a run): it now drops from his speed as it was told. THE TOLL'S SEAMS: no hold on the wheel past leg 1 (no
+  `across`): steered out wide past the gates or at the lane drop the car stopped dead on a rail's end (3 % of its
+  speed) or left the road through the crash cushions onto the verge, off the picture; each toll leg now holds it
+  inside its guardrails and brings it in ahead of each narrowing (steps at 625 and 640 / 644 / 648 / 652). The plaza's
+  leg ran to col 627 and leg 4 to 652, so the slots stayed on lanes the paint had closed: the plaza's leg now ends at
+  613 (just past the gates), the freeway's two from 640. A pursuer left behind was brought back up in the lane beside
+  his IN the plaza, across an island's nose (it wrecked there 1 run in 2): not while the plaza is told. The islands'
+  crash cushions were 2.6 m wide on 1.5 m islands, half a metre into every lane (every car through burst two): narrow
+  ones (`crash_cushion_narrow`, three barrels in single file; lab station 37 too). TIMINGS (a driver holding his lane,
+  round the lorry, down the toll's wooden lane, the pursuers on and never shot; god mode): the street to the bend
+  (col 438) 25.8 s (the table's 25), the detour 4.0 s, leg 1 at 70 km/h 5.3 s (the frontage road 2.1, the ramp 1.3,
+  the merge 1.9), the toll at 90 km/h 4.6 s (the approach 1.1, the fan and the plaza 1.0, past the gates to the end
+  2.5): 39.7 s to TO BE CONTINUED, the ramp and the toll 9.9 s (the table's 11). Pursuers on the road by the half
+  second: none for the opening's 6.5 s, then 1 to 4 to the lorry, 1 or 2 to the bend, 2 or 3 on leg 1, up to 5 in the
+  plaza when none is shot; no other empty stretch. QA 3 min (before -> after): seed 2 8 deaths (6 at the lorry) 0
+  clears 328 m -> 3 deaths (told shots) 2 clears 690 m; seed 11 (the toll branch's run) 7 deaths (6 crashes) 0 clears
+  328 m -> 1 death 3 clears 690 m; seed 1 0 deaths 3 clears 690 m (the old game with the new robot: 2 deaths, told shots,
+  2 clears); seed 2 --god 3 clears 2 stalls (one on the lorry
+  for good) -> 3 clears, no stall. Not changed: the fan and the fan back are dark between their lamps (lit by his
+  headlights; the lane paint reads), and a pursuer crossing late to his lane in the fan can still meet an island's
+  nose (they follow or die).
