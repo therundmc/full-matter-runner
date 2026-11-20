@@ -284,6 +284,14 @@ export default class Pursuit {
       this.lanes.push({ car, x: v.x, w: half * 2, y0, y1: v.y - v.w / 2 + 8, t: 0, on: true });
       w.sound('tellClick', v.x, v.y, 0.5);
     } else if (e.kind === 'behind') {
+      // (C.most of them on him at once at the most: with that many still driving, one more does not join; a toll's
+      // wrong-gate car is its event: the rearmost of the others, off the picture, drops out for it)
+      const live = this.cars.filter((c) => !c.dummy && DRIVEN.has(c.state));
+      if (live.length >= C.most) {
+        if (!e.gate) return;
+        const last = live.filter((c) => !this.onScreen(c.v) && c.v.x < tg.x).sort((a, b) => a.v.x - b.v.x)[0];
+        if (last) this.dropOut(last);
+      }
       const y = this.sides(tg).other;
       // behind him, just off the picture, in the lane he is not in (it comes up alongside); past the last wreck
       // lying on the road back there when there is room (a wreck across a narrow street holds a car up a long while)
@@ -299,6 +307,15 @@ export default class Pursuit {
       const car = this.spawn(x, y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over, e.style, e.miss);
       car.gate0 = e.gate ?? null; // (a toll's gate it will take whatever he does: 'steel', the wrong one: systems/Toll.js)
     }
+  }
+
+  // one of them gives up (left behind for good: Pursuit.after's `lost`)
+  dropOut(car) {
+    if (this.tell?.car === car) this.endTell();
+    if (this.attack?.car === car) this.endAttack();
+    car.state = 'lost';
+    Body.setVelocity(car.v.body, { x: 0, y: 0 });
+    car.v.body.flyUntil = 0;
   }
 
   // their top speed: C.max, as much more as his leg's cruise is over the chase's (the toll's road at 90 km/h: they
@@ -634,9 +651,10 @@ export default class Pursuit {
   // On its way out (exit) what it meets on the side of the road stops it there
   contact(car, o, pair) {
     const w = this.world, v = car.v, b = v.body, e = o.entity;
-    if (car.out) { this.stopped(car, o, pair); return; }
-    if (car.state === 'wrecked' || v.exploded) return;
     const vel = Body.getVelocity(b), ov = o.isStatic ? { x: 0, y: 0 } : Body.getVelocity(o);
+    // (a wreck run on through a toll's lane takes its arm with it: exit, Toll.wreckWay)
+    if (car.out) { if (!(car.out.run && this.tear(o, pair, vel, Math.hypot(vel.x, vel.y)))) this.stopped(car, o, pair); return; }
+    if (car.state === 'wrecked' || v.exploded) return;
     const n = pair.collision.normal;
     const close = Math.abs((vel.x - ov.x) * n.x + (vel.y - ov.y) * n.y);
     // his car: a knock of his doing (his steering into it), not when it is the one swiping at him; his shove going
@@ -900,9 +918,22 @@ export default class Pursuit {
   // (never its tail swung into him). Over at `dur`: the physics has it, the floor's friction on
   exit(car, dt, tg) {
     const O = this.C.out, o = car.out, v = car.v, b = v.body;
+    // A toll's plaza ahead (Toll.wreckWay): stopped on the approach it is braked to a stand short of the islands (slid
+    // on down its lane it lay across a lane's mouth, at the islands' noses, and held him up); past that it runs on
+    // down its own lane and through its gate, its speed kept, and makes its exit beyond
+    const T = v.tollCrash ? null : this.world.toll?.wreckWay?.(v.x, v.y);
+    o.run = T?.lane != null && !o.hit;
+    if (o.run) {
+      Body.setVelocity(b, { x: Math.max(o.s, T.run), y: clamp((T.lane - v.y) * 0.2, -O.side, O.side) });
+      Body.setAngularVelocity(b, clamp(-angDiff(0, b.angle) * 0.2, -O.turn, O.turn));
+      b.flyUntil = this.world.time + CHASE.fly;
+      o.y0 = v.y;
+      this.exitFx(car, dt);
+      return;
+    }
     o.t += dt;
     if (o.t >= O.dur) { car.out = null; b.flyUntil = 0; b.sleepThreshold = 60; v.steer = 0; return; }
-    o.s = Math.max(0, o.s - O.brake * dt);
+    o.s = Math.max(0, o.s - Math.max(O.brake, T?.stop != null ? (30 * o.s * o.s) / Math.max(16, T.stop - v.x) : 0) * dt);
     const across = o.hit || Math.abs(v.y - o.y0) >= O.far ? O.press : O.side * clamp(o.t / O.bite, 0, 1);
     Body.setVelocity(b, { x: o.s, y: o.side * across });
     // (its half width across the road as it is turned now: what its tail swinging round reaches toward him)
@@ -1145,12 +1176,7 @@ export default class Pursuit {
         car.state = 'wrecked';
         this.leave(car);
       }
-      if (tg && DRIVEN.has(car.state) && car.v.x < tg.x - this.C.lost) {
-        if (this.tell?.car === car) this.endTell();
-        car.state = 'lost';
-        Body.setVelocity(car.v.body, { x: 0, y: 0 });
-        car.v.body.flyUntil = 0;
-      }
+      if (tg && DRIVEN.has(car.state) && car.v.x < tg.x - this.C.lost) this.dropOut(car);
     }
     this.stepTell(dt, tg);
     this.stepLanes(dt);

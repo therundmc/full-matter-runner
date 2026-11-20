@@ -6,7 +6,8 @@
 Segment 1, THE BACK ROAD (0:00-0:25 at 60 km/h): THE BOSS's convertible drives east (+x) in the south lane
 (right-hand traffic) of a two-lane street of Sunset Bay, 450 m of it, built section by section as a real street
 is: kerbs along every sidewalk, parking on one side or the other or on neither, two junctions under traffic lights
-with their crossings, a railway bridge, works in a parking lane, a bus stop, the lorry's yard, a terrace, a diner.
+with their crossings, a railway bridge, works in a parking lane, a bus stop, the lorry's yard, a fruit market, a diner.
+It is a GRADIENT from level 1's suburb to Miami (THE HARMONY PASS, after the street's dice: palms, pastels, neon).
 NOTHING stands in the two lanes: they are the pursuers' and his (docs/LEVEL2.md has the table of the sections).
 
 The two lanes never move (rows 11 to 15: theirs, westbound, its middle on row 12.25; ours on 14.75; the centre
@@ -29,8 +30,9 @@ off):
     247-271   C  THE BUS STOP: a shelter on the wide north sidewalk, BUS STOP on their lane, red kerbs
     272-312   B  parking on our side again (cols 278-309)
     313-356   A  (no car parked) THE YARD (north, cols 337-342): the lorry of event 2 backs out of it across both
-                 lanes, KEEP CLEAR painted before its gate; THE TERRACE (south, cols 325-354): the cafe set back
-                 four metres, bollards along its kerb, tables, parasols, planters, awnings: the way round the lorry
+                 lanes, KEEP CLEAR painted before its gate; THE FRUIT MARKET (south, cols 325-354): the fronts set
+                 back four metres, stalls under their awnings, crates, signs, strings of bulbs on a vacant corner:
+                 the way round the lorry (it was a cafe's terrace: THE HARMONY PASS below replaces it)
     357-388   A  THE LIT CORNER: the diner, all glass and light
     389-403   J  THE CROSS STREET under traffic lights (its roadway cols 393-398): the last car comes out of it
     404-449   C  the way to the freeway (its sign over the road), DETOUR told from col 418
@@ -45,7 +47,7 @@ FRONTAGE ROAD along the freeway's embankment (sheds and docks on the south side,
 own embankment, guardrails, cols 498-523), THE MERGE (the freeway's lanes come in alongside, cols 524-559). Then
 THE TOLL (segment 2, docs/LEVEL2.md has its table, cols 560-699): the four lanes side by side spread to the plaza's
 grid under its roof (cols 603-611: five islands, four booths, a gate at the end of each lane: a wooden arm or a steel
-boom, told by its lane's signal), spread back, the outer two merge in: the freeway's start; the level ends at col 672.
+boom, told by its lane's signal), spread back, the outer two merge in: the freeway's start; the level ends at col 656.
 """
 import math
 import random
@@ -79,7 +81,9 @@ DECK = (437, 455)           # its bridge over the side street (cols: the deck fr
 RAMP_X = 498                # the frontage road's south blocks end: the on-ramp's embankment from this column
 MERGE = (524, 548)          # the freeway's lanes come in alongside ours over these columns (the gore between)
 TOLL_X = 560                # the toll from this column on (leg 1's lanes carried on into it)
-END = 672                   # past this column of the last leg (the freeway's start, past the toll) the level is over
+END = 656                   # past this column of the last leg (the freeway's start, past the toll) the level is over:
+                            # 44 columns of road left to run on as the picture goes black (the map's edge is never seen:
+                            # at 672 it came on the picture half way through the fade, the car into it among the wrecks)
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
 ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
                             # so it is told early enough to cross AHEAD of him into the far lane (he keeps out of it)
@@ -99,7 +103,8 @@ WORKS = (203, 231)          # the gas works in its parking row
 BUS = (247, 271)            # the bus stop's stretch
 YARD = (337, 342)           # the lorry's yard, north (cols, inclusive)
 LORRY_AT = 303              # event 2 told with the car's middle at this column (about 0:18)
-TERRACE = (325, 354)        # the cafe's terrace, south (cols, inclusive)
+TERRACE = (325, 354)        # the open ground the lorry is dodged through, south (cols, inclusive): the fruit market
+                            # (the cafe's terrace until the harmony pass, which keeps its geometry)
 DINER = (358, 388)
 # the three cross-sections by column (inclusive spans): the first row of road north (the sidewalk above it), the
 # first row of sidewalk south, the south facade's row; anything else is A
@@ -314,6 +319,8 @@ lv.patron('civ1', D0 + 11.5, 20.85, 90, 'drink')
 lv.patron('civ3', D0 + 19.5, 20.85, 90, 'drink')
 
 # ---------------------------------------------------------------- the cafe and its terrace (south, set back)
+# (LAID THEN TAKEN AWAY: the harmony pass puts the fruit market there. It is still laid here because its tables draw
+# from the street's dice: the parked cars and the shops after it stay where they were)
 lv.area('the cafe: its front, the awnings')
 for x in range(T0 + 1, T1):
     lv.put(x, 21, 'G')
@@ -635,7 +642,9 @@ for (a, b) in ((62, 98), (276, 312), (404, 446)):
 lv.area('south sidewalk: against the walls')
 S_WALL = ['sandwich_board', 'bench', 'vending', 'plant', 'fruit_stand', 'trash_can', 'ash_urn', 'cardboard_box', 'bench',
           'paper_bundle', 'fruit_stand', 'crate', 'shopping_cart', 'phone_booth', 'bench', 'trash_can', 'sandwich_board']
-S_DARK = ['bin_bag', 'bin_bag', 'crate', 'crate', 'trash_can', 'keg', 'cardboard_box']   # (no barrel on his way: a death nobody told)
+S_DARK = ['bin_bag', 'bin_bag', 'crate', 'crate', 'trash_can', 'bin_bag', 'cardboard_box']   # (no barrel on his way: a death nobody
+# told; no keg either, the user: "enleve les futs de biere qui trainent": a keg has no business on a sidewalk, and
+# flung off it by his car it lay in the road. The list keeps its length: the street's dice roll on as they did)
 doors = doors_of(south_shops) + [D0 + 15.5]
 order = list(S_WALL)
 col = 4.0
@@ -1265,6 +1274,292 @@ TOLL_LIGHTS += [[CANOPY_X + 0.3, r + 0.9, 3, '#ffd890', 0.25] for r in ISLANDS[:
 TOLL_LIGHTS += [[591.0, 52.0, 4, '#38f0dc', 0.3], [661.0, 47.6, 6, '#ff8ac8', 0.2], [583.0, 50.4, 6, '#8af0e8', 0.2]]
 
 
+# ================================================================ THE HARMONY PASS: from the suburb to Miami
+# (docs/LEVEL2.md "Segment 1, section by section": the column MIAMI of its table; the user, 2026-11-20: "le debut est
+# raccord avec le suburb du niveau 1, mais la transition est trop brutale ... on s'approche de Miami mais on reste
+# encore un peu en banlieue ... plus de palmiers ... des clodos et tout ... enleve les futs de biere".) The street is
+# a GRADIENT, section by section, from level 1's district to the alley's pastel stucco and the ramp's royal palms:
+#   0  (cols 0-61)     the bar's district as level 1 left it: brick, the shops' neon, nothing of Miami
+#   1  (62-246)        the first scruffy cabbage palms among the street trees, a bail-bond bus bench, the strip's pole
+#                      sign, fallen fronds; the derelict stretch: a stump, palms gone wild in the vacant lot, the homeless
+#   2  (247-312)       the bus stop (a lawyer's bench, a pastel pay phone, young palms in grates), the first pastel
+#                      front, then HOUSES: stucco in four pastels behind their front yards (garden walls, a chain-link
+#                      fence, oleanders, lawn flamingos, mailboxes on posts, cabbage and coconut palms)
+#   3  (313-356)       pastel awnings, peach and mint fronts; THE FRUIT MARKET (the lorry's dodge)
+#   4  (357-403)       the diner under a deco canopy, young palms along its kerb, a flamingo in neon
+#   5  (404-449)       stucco on every front, royal palms lit from their feet, hibiscus, deco canopies, neon tubes,
+#                      rain in the gutters with the neon in it: the alley, the motel and the ramp follow
+# Laid AFTER the street's dice are all thrown (nothing here draws from `rng`: the parked cars, the shops and the roofs
+# stay where they were): things are taken away or swapped by hand, the new ones have their place.
+def drop(pick):
+    """Take away the props `pick(kind, col, row)` chooses, and the room they held."""
+    gone = [p for p in lv.props if pick(p[1], p[2], p[3])]
+    for p in gone:
+        lv.props.remove(p)
+        if SIZES.get(p[1]):
+            b = Level.box(p[1], p[2], p[3], p[4])
+            boxes[:] = [o for o in boxes if max(abs(o[k] - b[k]) for k in range(4)) > 0.1]
+    return gone
+
+
+def swap(kind, col, new, row=None, dc=0.0, deg=None, on='s'):
+    """The prop `kind` at column `col` becomes a `new` one (at its own place unless told)."""
+    old = drop(lambda k, c, r: k == kind and abs(c - col) < 0.25)
+    assert len(old) == 1, f'{len(old)} {kind} at col {col}'
+    (_, _, c, r, d, opt) = old[0]
+    must(new, c + dc, r if row is None else row, d if deg is None else deg, on=on, **opt)
+
+
+def unpaint(pick):
+    lv.floor[:] = [f for f in lv.floor if not pick(f[0], f[1], f[2])]
+
+
+def stucco(c0, c1, tile, north):
+    """The plain wall of the fronts from c0 to c1 painted in a pastel (the windows and doors as they are)."""
+    for c in range(c0, c1 + 1):
+        r = 7 if north else s_face(c)
+        if lv.tiles[r][c] == 'X':
+            lv.put(c, r, tile)
+
+
+HARMONY_LIGHTS = []         # [col, row, r tiles, colour, intensity] (the night section adds them)
+PASTEL = {'awning_red': 'awning_pink', 'awning_green': 'awning_mint', 'awning_blue': 'awning_lavender', 'awning_wine': 'awning_peach'}
+
+# ---------------------------------------------------------------- 1: the first palms (cols 62-147)
+lv.area('harmony 1: the first palms, the strip')
+swap('street_tree', 83.5, 'sabal_palm')
+swap('street_tree', 92.5, 'sabal_palm_b')
+must('bus_bench_bail', 81.0, 8.58)
+lv.paint('sabal_frond_fallen', 94.4, 10.3, 20)
+lv.paint('litter_bottles', 79.2, 9.4)
+must('news_box_yellow', 109.6, 16.45)
+must('news_box_red', 110.2, 16.45)
+must('pole_sign_strip', 118.6, 17.25)                                     # PALM PLAZA: the strip's tenants on its pole
+must('sabal_palm_ragged', 130.6, 16.5)
+lv.paint('sabal_frond_fallen', 129.2, 17.2, 200)
+# somebody's camp in the strip's blind doorway (nobody home: he is down the street with his cart)
+must('doorway_camp', 134.2, 17.36, 180)
+lv.paint('cardboard_sign', 135.9, 16.7)
+lv.paint('litter_bottles', 132.4, 16.8, 90)
+# under the railway bridge: a bedroll left by the bench, bottles
+must('bedroll', 150.6, 17.6)
+lv.paint('litter_bottles', 151.0, 16.7)
+lv.paint('litter_a', 154.4, 8.5)
+
+# ---------------------------------------------------------------- 1: the derelict stretch (cols 157-246)
+lv.area('harmony 1: the dark stretch (palms gone wild in the lot, the homeless)')
+must('palm_stump', 173.4, 8.45)                                           # one the city cut down
+for (kind, c, r) in (('sabal_palm_ragged', 165.6, 7.1), ('sabal_palm_b', 210.6, 7.0)):
+    must(kind, c, r, on='~"')                                             # in the lot, their crowns over the fence
+must('coconut_palm_lean', 187.4, 6.9, 75, on='~"')                       # leaning out of the lot over the sidewalk
+lv.paint('coconuts_fallen', 188.6, 8.5)
+lv.paint('palm_frond_fallen', 185.6, 8.45)
+lv.paint('sabal_frond_fallen', 166.8, 8.5, 150)
+lv.paint('sabal_frond_fallen', 209.6, 8.5, 30)
+# a man asleep on his cardboard against the blind wall, his things by him; another with his cart, smoking
+lv.paint('cardboard_bed_blanket', 188.4, 17.4)
+lv.patron('tramp', 188.3, 17.4, 180, 'sleep')
+must('bags_pile', 186.6, 17.58, 180)
+lv.paint('cardboard_sign', 190.3, 16.75)
+lv.paint('litter_bottles', 187.4, 16.6)
+must('cart_loaded', 219.3, 17.45, 0)
+lv.patron('tramp', 220.3, 17.2, 250, 'smoke')
+lv.paint('litter_bottles', 222.6, 16.7, 180)
+lv.paint('litter_b', 203.6, 16.8)
+lv.paint('litter_a', 239.0, 16.7, 90)
+HARMONY_LIGHTS += [[187.5, 9.0, 5, '#7a5ad8', 0.2], [219.6, 17.0, 4, '#ffa860', 0.16], [173.0, 16.6, 6, '#7a5ad8', 0.16],
+                   [166.0, 8.6, 4, '#5a6ad8', 0.16], [210.6, 8.6, 4, '#5a6ad8', 0.16], [233.0, 16.6, 6, '#7a5ad8', 0.16]]
+
+# ---------------------------------------------------------------- 2: the bus stop (cols 247-271)
+lv.area('harmony 2: the bus stop (a lawyer\'s bench, the pay phone, people waiting, young palms)')
+swap('bench', 263.2, 'bus_bench_abogado', row=8.6)
+must('payphone_pastel', 252.6, 8.45)
+lv.patron('civ3', 252.6, 9.0, 270, 'phone')                               # a man at the pay phone
+lv.patron('civ2', 255.7, 9.9, 90, 'cross')                                # waiting for the night bus
+lv.patron('civ4', 263.2, 8.62, 90, 'watch')                               # sat on the bench
+for c in (249.5, 267.5, 270.5):
+    lv.paint('tree_grate', c, 10.2)
+    must('palm_young', c, 10.2)
+must('news_box_red', 253.2, 16.45)
+must('news_box_yellow', 253.8, 16.45)
+stucco(255, 263, 'Y', True)                                               # the first pastel front
+stucco(265, 271, 'M', False)
+
+# ---------------------------------------------------------------- 2: the houses and their front yards (cols 277-311, north)
+# The shops of this block are houses: stucco in four pastels (their fronts on row 7 as before, two pairs of windows
+# and a door each), a front yard two metres deep where the wide sidewalk was (rows 8-9, grass) behind a low garden
+# wall or a chain-link fence along the sidewalk left (row 10), a path to each door, a mailbox on its post at the gate
+lv.area('harmony 2: the houses, their front yards')
+YARDS = ((277, 284, 'Y', 'garden_wall_cream'), (286, 293, 'M', 'yard_fence'), (295, 302, 'P', 'garden_wall_pink'),
+         (304, 311, 'V', 'garden_wall_mint'))
+drop(lambda k, c, r: 276.6 < c < 312.4 and 7.9 < r < 10.3)               # the shops' signs, awnings, benches, trees
+unpaint(lambda k, c, r: k == 'tree_grate' and 276 < c < 312 and r < 11)
+for c in range(276, 313):
+    lv.put(c, 7, 'X')
+lv.fill(277, 8, 311, 9, '"')
+for (k, (a, b, tile, fence)) in enumerate(YARDS):
+    door = (a + b) // 2
+    for c in range(a, b + 1):
+        lv.put(c, 7, 'L' if c == door else 'G' if c in (a + 1, a + 2, b - 2, b - 1) else tile)
+    lv.fill(door, 8, door, 9, 's')                                        # the path to the door
+    if fence == 'yard_fence':                                             # (chain-link, the oleander grown through it)
+        must('yard_fence', a + 1.1, 9.92, on='"s')
+        must('yard_fence_gate', b - 0.9, 9.92, on='"s')
+    else:
+        must(fence, a + 1.5, 9.84, on='"s')
+        must(fence, b - 0.5, 9.84, on='"s')
+    must('mailbox_post', door + 1.25, 10.2)
+    lv.paint('lawn_dry_b', a + 1.5, 9.0, 0 if k % 2 else 180)
+    lv.paint('lawn_dry_b', b - 0.5, 9.0, 180 if k % 2 else 0)
+    lv.prop('wall_lamp', door + 1.5, 8.06, 0)                             # the porch light
+    HARMONY_LIGHTS.append([door + 1.0, 8.8, 3, '#ffd9a0', 0.22])
+for (kind, c, r, deg) in (('oleander_pink', 278.4, 8.7, 0), ('sabal_palm', 282.6, 9.0, 0), ('lawn_flamingos', 279.75, 9.15, 0),
+                          ('sabal_palm_b', 287.6, 8.95, 0), ('oleander_white', 292.2, 8.7, 0),
+                          ('oleander_white', 296.4, 8.7, 0), ('coconut_palm_lean', 300.6, 8.75, 40),
+                          ('oleander_pink', 305.4, 8.7, 0), ('sabal_palm_ragged', 309.4, 9.0, 0), ('lawn_flamingos', 308.4, 9.15, 180)):
+    must(kind, c, r, deg, on='"')
+lv.paint('coconuts_fallen', 302.4, 10.4)
+lv.paint('palm_frond_fallen', 299.0, 10.45, 185)
+lv.paint('sabal_frond_fallen', 288.6, 10.4, 60)
+lv.paint('sabal_frond_fallen', 310.6, 10.35, 200)
+
+# ---------------------------------------------------------------- 3: THE FRUIT MARKET (the lorry's dodge, cols 325-354)
+# The cafe's terrace is gone (the user: "les terrasses comme ca, pas sur ... peut-etre autre chose"). Of the three sets
+# painted for it the fruit market is the one that reads at night and from the wheel: its stalls are lit (a bulb each,
+# strings of them along its front), its awnings and fruit are the brightest things of the block, its signs are the
+# street's Spanglish, and everything in it is torn or flung (stalls torn, their fruit and coconuts all over the road,
+# crates and signs thrown: nothing `lasting`, nothing bolted but the stalls). The tyre yard is black rubber on a dark
+# lot (and round things by a road were what read as kegs); the car wash has too little to send flying. The geometry
+# is the terrace's: the fronts four metres back (row 21), open ground from the kerb to them, the way round the lorry
+# at col 340 (the event's `gap`). Its ground: the sidewalk's row along the kerb, then beaten earth: a vacant corner.
+lv.area('harmony 3: the fruit market (everything flies)')
+drop(lambda k, c, r: T0 - 0.7 < c < T1 + 1.3 and 16 <= r < 23)           # the terrace, the cafe's signs and lamps
+lv.patrons[:] = [p for p in lv.patrons if not (T0 < p[1] < T1 and 16 < p[2] < 21)]
+lv.fill(T0, 17, T1, 20, '~')
+lv.prop('neon_sign_palm', T0 + 3.0, 20.91)                                # the fruteria behind it
+lv.prop('neon_sign_open', T1 - 2.0, 20.91)
+for c in (T0 + 7.0, T0 + 16.5, T0 + 20.5):
+    lv.prop('awning_peach', c, 20.44, 180)
+for x in range(T0 + 2, T1, 5):
+    lv.prop('ceiling_lamp', x + 0.5, 22.3)
+    lv.prop('wall_lamp', x + 2.5, 20.9, 180)
+STALLS = [(T0 + 3.4 + i * 5.5, 17.78, 'market_stall' if i % 2 == 0 else 'market_stall_coco') for i in range(5)]
+STALLS += [(T0 + 6.2 + i * 5.5, 19.7, 'market_stall_coco' if i % 2 == 0 else 'market_stall') for i in range(4)]
+for (c, r, kind) in STALLS:
+    must(kind, c, r, on='~')
+CRATES = ('fruit_crate_orange', 'fruit_crate_mango', 'fruit_crate_coconut')
+n = 0
+for i in range(5):                                                        # crates stacked between two stalls, by the kerb
+    c = T0 + 3.4 + i * 5.5
+    for (dx, r, deg) in ((1.75, 17.35, 0), (2.45, 17.5, 90), (1.8, 18.0, 0), (3.1, 18.15, 0), (2.6, 16.42, 0), (3.25, 16.4, 0), (-0.6, 16.4, 0))[:5 + i % 3]:
+        n += 1
+        if c + dx < T1 + 0.4:
+            must(CRATES[n % 3], c + dx, r, deg, on='s~')
+    if i % 2 == 0:
+        must('market_sign', c + 0.6, 16.4)                               # MANGOS FRESH 3/$1, by the kerb
+for i in range(7):
+    lv.prop('string_lights', T0 + 3.2 + i * 3.9, 16.82)                   # bulbs strung along its front
+must('sabal_palm_b', T0 + 0.7, 18.9, on='~')
+must('coconut_palm_lean', T1 - 0.4, 19.5, 205, on='~')                   # leaning in over the last stalls
+lv.paint('coconuts_fallen', T1 - 2.6, 18.6)
+lv.paint('palm_frond_fallen', T0 + 1.9, 19.6, 30)
+lv.paint('litter_b', T0 + 10.4, 18.9)
+lv.paint('litter_a', T0 + 21.5, 18.8, 90)
+lv.patron('civ2', T0 + 8.9, 18.85, 270, 'cross')                          # the man who keeps the stalls
+lv.patron('civ4', T0 + 20.6, 16.75, 90, 'smoke')                          # a customer at this hour
+stucco(T0, T1, 'Y', False)
+# its block: pastel awnings from here on, peach and mint fronts
+stucco(314, 322, 'Y', True)
+stucco(323, 332, 'M', True)
+stucco(343, 357, 'P', True)
+stucco(316, 323, 'M', False)
+
+# ---------------------------------------------------------------- 4: the lit corner, the cross street (cols 357-403)
+lv.area('harmony 4: the diner under its canopy, young palms, more neon')
+lv.prop('deco_canopy_pink', D0 + 15.5, 18 - 20 / 32, 180)                # over the diner's door
+for c in (366.2, 373.6, 380.4):
+    lv.paint('tree_grate', c, 16.5)
+    must('palm_young', c, 16.5)
+stucco(D0, D1, 'P', False)
+stucco(362, 372, 'M', True)
+stucco(374, 384, 'Y', True)
+lv.prop('neon_sign_flamingo', 386.2, 8.09)                                # on the blind wall by the corner
+lv.prop('neon_tube_pink', 360.4, 8.06, 0)
+swap('news_box', 389.4, 'news_box_yellow')
+swap('news_box', 390.52, 'news_box_red')
+swap('mailbox', 401.4, 'mailbox_blue')
+
+# ---------------------------------------------------------------- 5: to the freeway (cols 404-449)
+# Sunset Bay's own: every front in stucco, royal palms in their grates lit from their feet (pink and cyan in turn, as
+# the ramp's), hibiscus along the walls, a deco canopy over a door, tubes of neon, puddles holding it
+lv.area('harmony 5: royal palms, hibiscus, deco canopies, stucco')
+drop(lambda k, c, r: 404 < c < 441.5 and 8.2 < r < 10.3 and k in ('bench', 'trash_can', 'sandwich_board', 'vending', 'palm_tree'))
+unpaint(lambda k, c, r: k == 'tree_grate' and 404 < c < 446 and r < 11)
+for (k, c) in enumerate((408.5, 419.5, 428.5, 438.5)):
+    lv.paint('tree_grate', c, 8.7)
+    must('royal_palm' if k % 2 else 'royal_palm_b', c, 8.7)
+    HARMONY_LIGHTS.append([c, 9.2, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5])
+swap('bench', 442.2, 'bus_bench_bail', row=8.6, dc=-2.2)
+for (kind, c) in (('hibiscus_hedge', 413.4), ('hibiscus_hedge_pink', 424.0), ('hibiscus_hedge', 434.2)):
+    must(kind, c, 8.42)
+for (x, w, kind, door, face) in north_shops:
+    if x >= 400 and door == 0:
+        lv.prop(('deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender', 'deco_canopy_pink')[x % 4], x + 0.5, 8 + 20 / 32, 180)
+for (c0, c1, tile) in ((400, 408, 'P'), (409, 418, 'M'), (419, 429, 'V'), (430, 440, 'Y')):
+    stucco(c0, c1, tile, True)
+for (c0, c1, tile) in ((400, 407, 'M'), (408, 417, 'Y'), (422, 431, 'P'), (432, 439, 'V')):
+    stucco(c0, c1, tile, False)
+drop(lambda k, c, r: k == 'paper_bundle' and abs(c - 414.1) < 0.5)
+must('hibiscus_hedge_pink', 415.6, 17.58)
+for c in (411.5, 426.5):
+    lv.paint('tree_grate', c, 16.5)
+    must('palm_young', c, 16.5)
+lv.prop('neon_tube_pink', 416.6, 17.94, 180)
+for (kind, c, r) in (('puddle_neon', 414.0, 11.9), ('puddle_neon_b', 427.4, 15.4), ('puddle_neon', 437.0, 12.3), ('puddle_neon_b', 384.0, 15.5)):
+    lv.paint(kind, c, r)
+lv.paint('palm_frond_fallen', 430.4, 10.5, 170)
+lv.paint('litter_bottles', 443.2, 10.3)
+
+# pastel awnings: one in two from the bus stop on, all of them from the market on
+for (i, p) in enumerate(lv.props):
+    if p[1] in PASTEL and p[2] < WS and (p[2] >= 313 or (p[2] >= 247 and int(p[2]) % 2 == 0)):
+        lv.props[i] = (p[0], PASTEL[p[1]], *p[2:])
+
+# ---------------------------------------------------------------- part two, tied to the street
+# the same families down the frontage road: the street's news boxes by the motel, the camp's men have the same cart
+# and cardboard as the street's, bottles and fronds on its sidewalk; no loose drum by the lane
+lv.area('harmony: part two (the street\'s furniture carried on)')
+if drop(lambda k, c, r: k == 'shopping_cart' and abs(c - 461.5) < 0.3):
+    must('cart_loaded', 461.5, 41.75, 20, on='"')
+lv.paint('cardboard_sign', 460.4, 42.55)
+lv.paint('cardboard_bed_blanket', 455.2, 42.5, 180)
+must('news_box_yellow', 473.7, 49.62)
+must('news_box_red', 474.3, 49.62)
+lv.paint('litter_bottles', 478.9, 48.6)
+lv.paint('palm_frond_fallen', 468.4, 48.5, 200)
+lv.paint('sabal_frond_fallen', 495.2, 43.4, 40)
+if drop(lambda k, c, r: k == 'oil_drum' and abs(c - (DOCK_S[1] + 0.3)) < 0.2 and abs(r - (R1 + 2.6)) < 0.2):
+    must('bin_bag', DOCK_S[1] + 0.3, R1 + 2.6)
+# the cushion at the bank's nose: the plaza's own kind (it was two burst sand barrels: drums by a road again)
+if drop(lambda k, c, r: k == 'crash_cushion_hit'):
+    must('crash_cushion_narrow', 522.4, 42.1, 0, on='"=')
+# the toll's approach and the freeway's start were bare asphalt in the dark (their verges are off the picture): the
+# ramp's slabs carried on (a joint every 6 m, oil down the lanes), rubber, rain standing with the plaza's neon in it,
+# sodium between the tall lamps
+lv.area('harmony: the toll\'s approach, the freeway\'s start')
+for c in range(TOLL0 + 3, FAN[0] - 1, 6):
+    for r in (39.5, 45.5):                                                # (6 m each: the four lanes across)
+        lv.paint('expansion_joint', c, r)
+for (kind, c, r, deg) in (('oil_streak', 564.0, 44.25, 0), ('oil_streak', 571.0, 41.75, 0), ('oil_streak', 583.5, 46.75, 0), ('oil_streak', 567.5, 39.25, 0),
+                          ('tyre_marks', 569.0, 45.6, 0), ('puddle_neon_b', 573.4, 47.4, 0), ('puddle_neon', 585.0, 38.4, 0),
+                          ('crash_debris', 579.6, 48.6, 0), ('litter_a', 565.0, 48.5, 0),
+                          ('oil_streak', 646.0, 44.25, 0), ('oil_streak', 656.0, 41.75, 0), ('puddle_neon', 650.5, 45.4, 0),
+                          ('tyre_marks', 634.0, 40.6, 0), ('puddle_neon_b', 662.0, 42.6, 0), ('litter_b', 644.0, 39.6, 0)):
+    lv.paint(kind, c, r, deg)
+HARMONY_LIGHTS += [[568.0, 43.0, 9, '#ffb46a', 0.24], [575.5, 39.5, 8, '#ffa860', 0.2], [582.0, 46.5, 8, '#ffb46a', 0.24],
+                   [585.5, 40.0, 5, '#ff4aa6', 0.16], [648.0, 43.0, 9, '#ffb46a', 0.22], [660.0, 43.0, 9, '#ffa860', 0.2]]
+
+
 def bend_line(pts, r, step=0.25):
     """The points along a bend's line (tiles), as systems/Outro.js routePath lays it: straight lines, each inner corner
     rounded off by an arc of radius r (shortened when the lines are too short for it)."""
@@ -1418,6 +1713,7 @@ lights += TOLL_LIGHTS                                                    # (the 
 # from their feet, pink and cyan in turn, the green signs from below, more sodium over the merge (it was the dark end)
 lights += [[c, r, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5] for (k, (c, r)) in enumerate(((466.9, 48.8), (468.0, 42.3), (493.6, 42.1), (507.5, 50.3), (525.0, 50.3), (541.5, 50.3), (556.0, 50.3)))]
 lights += [[c, r, 2.2, '#e8fff0', 0.4] for (c, r) in ((RAMP_X - 3.0, 49.2), (RAMP_X + 21.0, 48.3), (RAMP_X + 13.0, 48.3))]
+lights += HARMONY_LIGHTS                                                 # (the harmony pass's: palms' feet, porches)
 lights += [[531.0, 41.5, 8, '#ffb46a', 0.32], [541.0, 44.5, 9, '#ffa860', 0.3], [552.0, 45.5, 8, '#ffa860', 0.34], [557.0, 40.0, 8, '#ffb46a', 0.3]]
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
@@ -1566,8 +1862,9 @@ if __name__ == '__main__':
                  'Level 2A - "THE CHASE": the back road (segment 1 of docs/LEVEL2.md), driven east in THE BOSS\'s convertible.',
                  'Two lanes that nothing stands in, between kerbs; parking on the north side, on ours or on neither by',
                  'section; two junctions under traffic lights, a railway bridge, works, a bus stop, the yard the lorry backs',
-                 'out of (event 2) with the cafe\'s terrace as the way round, the diner on the lit corner. The alley at',
-                 'col 138 is event 1. Then works shut it: the scripted detour down the side street onto leg 1 (a plain',
-                 'test layout for now: systems/Route.js legs and bends), and THE TOLL: the road opens to four lanes, a plaza',
+                 'out of (event 2) with the fruit market as the way round, the diner on the lit corner; a gradient from',
+                 'level 1\'s suburb to Miami (palms, pastel stucco, neon growing block by block). The alley at',
+                 'col 138 is event 1. Then works shut it: the scripted detour down the alley onto leg 1 (systems/Route.js',
+                 'legs and bends: the frontage road, the on-ramp, the merge), and THE TOLL: the road opens to four lanes, a plaza',
                  'under its lit roof, a wooden arm or a steel boom at the end of each lane (event 3), the freeway\'s start.',
              ])

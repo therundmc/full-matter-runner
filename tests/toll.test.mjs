@@ -529,3 +529,35 @@ test('hud: an edge marker on the top edge under the road\'s line and its metres 
   assert.equal(aside.y, 30, 'away from it: left where it is');
   assert.equal(underRoad(null, W, pad, s), null);
 });
+
+// ---------------------------------------------------------------- the polish pass (2026-11-20)
+test('toll: a pursuer stopped for good on the approach is braked to a stand short of the islands; one stopped at the mouths runs on through its lane', () => {
+  // (it slid on down its lane to the islands' noses and lay across a mouth: he was held up five seconds there)
+  const nose = (T.nose ?? T.fan[1]) * TILE, K = CHASE.toll.wreck;
+  const s = start(T.fan[0] - 22, C.legs[2].lanes[2], { speed: C.legs[2].cruise });
+  const car = s.P.spawn(s.v.x + 200, C.legs[2].lanes[1] * TILE, 0, 'chase', C.legs[2].cruise);
+  run(s, 0.2);
+  s.P.wreck(car);
+  assert.ok(s.w.toll.wreckWay(car.v.x, car.v.y)?.stop, 'on the approach: a place to stop before');
+  run(s, 4, { steer: true });
+  assert.ok(car.v.x + car.v.w / 2 < nose - K.short + K.room, `stopped short of the islands (col ${(car.v.x / TILE).toFixed(1)}, their noses at ${T.nose})`);
+  assert.equal(s.w.killed, null, 'and he got past it');
+  // (pure) the three stretches of its way
+  const toll = s.w.toll, y = T.lanes[0] * TILE + 40;
+  assert.equal(toll.wreckWay(nose - K.short - K.from - 10, y), null, 'far out: the usual exit');
+  assert.ok(toll.wreckWay(nose - K.short - K.room - 10, y).stop === nose - K.short);
+  const on = toll.wreckWay(nose + 40, y);
+  assert.ok(on.run > 0 && Math.abs(on.lane - T.lanes[0] * TILE) < 1, 'between the islands: on down its own lane');
+  assert.equal(toll.wreckWay(GX + K.past + 10, y), null, 'past the gates: the usual exit');
+});
+
+test('pursuit: no more than CHASE.pursuit.most of them drive after him at once; a toll\'s wrong-gate car still joins', () => {
+  const s = start(C.legs[2].from + 2, C.legs[2].lanes[2], { speed: C.legs[2].cruise }), { P } = s;
+  const tg = P.target(), live = () => P.cars.filter((c) => ['chase', 'cross', 'limp'].includes(c.state)).length;
+  for (let i = 0; i < 6; i++) P.trigger({ kind: 'behind', style: 'gunner' }, tg);
+  assert.equal(live(), CHASE.pursuit.most, 'the events past the cap bring nobody');
+  P.trigger({ kind: 'behind', style: 'rammer', gate: 'steel' }, tg);
+  assert.ok(P.cars.some((c) => c.gate0 === 'steel'), 'the wrong-gate car is its event: it joins all the same');
+  assert.equal(level2a.chase.end, 656, 'the level ends well before the map\'s edge (44 columns to run on in the dark)');
+  assert.ok(level2a.tiles[0].length - level2a.chase.end >= 40);
+});

@@ -11972,28 +11972,49 @@ def p_guardrail_end():
 
 
 def p_crash_cushion(narrow=False):
-    """A crash cushion in front of a pier, from above, 3 m: six sand barrels set one, two, three toward the traffic
-    (-x), yellow plastic with their black lids, the front one wrapped in reflective sheeting, one lid split with the
-    sand showing, dust and tyre black on them. `narrow`: before a toll island's nose (1.5 m wide: the 2.75 m one
-    stood half a metre into each lane beside it), three barrels in single file, the same paint."""
+    """A crash cushion in front of a pier or a rail's end, from above, 3 m: a steel-framed attenuator on its sled:
+    yellow energy-absorbing cartridges in four bays between two zinc fender rails, a steel diaphragm between two
+    bays, a rounded nose in yellow and black chevrons toward the traffic (-x), the backstop bolted at its foot (+x);
+    scuffed, tyre black on its nose. (It was sand barrels: round drums that read as kegs lying in the road: the
+    user, 2026-11-20.) `narrow`: before a toll island's nose (1.5 m wide: the 2.75 m one stood half a metre into
+    each lane beside it), one cartridge a bay; the wide one three abreast."""
     W, H = (96, 44) if narrow else (96, 88)
     cv = Cv(W, H)
     rng = random.Random(9771)
     yel = ramp('#e8c020', 0.5, 0.26, 0.28)
-    lid = ramp('#2e2c34', 0.45, 0.22, 0.35)
-    spots = ((16, 22), (44, 22), (72, 22)) if narrow else ((16, 44), (44, 30), (44, 58), (72, 16), (72, 44), (72, 72))
-    for n, (x, y) in enumerate(spots):
-        def barrel(ly, x=x, y=y, n=n):
-            ring(ly, x, y, 0.0, 13.0, lambda dx, dy, d: shade(yel, 0.3 + light(dx / 13, dy / 13) * 0.7))
-            ring(ly, x, y, 0.0, 10.6, lambda dx, dy, d: shade(lid, 0.45 + light(dx / 12, dy / 12) * 0.35) if d > 9.2 else lid[2])
-            if n == 0:
-                ring(ly, x, y, 11.0, 13.0, lambda dx, dy, d: hx('#f4f2ea') if int((math.atan2(dy, dx) + 3.15) * 3) % 2 else hx('#e8c020'))
-            if n == (2 if narrow else 4):                                  # split, the sand in it
-                px_paint(ly, x - 7, y - 3, x + 5, y + 4, lambda x_, y_, cur: shift(hx('#c4a46a'), rng.randint(-10, 10)) if abs(y_ - y - 0.5 * (x_ - x)) < 2.0 else None)
-            fill_shape(ly, x - 2.5, y - 2.5, 1.2, 1.2, lambda u, v, L: shade(lid, 0.9))
-        layer(cv, barrel)
-    smudge(cv, rng, 12, (3, 3, W - 3, H - 3), (1.5, 4.0), 0.22, hx('#c8b896'))
-    smudge(cv, rng, 6, (3, 8, 30, 36) if narrow else (3, 30, 30, 58), (1.0, 3.0), 0.4)
+    stl = ramp('#4e5362', 0.5, 0.25, 0.4)
+    y0, y1 = 5.0, H - 5.0
+    rows, bays = (1 if narrow else 3), 4
+    bw, ch = 70.0 / bays, (y1 - y0 - 7.0) / (1 if narrow else 3)
+
+    def bed(ly):                                                         # the sled the bays slide back on
+        fill_shape(ly, 54.0, H / 2, 39.0, (y1 - y0) / 2 - 1.0, lambda u, v, L: shade(stl, 0.12 + L * 0.3), kind='rect', corner=1.0, bevel=1.0)
+    layer(cv, bed)
+    for i in range(bays):
+        for j in range(rows):
+            def cell(ly, cx=20.0 + bw * (i + 0.5), cy=y0 + 3.5 + ch * (j + 0.5), k=i * rows + j):
+                fill_shape(ly, cx, cy, bw / 2 - 1.4, ch / 2 - 0.9, lambda u, v, L: shade(yel, 0.28 + L * 0.68), kind='rect', corner=1.6, bevel=2.2)
+                frect(ly, cx - bw / 2 + 3.5, cy - 0.5, cx + bw / 2 - 3.5, cy + 0.5, shade(yel, 0.2))    # its moulded seam
+                frect(ly, cx - 1.5, cy - 3.0, cx + 1.5, cy - 1.5, hx('#2e2c34') if k % 3 else hx('#f4f2ea'))   # its label
+            layer(cv, cell)
+    for i in range(1, bays):                                             # the diaphragms between two bays
+        frect(cv, 20.0 + bw * i - 0.75, y0 + 1.0, 20.0 + bw * i + 0.75, y1 - 1.0, shade(stl, 0.75))
+
+    def rails(ly):
+        for y in (y0, y1 - 3.0):
+            px_paint(ly, 16.0, y, 92.0, y + 3.0, lambda x, yy, cur, y=y: shade(ZINC, (0.95, 0.6, 0.3)[min(2, int(yy - y))]))
+        fill_shape(ly, 93.0, H / 2, 2.0, (y1 - y0) / 2 + 1.0, lambda u, v, L: shade(stl, 0.3 + L * 0.6), kind='rect', corner=0.6, bevel=1.0)   # the backstop
+    layer(cv, rails)
+    for x in range(22, 92, 9):
+        stud(cv, x, y0 + 1.5, hx('#8a8e98'))
+        stud(cv, x, y1 - 1.5, hx('#8a8e98'))
+
+    def nose(ly):
+        fill_shape(ly, 11.5, H / 2, 8.5, (y1 - y0) / 2, lambda u, v, L: shade(yel, 0.3 + L * 0.65), kind='rect', corner=7.0, bevel=2.0)
+        px_paint(ly, 3.0, y0, 20.0, y1, lambda x, y, cur: (SIGN_INK if int((x + abs(y - H / 2)) // 3) % 2 else None) if cur[3] else None)
+    layer(cv, nose)
+    smudge(cv, rng, 10, (3, 3, W - 3, H - 3), (1.5, 4.0), 0.2, hx('#c8b896'))
+    smudge(cv, rng, 6, (3, 6, 24, H - 6), (1.0, 3.0), 0.4)
     return cv
 
 

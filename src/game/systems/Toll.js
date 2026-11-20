@@ -125,6 +125,20 @@ export default class Toll {
   // nothing else is told while a plaza is (Pursuit.busy: no shot, no ram, no brake), a breath before it too
   busy(x, v) { return !!this.near(x, v, this.C.tell + 0.5); }
 
+  // A wreck of theirs at (x, y) coming at a plaza (Pursuit.exit; C.wreck): { stop }: the x it is braked to a stand
+  // before, `short` px short of the islands' noses (from `from` px out); nearer than `room` px to that, and to `past`
+  // px beyond the gates, { lane, run }: its lane's line across, kept, and the least speed it runs on through at;
+  // else null
+  wreckWay(x, y) {
+    const K = this.C.wreck;
+    for (const P of this.plazas) {
+      const stop = mouthX(P) - K.short;
+      if (x < stop - K.room) { if (x > stop - K.from) return { stop }; continue; }
+      if (x < P.x + K.past) return { lane: laneY(P, nearestLane(P, y, x), x), run: K.run };
+    }
+    return null;
+  }
+
   // the told plaza for his car, its arrows and brackets: [{ P, k (0..1: faded in), d: his drive }]
   told() {
     return this.plazas.filter((P) => P.k > 0).map((P) => ({ P, k: P.k, d: this.world.drive }));

@@ -282,6 +282,8 @@ export const CHASE = {
   //   limp: a rear tyre, it hangs on alongside him (the `abreast` slot, in his arc, never in his lane), at no more
   //   than `limp` px/step over his speed (it only just keeps up; all of its speed while still in his lane ahead of
   //   him); lost: `lost` px behind him, it is out of the chase
+  //   most: how many of them drive after him at once at the most (an event's car past that does not join; the plaza
+  //   held five of them when none was shot)
   //   rubber: in the chase but more than `far` px behind him for `t` s, or more than `close` px from its slot for
   //   `held` s, off the picture: brought back up behind it, on its slot's line
   //   spawn: one joining from behind starts `behind` px back (just off the picture) at his speed + `over` (`clear`
@@ -312,7 +314,7 @@ export const CHASE = {
       // air, its engine's fire-ball and the one of a burning wreck that hits the roadside: systems/CarFx.js
       fx: { ball: [26, 190, 120, '#ffb060'], burn: true, smoke: [0.6, 7, 1.1], shed: [0.16, 0.34], fling: [120, 260],
         crash: [22, 14, 3, 0.3] } },
-    limp: 0.6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
+    limp: 0.6, lost: 1600, most: 4, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
     spawn: { behind: 330, over: 5, clear: 260, near: 300, cross: 6.5, radius: 150 },
   },
   // the gunman leaning out of a pursuer's window on the runner's side and his TOLD shot (docs/LEVEL2.md telegraphs):
@@ -377,6 +379,9 @@ export const CHASE = {
     crash: { back: 2.6, across: 3.2, spin: 0.2, fly: 0.9, dents: 14, parts: 4, shake: 0.55, sparks: 45, bits: 8, clear: 2.5 },
     kerb: { chips: 30 },
     coins: { r: 26, n: 26 },
+    // one of theirs stopped for good as it comes at the plaza (Toll.wreckWay, Pursuit.exit): px (`short` of the noses,
+    // `room` before that, `from` out, `past` the gates), `run` px/step
+    wreck: { short: 200, room: 80, from: 1500, past: 110, run: 7 },
   },
   // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane
   alley: { red: 0.7, pad: 10 },

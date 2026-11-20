@@ -161,7 +161,19 @@ test('signals: the lamps lit by the time (pure), one flag a light on the prop', 
 test('road: the street has what a street has: a bus stop, the works signed in a parking row, the bridge, the freeway sign', () => {
   const has = (t) => level2a.props.filter(([k, c]) => k === t && c < C.legs[0].to); // (the street: the works of the detour are past it)
   for (const k of ['bus_shelter', 'sign_bus', 'arrow_board', 'compressor', 'sign_works', 'viaduct', 'gantry_sign']) assert.equal(has(k).length, 1, k);
-  assert.ok(has('street_tree').length >= 6 && has('bollard').length >= 8 && has('hydrant').length >= 6 && has('sign_noparking').length >= 5);
+  assert.ok(has('hydrant').length >= 6 && has('sign_noparking').length >= 5);
+  // THE GRADIENT (docs/LEVEL2.md, the table's MIAMI column): level 1's suburb first, palms and pastels block by block
+  const PALMS = ['sabal_palm', 'sabal_palm_b', 'sabal_palm_ragged', 'coconut_palm_lean', 'palm_young', 'royal_palm', 'royal_palm_b'];
+  const palms = PALMS.flatMap(has), cols = (list) => list.map(([, c]) => c);
+  assert.ok(palms.length >= 20 && has('street_tree').length === 2, `more palms than trees (${palms.length} palms)`);
+  assert.ok(Math.min(...cols(palms)) > 62, 'none in the bar\'s district: the start is level 1\'s');
+  assert.ok(Math.min(...cols([...has('royal_palm'), ...has('royal_palm_b')])) > 400, 'royal palms only toward the freeway');
+  const stucco = (c0, c1) => level2a.tiles.slice(7, 22).reduce((n, row) => n + [...row.slice(c0, c1)].filter((t) => 'PMYV'.includes(t)).length, 0);
+  assert.equal(stucco(0, 247), 0, 'no pastel front before the bus stop');
+  assert.ok(stucco(247, 313) > 0 && stucco(400, 440) > stucco(247, 287), 'then more and more of it');
+  assert.ok(has('tramp').length === 0 && level2a.ambient.patrons.filter(([k, c]) => k === 'tramp' && c < C.legs[0].to).length === 2, 'two homeless men on the street');
+  // no keg, no drum on a sidewalk (the user: "enleve les futs de biere qui trainent au milieu de la route")
+  for (const k of ['keg', 'oil_drum', 'barrel']) for (const [, c, r] of level2a.props.filter(([t]) => t === k)) assert.ok(r < 7 || r > 50, `${k} at ${c},${r} by a road`);
   // the works stay in the parking row: its cones and barricades north of their lane
   for (const k of ['traffic_cone', 'barricade', 'arrow_board', 'compressor', 'sign_works']) for (const [, , r] of has(k)) assert.ok(r > 9 && r < 11, `${k} at row ${r}`);
   assert.ok(!level2a.props.some(([t]) => t === 'sawhorse'), 'no barrier across a lane');
