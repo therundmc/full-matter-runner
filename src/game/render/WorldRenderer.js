@@ -24,6 +24,7 @@ import { drawCurtains } from './ClothArt.js';
 import { drawChaseFigures, drawChaseWind, drawChaseTells } from './PursuitArt.js';
 import { drawDrag } from './DragArt.js';
 import { drawCarSmoke } from './CarFxArt.js';
+import { PROF } from '../../engine/Profiler.js';
 
 const { Body } = Matter;
 const OUTLINE = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // a stamp's 1 px dark outline
@@ -93,14 +94,21 @@ export default class WorldRenderer {
 
     // the map's layers (MapRenderer): only the part in view is drawn; a long map bakes what is about to come in view
     // (not for the whole map at once: the F3 overview shows the chunks there are)
+    const P = PROF.on ? PROF : null; // (the perf overlay's sections: systems/Perf.js)
+    P?.begin('map');
     const D = w.decals, fx0 = Math.floor(cam.x - v.x), fy0 = Math.floor(cam.y - v.y), fx1 = Math.ceil(cam.x + v.x), fy1 = Math.ceil(cam.y + v.y);
     if (fx1 - fx0 < 1e4) D.near(fx0, fx1);
     D.drawFloor(ctx, fx0, fy0, fx1, fy1);
     // blood lies over everything baked into the floor, what is wet over it; the dead and their pieces lie in it
     D.drawBlood(ctx, fx0, fy0, fx1, fy1);
+    P?.end('map');
+    P?.begin('wet');
     this.liquid.draw(ctx, view);
+    P?.end('wet');
     drawRainGround(ctx, w.weather, view, t);
+    P?.begin('map');
     D.drawFlesh(ctx, fx0, fy0, fx1, fy1);
+    P?.end('map');
     // what stands or lies on the floor is drawn on a layer of its own, then laid on the scene: its pixels are what the
     // floor's reflections (Lighting.post) must not cover
     const floor = ctx;
@@ -132,7 +140,9 @@ export default class WorldRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.layer, 0, 0);
     ctx.restore();
+    P?.begin('map');
     D.drawWalls(ctx, fx0, fy0, fx1, fy1);
+    P?.end('map');
     drawFlying(ctx, w.critters, t);
 
     w.particles.draw(ctx);
@@ -142,8 +152,12 @@ export default class WorldRenderer {
     const lit = w.lighting.active(cam);
     let l0 = performance.now();
     if (lit) {
+      P?.begin('light');
       w.lighting.apply(ctx, cam, t);
+      P?.end('light');
+      P?.begin('haze');
       this.smoke.draw(ctx, w.lighting); // the smoke and the mist where the lamps light them
+      P?.end('haze');
     }
     let lightMs = performance.now() - l0;
     if ((w.cleared || w.level.exit?.open) && w.level.exit && !w.outro) this.drawExit(ctx, t);
@@ -157,7 +171,9 @@ export default class WorldRenderer {
     drawFlames(ctx, w.fires.lit(), w.time, vis); // what burns, over the smoke: a fire is seen through it
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
+    P?.begin('light');
     if (lit) w.lighting.post(ctx, cam, t, this.liquid, this.layer);
+    P?.end('light');
     lightMs += performance.now() - l0;
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis, cam);

@@ -8,7 +8,7 @@
 // are let go (play entered from a menu or a screen with a click: that click is no shot).
 import Gamepad from './Gamepad.js';
 
-const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7']);
+const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8']);
 // px the mouse must travel to take over from a gamepad, and px a second its travel is forgotten: a mouse on the desk
 // drifts or is brushed (a few px now and then never adds up), a mouse taken up crosses this in a moment
 const MOUSE_WAKE = 24, WAKE_FADE = 60;

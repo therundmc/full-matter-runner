@@ -1,5 +1,8 @@
 import { PALETTE } from '../Config.js';
 
+// the game's pixel font at size px
+export const pixelFont = (size) => `${Math.round(size)}px joystix, monospace`;
+
 // joystix text with ink outline + drop shadow, optional wobble rotation
 export function text(ctx, str, x, y, size, color = '#fff', opts = {}) {
   const { align = 'center', rot = 0, alpha = 1, shadow = PALETTE.ink, outline = true, baseline = 'middle' } = opts;
@@ -7,7 +10,7 @@ export function text(ctx, str, x, y, size, color = '#fff', opts = {}) {
   ctx.globalAlpha *= alpha;
   ctx.translate(x, y);
   if (rot) ctx.rotate(rot);
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
+  ctx.font = pixelFont(size);
   ctx.textAlign = align;
   ctx.textBaseline = baseline;
   if (shadow) {
@@ -32,12 +35,12 @@ export const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec %
 
 // how wide str is in joystix at size px; the size at which it fits in width px
 export function widthOf(ctx, str, size) {
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
+  ctx.font = pixelFont(size);
   return ctx.measureText(str).width;
 }
 export function fitSize(ctx, str, size, width) {
   ctx.save();
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
+  ctx.font = pixelFont(size);
   const w = ctx.measureText(str).width;
   ctx.restore();
   return w > width ? size * (width / w) : size;

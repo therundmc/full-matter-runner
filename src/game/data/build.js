@@ -1,10 +1,10 @@
 // What kind of build this is. release: flip to true for a shipped build (the demo): the developer's tools then do
-// nothing (the F1-F7 debug keys, window.game, the URL switches ?level= ?killcam= ?mark= ?post=), unless the page is
+// nothing (the F1-F8 debug keys, window.game, the URL switches ?level= ?killcam= ?mark= ?post=), unless the page is
 // opened with ?dev=1. The QA robot and tools/shot.mjs drive window.game: they run on a build with release false.
 export const BUILD = { release: false };
 
 // the debug keys a release build ignores (Game.advance drops their presses)
-export const DEV_KEYS = ['F1', 'F2', 'F3', 'F4', 'F6', 'F7'];
+export const DEV_KEYS = ['F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8'];
 
 const here = () => globalThis.location?.search ?? '';
 

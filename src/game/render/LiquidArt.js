@@ -14,6 +14,8 @@
 import { LIQUIDS } from '../data/liquids.js';
 import { RAMPS } from './BloodArt.js';
 import { CH } from '../../engine/physics/Shallow.js';
+import { bytesOf } from '../../engine/Bytes.js';
+import { PROF } from '../../engine/Profiler.js';
 
 const SLOTS = 13; // per look: [none, edge, thin, body, deep, core, glint, foam, sheen x 4, lit edge]
 const GRAIN = 240; // texels to a side of the still noise's tile (repeated over the map; a multiple of look.grain)
@@ -74,6 +76,9 @@ export default class LiquidArt {
     this.sim = null;
     this.shown = false; // something wet in view this frame
   }
+
+  // what its buffers hold, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) { return bytesOf(this, seen); }
 
   // its buffers let go (World.dispose)
   dispose() {
@@ -312,6 +317,7 @@ export default class LiquidArt {
         this.clear[c] = S.wet[c] ? 0 : 1;
         this.color.g.putImageData(this.color.img, 0, 0, x, y, w, h);
         this.mirror.g.putImageData(this.mirror.img, 0, 0, x, y, w, h);
+        if (PROF.on) PROF.count('put', 2, w * h * 8); // (the perf overlay: pixels sent up)
       }
     }
     this.shown = shown;

@@ -12,6 +12,7 @@
 // 2D canvas above (`overlay`), so it stays sharp.
 import { POST } from '../data/post.js';
 import { devParam } from '../data/build.js';
+import { PROF } from '../../engine/Profiler.js';
 
 // a number of data/post.js written into a shader (a float literal)
 const num = (v) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
@@ -246,6 +247,9 @@ class Post {
     this.sceneW = this.sceneH = 0; // the size the scene's texture was made at (render)
     this.targets = null;
     this.one = {}; // the final pass's single numbers, kept from frame to frame
+    this.info = null;     // the card's names, the timer (gpu)
+    this.queries = [];    // the GPU timer's queries still in flight (the perf overlay: time)
+    this.gpuMs = null;    // the lens' passes on the card, ms (smoothed; null: never timed)
     // the card dropped us: step aside for good, the game goes back to drawing on its own canvas
     canvas.addEventListener('webglcontextlost', () => {
       this.ok = false;
@@ -270,6 +274,57 @@ class Post {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
     return { tex, fbo, w, h };
+  }
+
+  // What the perf overlay (systems/Perf.js) says of the card: its renderer and vendor (WEBGL_debug_renderer_info where
+  // the browser gives it), whether the lens' passes can be timed on it (EXT_disjoint_timer_query: this is WebGL 1)
+  // and that time, ms (null: not timed)
+  gpu() {
+    if (!this.info) {
+      const gl = this.gl, d = gl.getExtension('WEBGL_debug_renderer_info');
+      this.info = {
+        renderer: String(gl.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : gl.RENDERER)),
+        vendor: String(gl.getParameter(d ? d.UNMASKED_VENDOR_WEBGL : gl.VENDOR)),
+        timer: !!this.timer(),
+      };
+    }
+    return { ...this.info, ms: this.gpuMs };
+  }
+
+  // the timer's extension, or null
+  timer() {
+    if (this.timerExt === undefined) this.timerExt = this.gl.getExtension('EXT_disjoint_timer_query') || null;
+    return this.timerExt;
+  }
+
+  // The lens' passes timed on the card while the profiler is on (engine/Profiler.js): a query around them, read back
+  // frames later when the card has the answer (never waited for); a disjoint frame (the card's clock jumped) is
+  // dropped. Returns the query begun, or null.
+  timeStart() {
+    const T = PROF.on && this.timer();
+    if (!T) return null;
+    const gl = this.gl, Q = this.queries;
+    while (Q.length && T.getQueryObjectEXT(Q[0], T.QUERY_RESULT_AVAILABLE_EXT)) {
+      const q = Q.shift(), ns = T.getQueryObjectEXT(q, T.QUERY_RESULT_EXT);
+      if (!gl.getParameter(T.GPU_DISJOINT_EXT)) this.gpuMs = this.gpuMs === null ? ns / 1e6 : this.gpuMs + (ns / 1e6 - this.gpuMs) * 0.1;
+      T.deleteQueryEXT(q);
+    }
+    if (Q.length >= 4) return null; // the card is behind: no more in flight
+    const q = T.createQueryEXT();
+    T.beginQueryEXT(T.TIME_ELAPSED_EXT, q);
+    return q;
+  }
+  timeEnd(q) {
+    if (!q) return;
+    this.timerExt.endQueryEXT(this.timerExt.TIME_ELAPSED_EXT);
+    this.queries.push(q);
+  }
+
+  // what its textures hold on the card, bytes (an estimate: the scene's, and the passes' targets)
+  textureBytes() {
+    let n = this.sceneW * this.sceneH * 4;
+    for (const t of this.targets || []) n += t.w * t.h * 4;
+    return n;
   }
 
   // on show / off show (the debug key that compares the picture with and without the lens)
@@ -304,7 +359,8 @@ class Post {
     if (!this.ok) return;
     const gl = this.gl, [h0, h1, q0, q1, q2] = this.targets, W = this.canvas.width, H = this.canvas.height;
     // the scene's texture: made at the scene's size when that changes, then only its pixels sent
-    const S = this.scene;
+    const S = this.scene, q = this.timeStart();
+    if (PROF.on) PROF.count('gl', 1, S.width * S.height * 4);
     gl.bindTexture(gl.TEXTURE_2D, this.sceneTex);
     if (S.width !== this.sceneW || S.height !== this.sceneH) {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, S);
@@ -354,6 +410,7 @@ class Post {
       });
       for (const k in one) g.uniform1f(l[k], one[k]);
     });
+    this.timeEnd(q);
   }
 }
 
