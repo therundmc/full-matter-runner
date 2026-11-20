@@ -30,7 +30,9 @@ src/
                           with volume sources) carrying a finer density (MacCormack); solid cells, a stepped region
       Shallow.js          liquid on a flat floor: a "virtual pipes" height field (depth per kind per cell, fluxes with
                           inertia between neighbours, a film under which it stops spreading, floor levels), drying and
-                          soaking, setting kinds (blood), solid cells, chunks that sleep when still
+                          soaking, setting kinds (blood), solid cells, chunks that sleep when still; sparse: a
+                          chunk's cells are made (a slot of a pool) where liquid is or may run, let go once dry and
+                          still (`sweep`), their floor given again by the owner (`floor`, `solid`)
       Cloth.js            a hung cloth (a curtain) seen from above: a small rope mesh under rings that slide on a rod,
                           real gravity, upright cylinders pushing it (parting round them, a grip, tearing when driven
                           through fast), fixed sub-steps, what it hides along a line
@@ -95,7 +97,7 @@ src/
       Records.js          best result per level in localStorage (guarded: the game runs without storage)
       Threats.js          which off-screen guards the player can plausibly know about (pure rule + per-guard memory)
       Impacts.js          listens to 'impact': material sounds by speed and mass
-      Liquids.js          what is wet on the floor, one shallow liquid over the map (engine/physics/Shallow.js,
+      Liquids.js          what is wet on the floor, one sparse shallow liquid over the map (engine/physics/Shallow.js,
                           LIQUIDS in data/liquids.js): the floors' levels, walls / shut doors / furniture holding it,
                           sources and spills, the bodies' blood, the rain's puddles, wet floor grip, footprints and
                           slide smears, ripples (DOM-free, unit-tested)
@@ -304,7 +306,7 @@ src/
                           baked bodies), flat roofs of the neighbouring buildings and their dressing; every layer a
                           ChunkedLayer (see "Long maps" below), drawn on through `on` / `paint(fn, layer, x0, x1)`;
                           the level's own painting of the chunks baked as it is sealed (tiles, wear, grime, wall
-                          tops) is kept for the last two levels (`bakedFor`): a retry copies it instead of painting
+                          tops) is kept for the last level (`bakedFor`): a retry copies it instead of painting
                           it again. `dispose` (World.dispose, on every level start) lets this world's canvases go
       Chunks.js           a map-sized picture cut into chunks along x (CHUNKS in Config.js): baked near the view a
                           step a frame and let go far from it, or made where a mark lands; `spread`: one context
@@ -321,8 +323,8 @@ src/
                           (wet, tacky, dry; RAMPS, also the colours of blood on the floor in LiquidArt)
       LiquidArt.js        the liquid on the floor in flat pixel steps by depth on the world's 2 px grid (edge lit
                           from the top left, body, deep, core; kinds mixed; foam, glints, petrol sheen), only the
-                          chunks that changed repainted; its mirror mask for Lighting.post; set blood baked as a stain;
-                          ripples
+                          chunks that changed repainted, into a window round the view (`look.margin`); its mirror
+                          mask for Lighting.post; set blood baked as a stain; ripples
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
@@ -742,7 +744,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   where they fall, and a ragged burn (`decals.scorch`, BlastArt).
 - Liquids (systems/Liquids.js over engine/physics/Shallow.js, `LIQUIDS` in data/liquids.js): everything wet on the
   floor is one shallow liquid over the whole map, cells of 4 px (8 to a tile), a depth (mm) of each kind per cell:
-  water, rain, beer, booze, blood, petrol. Between two cells a pipe carries a flux with inertia (pushed by the
+  water, rain, beer, booze, blood, petrol. The grid is sparse: only the chunks of 16 x 16 cells where liquid is or
+  may run next are made, in a pool of slots; a chunk dry, still and with nothing wet about it is let go every
+  `LIQUIDS.sweep` s, and made again with the floor it was laid with (Liquids `lay`: the bumps, a road's camber, the
+  manholes, the rain's hollows) and what is solid from the map and the doors / furniture as they last stood
+  (`solidOf`, `gated`): it flows exactly as the whole grid did (tests/shallow.test.mjs checks it cell for cell
+  against the dense solver kept in tests/fixtures/ShallowDense.mjs). Between two cells a pipe carries a flux with inertia (pushed by the
   difference of their levels, slowed by the kind's drag, more so the thinner it is): a gush runs on and sloshes, a
   pool evens out. A cell runs onto a dry one only with more than its film (`film`, mm: surface tension), so a pool
   stops spreading at about a film deep and has an edge; under `stick` of its film a cell gives nothing more (the
@@ -769,7 +776,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `world.chars` who steps in it splashes (deep enough), pushes it along, then prints fading footprints on the dry
   floor (`decals.footprint`, event 'footprint'; the rain marks no sole) or one long smear when sliding
   (`decals.smear`). The sprinklers douse fires (Fires.douse).
-  The look (render/LiquidArt.js, `LIQUIDS.look`): painted into a map-sized buffer a texel of 2 world px at a time,
+  The look (render/LiquidArt.js, `LIQUIDS.look`): painted into a buffer a texel of 2 world px at a time (a window on
+  the map round the view, `look.margin` chunks past it; set again round the view when it leaves it),
   the depth in films softened over each cell's neighbours, roughened by a still noise, cut into flat steps (edge,
   its side facing the light lit, thin, body, deep, core) in the kind's colours (blood: BloodArt's RAMPS, wet then
   tacky), mixed with a second kind; glints, a beer's foam on a fresh flow (in clumps, never a dither), a petrol's
@@ -845,9 +853,11 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   offset); chunks reach `pad` px into their neighbours and the opaque ones are drawn over them (no seam under a
   turned camera). External code paints a layer through `decals.paint(fn, 'floor' | 'walls' | 'blood' | 'flesh',
   x0, x1)`; a mark on a floor chunk not baked (far out of view) is lost.
-- Still map-sized on a long map: the liquid on the floor (systems/Liquids.js' Shallow grid, render/LiquidArt.js'
-  colour and mirror buffers: about 140 MB on the 450-tile back road, stepped and painted only where wet / in view),
-  the smoke's Fluid, FireSpread's grid, Lighting's reflection mask (small: a quarter of a px a px).
+- Still map-sized on a long map: the smoke's Fluid (about 35 MB on 2A's 700 tiles, stepped only near the view),
+  FireSpread's grid (about 12 MB), Lighting's reflection mask (small: a quarter of a px a px). The liquid on the floor
+  is not any more (sparse grid, a window for its picture: about 6 MB in 2A instead of about 420 MB).
+- A level started (Game.startLevel) lets go of the last world first (World.dispose: its canvases, its liquid grid;
+  `game.world` null while the next is built), so the two are never held at once.
 
 ## Performance & robustness
 
