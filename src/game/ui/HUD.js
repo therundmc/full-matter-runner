@@ -91,7 +91,7 @@ function paintHUD(ctx, game, t) {
   if (w.drive?.on) {
     drawDrive(ctx, w.drive, pad, H - pad, s, t);
     drawRoad(ctx, w, W, pad, s);
-    if (p.alive && game.state === 'play') { drawHunters(ctx, game, s, t, pad); drawWarnings(ctx, game, s, t, pad); }
+    if (p.alive && game.state === 'play') { drawHunters(ctx, game, s, t); drawWarnings(ctx, game, s, t); }
   }
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
@@ -163,19 +163,13 @@ function drawRoad(ctx, w, W, pad, s) {
   text(ctx, `${left} M`, W / 2, by + 16 * s, 12 * s, PALETTE.white, { alpha: 0.75 });
 }
 
-// a marker on the screen's top edge under the road's line and its metres (drawRoad) is put below them, not over them
-export function underRoad(m, W, pad, s) {
-  if (m && Math.abs(m.x - W / 2) < 230 * s) m.y = Math.max(m.y, pad + 46 * s);
-  return m;
-}
-
 // Pursuers behind him or beside him off the picture: a small red chevron on the screen's edge toward each
-function drawHunters(ctx, game, s, t, pad) {
+function drawHunters(ctx, game, s, t) {
   const P = game.world.pursuit;
   if (!P) return;
   const W = game.canvas.width, H = game.canvas.height, cam = game.camera;
   for (const car of P.hunters()) {
-    const sp = cam.worldToScreen(car.v.x, car.v.y), m = underRoad(edgeMarker(sp.x, sp.y, W, H, 20 * s), W, pad, s);
+    const sp = cam.worldToScreen(car.v.x, car.v.y), m = edgeMarker(sp.x, sp.y, W, H, 20 * s);
     if (!m) continue;
     const z = s * 1.4;
     ctx.save();
@@ -221,18 +215,18 @@ function chevrons(ctx, m, z, col, n, alpha = 1) {
 // chevrons on the screen's edge toward where its tail will be, beating with its beeper, and two bone ones toward the
 // way round it. A toll told (systems/Toll.js): the same toward each of its gates still ahead of the picture, three red
 // for a steel boom, two bone for a wooden arm
-function drawWarnings(ctx, game, s, t, pad) {
+function drawWarnings(ctx, game, s, t) {
   const W = game.canvas.width, H = game.canvas.height, cam = game.camera;
   for (const { P, k } of game.world.toll?.told() || []) {
     P.gates.forEach((g, i) => {
-      const sp = cam.worldToScreen(P.x, laneY(P, i, P.x)), m = sp.x > W && underRoad(edgeMarker(sp.x, sp.y, W, H, 34 * s), W, pad, s);
+      const sp = cam.worldToScreen(P.x, laneY(P, i, P.x)), m = sp.x > W && edgeMarker(sp.x, sp.y, W, H, 34 * s);
       if (m) chevrons(ctx, m, s * 2.2, g === 'steel' ? '#ff2a4a' : '#efe6d2', g === 'steel' ? 3 : 2, k * (g === 'steel' ? 0.7 + 0.3 * Math.sin(t * 14) : 1));
     });
   }
   const S = game.world.lorries;
   if (!S) return;
   for (const T of S.told()) {
-    const at = S.tail(T.L, true), sp = cam.worldToScreen((T.x + at.x) / 2, (T.y + at.y) / 2), m = underRoad(edgeMarker(sp.x, sp.y, W, H, 34 * s), W, pad, s);
+    const at = S.tail(T.L, true), sp = cam.worldToScreen((T.x + at.x) / 2, (T.y + at.y) / 2), m = edgeMarker(sp.x, sp.y, W, H, 34 * s);
     if (!m) continue;
     const z = s * 2.2, on = S.blink(T.L);
     ctx.save();
@@ -253,7 +247,7 @@ function drawWarnings(ctx, game, s, t, pad) {
     }
     ctx.restore();
     // the way round it, off the picture too: bone arrows on the edge at its height (a safe gap: docs/LEVEL2.md)
-    const g = T.L.gap && cam.worldToScreen(T.L.gap.x, T.L.gap.y), gm = g && underRoad(edgeMarker(g.x, g.y, W, H, 34 * s), W, pad, s);
+    const g = T.L.gap && cam.worldToScreen(T.L.gap.x, T.L.gap.y), gm = g && edgeMarker(g.x, g.y, W, H, 34 * s);
     if (!gm) continue;
     ctx.save();
     ctx.translate(gm.x, gm.y);

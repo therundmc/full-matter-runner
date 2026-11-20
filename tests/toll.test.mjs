@@ -408,12 +408,3 @@ test('toll: a pursuer left far behind is not brought back up while the plaza is 
   assert.ok(jumpAt > GX + CHASE.toll.past - 1, `past the gates, not in the plaza (he was at col ${(jumpAt / TILE).toFixed(1)})`);
   assert.ok(car.state === 'chase', `and still after him (${car.state})`);
 });
-
-test('hud: an edge marker on the top edge under the road\'s line and its metres is put below them, never over them', async () => {
-  const { underRoad } = await load('game/ui/HUD.js');
-  const W = 1920, pad = 24, s = 1.5;
-  const over = underRoad({ x: W / 2 + 100, y: 30, angle: -1 }, W, pad, s), aside = underRoad({ x: 60, y: 30, angle: -2 }, W, pad, s);
-  assert.ok(over.y >= pad + 40 * s, `pushed below the line (${over.y})`);
-  assert.equal(aside.y, 30, 'away from it: left where it is');
-  assert.equal(underRoad(null, W, pad, s), null);
-});
