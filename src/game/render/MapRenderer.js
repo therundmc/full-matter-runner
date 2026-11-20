@@ -39,6 +39,16 @@ function floorTile(name, x, y) {
   return sprite('tiles/' + name);
 }
 
+// the stucco wall tops: six draws of it, by the cell's hash (offset from the floors'): _v1 (plain) on ~1 cell in 3,
+// _v2.._v5 (a crack, a stain, a patch, a chip) on ~1 in 12 each
+const STUCCO_VARIANTS = [[0.08, 2], [0.16, 3], [0.24, 4], [0.32, 5], [0.64, 1]];
+function wallTile(name, x, y) {
+  if (!name.startsWith('stucco_')) return sprite('tiles/' + name);
+  const r = cellHash(x + 7919, y + 104729);
+  for (const [p, k] of STUCCO_VARIANTS) if (r < p) return spriteOpt(`tiles/${name}_v${k}`) || sprite('tiles/' + name);
+  return sprite('tiles/' + name);
+}
+
 function canvas(w, h, opts) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
@@ -273,7 +283,7 @@ export default class MapRenderer {
       for (let x = t0; x <= t1; x++) {
         const ch = m.at(x, y);
         if (!WALLS[ch]) continue;
-        g.drawImage(this.roof[y * m.w + x] ? sprite('tiles/roof') : sprite('tiles/' + WALLS[ch]), x * TILE, y * TILE, TILE, TILE);
+        g.drawImage(this.roof[y * m.w + x] ? sprite('tiles/roof') : wallTile(WALLS[ch], x, y), x * TILE, y * TILE, TILE, TILE);
       }
     }
     yield;
@@ -297,6 +307,17 @@ export default class MapRenderer {
         g.fillStyle = 'rgba(0,0,0,0.25)';
         if (open(0, 1)) g.fillRect(px, py + TILE - 5, TILE, 2);
         if (open(1, 0)) g.fillRect(px + TILE - 5, py, 2, TILE);
+        if (WALLS[m.at(x, y)].startsWith('stucco_')) {
+          // the stucco's cap: the coping's edge a line in, darker, along each open side
+          g.fillStyle = 'rgba(40,16,48,0.4)';
+          if (open(0, -1)) g.fillRect(px, py + R + 3, TILE, 1);
+          if (open(-1, 0)) g.fillRect(px + R + 3, py, 1, TILE);
+          if (open(0, 1)) g.fillRect(px, py + TILE - R - 4, TILE, 1);
+          if (open(1, 0)) g.fillRect(px + TILE - R - 4, py, 1, TILE);
+          g.fillStyle = 'rgba(255,255,255,0.12)';                  // its lit arris, inside the line
+          if (open(0, -1)) g.fillRect(px, py + R + 4, TILE, 1);
+          if (open(-1, 0)) g.fillRect(px + R + 4, py, 1, TILE);
+        }
       }
     }
     yield;
@@ -458,7 +479,7 @@ export default class MapRenderer {
     }
     this.on(this.walls, px - TILE, px + 2 * TILE, (w) => {
       w.clearRect(px, py, TILE, TILE);
-      for (const [nx, ny] of bared) w.drawImage(sprite('tiles/' + WALLS[m.at(nx, ny)]), nx * TILE, ny * TILE, TILE, TILE);
+      for (const [nx, ny] of bared) w.drawImage(wallTile(WALLS[m.at(nx, ny)], nx, ny), nx * TILE, ny * TILE, TILE, TILE);
       // broken edges on the neighbouring walls
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = cx + dx, ny = cy + dy;

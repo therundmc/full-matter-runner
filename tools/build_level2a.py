@@ -1040,8 +1040,9 @@ for (kind, c, r) in (('ac_unit', 430.6, 52.6), ('vent', 437.2, 51.8), ('duct', 4
 lv.area('part two: the on-ramp')
 solid('edge_line', RAMP_X + 0.25, TOLL_X, EDGE_S)                        # (clear of the sidewalk's last kerb)
 solid('rumble_strip', RAMP_X + 1, TOLL_X, RUMBLE_S)
-must('guardrail_end', RAMP_X, RAIL_S - 4.5 / 32, 0, on='"s')               # (its beam in line with the rail's: it stood
-rail('guardrail', RAMP_X + 1, TOLL_X, RAIL_S, 180)                         # 4 px off it; the rail goes on into the toll's)
+must('guardrail_end_r', RAMP_X, RAIL_S, 0, on='"s')                       # (its beam in line with the rail's, its posts
+rail('guardrail', RAMP_X + 1, TOLL_X, RAIL_S, 180)                         # behind it: mirrored, not turned; the rail goes
+                                                                           # on into the toll's)
 for c in range(RAMP_X + 2, TOLL_X - 2, 4):
     put('reflector_post', c + 0.5, R1 + 1.86, on='=')
 for c in range(RAMP_X + 2, M0 - 1, 4):
@@ -1052,7 +1053,7 @@ must('sign_wrong_way', RAMP_X + 8.5, R0 - 0.65, 0, on='"')
 must('sign_speed_55', RAMP_X + 13.0, R1 + 1.7, 0, on='=')
 must('sign_toll_ahead', RAMP_X + 4.5, R1 + 1.7, 0, on='=')                 # (half a mile before the gantry's quarter)
 for c in (515.5, 545.5):
-    must('highway_lamp', c, R1 + 2.65, 90, on='"')
+    must('highway_lamp_single', c, R1 + 2.65, 90, on='"')                # (its one arm over the road: nothing behind it)
 lv.paint('merge_arrow', M0 + 12.0, LANES1[0])                           # (between two of the slabs' joints)
 for c in range(RAMP_X + 6, TOLL_X, 9):                                   # cat's eyes in the middle of each gap, the
     lv.paint('raised_marker', c, R0 + 2.5)                               # yellow ones beside the left edge to the gore
@@ -1272,13 +1273,13 @@ for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], *RAIL_IN, False), (FAN[0], 
         on = a == TOLL0 and r == RAIL_IN[1]                           # (the ramp's rail carried on, in its step)
         if cushion:
             lv.prop('crash_cushion', a + 84 / 64 + 0.05, r + (0.55 if r > MID else -0.55))
-        elif not on:
-            lv.prop('guardrail_end', a + 30 / 32, r)
+        elif not on:                                                  # (the south rails' ends mirrored: posts off the road)
+            lv.prop('guardrail_end_r' if r > MID else 'guardrail_end', a + 30 / 32, r)
         cs = range(RAMP_X + 1 + 4 * ((a - RAMP_X - 1) // 4) if on else a + (3 if cushion else 2), b - (5 if b < W - 1 else 3), 4)
         for c in cs:
-            lv.prop('guardrail', c + 2.0, r)
-        if b < W - 1:
-            lv.prop('guardrail_end', cs[-1] + 4 + 30 / 32, r, 180)    # (its trailing end, short of where the road widens)
+            lv.prop('guardrail', c + 2.0, r, 180 if r > MID else 0)   # (its posts behind it, the ramp's turned the same)
+        if b < W - 1:                                                 # (its trailing end, short of where the road widens:
+            lv.prop('guardrail_end_trail' if r > MID else 'guardrail_end_trail_r', cs[-1] + 4 + 30 / 32, r, 180)   # plain)
     for c in range(a + 3, b - 1, 6):
         lv.prop('reflector_post', c + 0.5, top - 0.35)
         lv.prop('reflector_post', c + 0.5, bottom + 0.35)
@@ -1461,10 +1462,17 @@ for c in range(276, 313):
 lv.fill(277, 8, 311, 9, '"')
 # (each wall or fence runs from its gate post at the path: no hole beside the gate; the chain-link's gate is the middle
 # of its own length, so that house's door is off centre, where its gate is)
+# (their fronts are stucco, their two windows and their door set in it: a house's jalousies, dark or a lamp on inside,
+# its front door with the porch light beside it; never the shops' glass and steel)
+LIT = ((True, False), (False, False), (False, True), (True, True))
 for (k, (a, b, tile, fence)) in enumerate(YARDS):
     door = a + 5 if fence == 'yard_fence' else (a + b) // 2
     for c in range(a, b + 1):
-        lv.put(c, 7, 'L' if c == door else 'G' if c in (a + 1, a + 2, b - 2, b - 1) else tile)
+        lv.put(c, 7, tile)
+    for (c, lit) in zip((a + 2.0, b - 1.0), LIT[k]):
+        if c + 0.875 <= door or c - 0.875 >= door + 1.3:                  # (the chain-link's house: one, its door off centre)
+            lv.prop('house_window_lit' if lit else 'house_window', c, 8 + 7 / 32, 0)
+    lv.prop('house_door', door + 0.5 + 4 / 32, 8 + 8 / 32, 0)            # (its leaf on the path, its lamp beside it)
     lv.fill(door, 8, door, 9, 's')                                        # the path to the door
     if fence == 'yard_fence':                                             # (chain-link, the oleander grown through it)
         assert put('yard_fence', door - 3.5, 9.92, pad=0, on='"s')         # (end to end: its last post the gate's first)
@@ -1472,10 +1480,9 @@ for (k, (a, b, tile, fence)) in enumerate(YARDS):
     else:
         must(fence, door - 1.5, 9.84, on='"s')
         must(fence, door + 2.5, 9.84, on='"s')
-    must('mailbox_post', door + 1.25, 10.2)
+    must(('mailbox_post', 'mailbox_post_b', 'mailbox_post_c', 'mailbox_post_d')[k], door + 1.25, 10.2)   # (one number a house)
     lv.paint('lawn_dry_b', a + 1.5, 9.0, 0 if k % 2 else 180)
     lv.paint('lawn_dry_b', b - 0.5, 9.0, 180 if k % 2 else 0)
-    lv.prop('wall_lamp', door + 1.5, 8.06, 0)                             # the porch light
     HARMONY_LIGHTS.append([door + 1.0, 8.8, 3, '#ffd9a0', 0.22])
 for (kind, c, r, deg) in (('oleander_pink', 278.4, 8.7, 0), ('sabal_palm', 282.6, 9.0, 0), ('lawn_flamingos', 279.75, 9.15, 0),
                           ('sabal_palm_b', 287.6, 8.95, 0), ('oleander_white', 293.1, 8.7, 0),

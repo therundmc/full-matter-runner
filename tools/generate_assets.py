@@ -4397,16 +4397,72 @@ FLOOR_TILES = [
     ('neon_floor', t_neon, v_neon1, v_neon2),
 ]
 def t_stucco(base):
-    """Painted stucco over block seen from above (the parapet's top, Miami's pastels): calm, a little chalky, a few
-    darker pits where the paint has gone; the city's grime is the map's and the lighting's."""
+    """Painted stucco over block seen from above (the parapet's top, Miami's pastels): the trowel's sweeps in three
+    shades of the paint (a lit ridge where each sweep ends, the shade under it), a soft mottle where the paint has
+    weathered, a few darker pits; seamless (everything wraps). The cap line along its open edges is the map's
+    (render/MapRenderer.js), the city's grime the lighting's."""
     def paint(cv, rng):
-        surface(cv, hx(base), rng, 2.6, 1.8, 1, (0.03, 6), (0.03, 9))
+        col = hx(base)
+        n1, n2 = noise(rng, 1), noise(rng)
+        sweep = [[0.0] * T for _ in range(T)]
+        for _ in range(int(22 * U * U)):                                  # the trowel's sweeps: short arcs, wrapped
+            cx, cy = rng.uniform(0, T), rng.uniform(0, T)
+            r = rng.uniform(5, 11) * U
+            a0, span = rng.uniform(0, 6.283), rng.uniform(0.7, 1.4)
+            for k in range(int(r * span * 1.5)):
+                a = a0 + span * k / (r * span * 1.5)
+                for (dr, v) in ((0.0, 1.0), (1.0, -1.0)):                  # the ridge, then the shade under it
+                    x, y = int(cx + math.cos(a) * (r + dr)) % T, int(cy + math.sin(a) * (r + dr)) % T
+                    sweep[y][x] = v
+        pits = speck(rng, 0.025)
+        for y in range(T):
+            for x in range(T):
+                m = n1[y][x] + 0.5 * n2[y][x]
+                d = -13 if m < -0.95 else 11 if m > 1.0 else 0             # three shades: worn, flat, fresh (strong
+                d += 10 * sweep[y][x] if sweep[y][x] > 0 else 9 * sweep[y][x]   # enough to live through the night grade)
+                if (x, y) in pits:
+                    d -= 20
+                cv.set(x, y, tint(col, d))
     return paint
 
 
+def v_stucco_crack(cv, rng):
+    """A settling crack across the cap, branching, the paint lifted along it."""
+    d_crack(cv, rng, -26, 2, (12, 18))
+
+
+def v_stucco_stain(cv, rng):
+    """Where water stands on the cap: a grey-brown stain with a darker tide line."""
+    d_stain(cv, rng, hx('#4a4038'), 0.5, (4.0, 7.0), -14)
+
+
+def v_stucco_patch(cv, rng):
+    """A patch made good in a paint that never matched: a squarish field a shade off, its edge showing."""
+    x0, y0 = rng.uniform(5, 12), rng.uniform(5, 12)
+    x1, y1 = x0 + rng.uniform(8, 14), y0 + rng.uniform(7, 12)
+    d = rng.choice((-12, 13))
+    for y in range(int(y0 * U), int(y1 * U)):
+        for x in range(int(x0 * U), int(x1 * U)):
+            if inside(x, y, VM + 1):
+                edge = min(x - x0 * U, x1 * U - 1 - x, y - y0 * U, y1 * U - 1 - y) < U
+                cv.set(x, y, tint(cv.get(x, y), d - (10 if edge else 0)))
+
+
+def v_stucco_chip(cv, rng):
+    """The paint and the render knocked off a corner of the block: the grey of the concrete under them, rust from a
+    tie."""
+    d_chip(cv, rng, -20, 10, (1.8, 2.8))
+    m = patch(rng, rng.uniform(11, 21), rng.uniform(11, 21), 1.6, 1.2, 0.4)
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, -4 * w, hx('#8a8478'), 0.75 * w))
+    d_stain(cv, rng, hx('#8a4a22'), 0.25, (1.5, 2.5), -3)
+
+
+# the stucco's variants (MapRenderer wallTile: _v1 another draw, _v2.._v5 another with a detail, by each cell's hash)
+STUCCO_VARIANTS = (lambda cv, r: None, v_stucco_crack, v_stucco_stain, v_stucco_patch, v_stucco_chip)
 # (the stucco ones: src/game/world/TileMap.js WALLS P, M, Y, V)
 WALL_TILES = [('wall', t_wall), ('brick', t_brick), ('roof', t_roof), ('stucco_pink', t_stucco('#f08aaa')),
               ('stucco_mint', t_stucco('#62d4ae')), ('stucco_peach', t_stucco('#f8aa7a')), ('stucco_lilac', t_stucco('#a888e4'))]
+STUCCO_TILES = [n for (n, _) in WALL_TILES if n.startswith('stucco_')]
 
 
 def tile_density(u):
@@ -4442,6 +4498,15 @@ def tiles():
         cv = Cv(T, T)
         fn(cv, random.Random(600 + i))
         out[name] = cv
+        if name not in STUCCO_TILES:
+            continue
+        for (k, detail) in enumerate(STUCCO_VARIANTS, 1):
+            # (unlike the floors', a whole new draw, its border too: a border shared by every cell drew the grid in the
+            # trowel's strokes; on a noise this fine two draws meet without a seam)
+            v = Cv(T, T)
+            fn(v, random.Random(640 + i * 10 + k))
+            detail(v, random.Random(680 + i * 10 + k))
+            out['%s_v%d' % (name, k)] = v
     return out
 
 
@@ -11985,6 +12050,52 @@ def p_guardrail_end():
     return cv
 
 
+def flip_y(fn):
+    """A painter's sprite mirrored top to bottom (a rail's end on the other side of the road: its posts behind it,
+    away from the traffic, as the rail beside it laid there turned round)."""
+    def make():
+        cv = fn()
+        cv.img = cv.img.transpose(Image.FLIP_TOP_BOTTOM)
+        cv.p = cv.img.load()
+        return cv
+    return make
+
+
+def p_guardrail_end_trail():
+    """The guardrail's trailing end (the end the traffic leaves: turned round, at +x), from above, as guardrail_end's
+    rows: no terminal and no stripes, the W-beam run on past its last post and ended in a rounded buffer end bent
+    back toward the posts' side, the steel post under it, the splice bolts; rust, a smear of tyre black."""
+    W, H = 64, 18
+    cv = Cv(W, H)
+    rng = random.Random(9762)
+
+    def posts(ly):
+        for x in (22.0, 56.0):
+            fill_shape(ly, x, 7.0, 2.2, 2.2, lambda u, v, L: shade(ZINC, 0.15 + L * 0.6), kind='rect', corner=0.4, bevel=1.0)
+            frect(ly, x - 1.5, 8.0, x + 1.5, 9.5, shade(ramp('#4a3a2a', 0.5, 0.25, 0.3), 0.5))   # the blockout
+    layer(cv, posts)
+    zinc = VNoise(W, 16, 6, rng)
+
+    def rail(x, y, cur):
+        t = y - 9.0
+        c = shade(ZINC, (0.95, 0.72, 0.36, 0.78, 0.3, 0.55, 0.22)[min(6, int(t / 0.65))])
+        return dk(c, 0.12) if zinc(x, y) > 0.66 else c
+
+    def beam(ly):
+        px_paint(ly, 9.0, 9.0, W, 13.5, rail)
+        fill_shape(ly, 7.5, 10.0, 3.0, 3.5, lambda u, v, L: shade(ZINC, 0.25 + L * 0.65), kind='ellipse')   # the buffer end
+        fill_shape(ly, 8.5, 10.5, 1.4, 2.0, lambda u, v, L: shade(ZINC, 0.15 + L * 0.3), kind='ellipse')    # its hollow
+    layer(cv, beam)
+    for x in (22.0, 56.0):
+        stud(cv, x - 0.25, 11.0, hx('#5a5e68'))
+    for (x, y) in ((13.0, 10.0), (13.0, 12.5), (16.0, 10.0), (16.0, 12.5)):
+        stud(cv, x, y, hx('#5a5e68'))
+    frect(cv, 18.0, 9.0, 18.5, 13.5, dk(ZINC[1], 0.3))                    # the splice's lap
+    smudge(cv, rng, 6, (2, 4, W - 2, 14), (1.0, 3.0), 0.35, hx('#8a5a32'))
+    smudge(cv, rng, 3, (26, 12, 44, 13.5), (1.5, 3.0), 0.4, hx('#1a1820'))   # tyre black where one rubbed it
+    return cv
+
+
 def p_crash_cushion(narrow=False):
     """A crash cushion in front of a pier or a rail's end, from above, 3 m: a steel-framed attenuator on its sled:
     yellow energy-absorbing cartridges in four bays between two zinc fender rails, a steel diaphragm between two
@@ -12032,24 +12143,26 @@ def p_crash_cushion(narrow=False):
     return cv
 
 
-def p_highway_lamp():
+def p_highway_lamp(single=False):
     """A freeway lamp from above (hung high: the pole's top, r 4.5, at the sprite's centre): two arms 2.8 m out along
     x and -x, a sodium cobra head at each end, their refractors glowing (the emissive map; the pools are the
-    lighting system's)."""
+    lighting system's). `single`: the one arm, along -x (turned toward the road: nothing lit on the waste ground
+    behind it)."""
     W, H = 208, 20
     cv, gl = Cv(W, H), Cv(W, H)
     cx, cy = W / 2, H / 2
     m = ramp('#5a5e6e', 0.5, 0.25, 0.4)
+    sides = (-1,) if single else (-1, 1)
 
     def arms(ly):
-        for s in (-1, 1):
+        for s in sides:
             fill_capsule(ly, [(cx + s * 3, cy), (cx + s * 82, cy)], 1.2, lambda k, L, s_, i, t: shade(m, L))
             fill_capsule(ly, [(cx + s * 3, cy + 0.6), (cx + s * 14, cy + 0.2)], 1.6, lambda k, L, s_, i, t: shade(m, L - 0.05))
         fill_shape(ly, cx, cy, 4.5, 4.5, lambda u, v, L: shade(m, L))
     layer(cv, arms)
     fill_shape(cv, cx - 1, cy - 1, 1.8, 1.8, lambda u, v, L: shade(m, 0.55 + L * 0.5))
     hot, warm = hx('#fff0c0'), hx('#ffc070')
-    for s in (-1, 1):
+    for s in sides:
         hx0 = cx + s * 90.0
 
         def lum(ly, hx0=hx0, s=s):
@@ -12669,9 +12782,11 @@ RAMP_PROPS = dict(road_closed=p_road_closed, sign_detour=p_sign_detour(), sign_d
                   dump_truck=p_dump_truck, works_light=p_works_light, site_fence=p_site_fence,
                   roller_door=p_roller_door, loading_dock=p_loading_dock, chainlink_gate=p_chainlink_gate,
                   pallet_stack=p_pallet_stack, oil_drum=p_oil_drum, sign_stop=p_sign_stop,
-                  guardrail=p_guardrail, guardrail_end=p_guardrail_end, crash_cushion=p_crash_cushion,
+                  guardrail=p_guardrail, guardrail_end=p_guardrail_end, guardrail_end_r=flip_y(p_guardrail_end),
+                  guardrail_end_trail=p_guardrail_end_trail, guardrail_end_trail_r=flip_y(p_guardrail_end_trail),
+                  crash_cushion=p_crash_cushion,
                   crash_cushion_narrow=lambda: p_crash_cushion(True),
-                  highway_lamp=p_highway_lamp, sign_freeway=p_sign_freeway, sign_wrong_way=p_sign_wrong_way,
+                  highway_lamp=p_highway_lamp, highway_lamp_single=lambda: p_highway_lamp(True), sign_freeway=p_sign_freeway, sign_wrong_way=p_sign_wrong_way,
                   sign_speed_55=p_sign_speed_55, sign_toll_ahead=p_sign_toll_ahead, reflector_post=p_reflector_post,
                   toll_island=p_toll_island, toll_booth=p_toll_booth_of(), toll_canopy=p_toll_canopy,
                   gate_arm_wood=gate_arm(), gate_arm_bit_a=gate_arm(20.0, 62.0, 1), gate_arm_bit_b=gate_arm(62.0, 92.0, 2),
@@ -12682,12 +12797,14 @@ RAMP_SIZES = dict(road_closed=(128, 24), sign_detour=(42, 28), sign_detour_left=
                   water_barrier=(60, 20), excavator=(192, 96), dump_truck=(240, 84), works_light=(96, 72),
                   site_fence=(112, 20), roller_door=(96, 16), loading_dock=(128, 28), chainlink_gate=(128, 16),
                   pallet_stack=(40, 34), oil_drum=(20, 20), sign_stop=(20, 20), guardrail=(128, 10),
-                  guardrail_end=(64, 18), crash_cushion=(96, 88), crash_cushion_narrow=(96, 44), highway_lamp=(208, 20), sign_freeway=(64, 48),
+                  guardrail_end=(64, 18), guardrail_end_r=(64, 18), guardrail_end_trail=(64, 18), guardrail_end_trail_r=(64, 18),
+                  crash_cushion=(96, 88), crash_cushion_narrow=(96, 44), highway_lamp=(208, 20), highway_lamp_single=(208, 20),
+                  sign_freeway=(64, 48),
                   sign_wrong_way=(38, 26), sign_speed_55=(22, 28), sign_toll_ahead=(54, 30), reflector_post=(6, 12),
                   toll_island=(256, 48), toll_booth=(96, 44), toll_canopy=(192, 640), gate_arm_wood=(112, 12),
                   gate_arm_bit_a=(46, 6), gate_arm_bit_b=(34, 6), gate_arm_bit_c=(24, 6), gate_steel=(112, 20),
                   lane_signal_go=(20, 20), lane_signal_stop=(20, 20), sign_exact_change=(40, 24))
-RAMP_GLOWING = ['road_closed', 'works_light', 'highway_lamp', 'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop']
+RAMP_GLOWING = ['road_closed', 'works_light', 'highway_lamp', 'highway_lamp_single', 'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop']
 RAMP_PROPS.update((n, fn) for n, (fn, _) in RAMP_PAINT.items())
 RAMP_SIZES.update((n, sz) for n, (_, sz) in RAMP_PAINT.items())
 CHASE_PROPS.update(RAMP_PROPS)
@@ -15795,22 +15912,23 @@ def palm_crown(S, seed, fronds, greens, dead_col, shaft, trunk_r):
 def royal_palm(seed, n, dead):
     def make():
         """A royal palm from above (hung high: its trunk, smooth and pale grey, is the pole drawn up to it): sixteen
-        long fronds arching out 2.8 to 3.2 m from the green crownshaft, plumed with leaflets, their ends dropping
-        away; `dead` brown ones hanging under them, a few young ones up in the middle."""
-        S = 192
+        long fronds arching out 2.1 to 2.4 m from the green crownshaft (a crown 4.5 to 5 m across: at 6 m it hung over
+        every sign near it), plumed with leaflets, their ends dropping away; `dead` brown ones hanging under them, a
+        few young ones up in the middle."""
+        S = 160
         rng = random.Random(seed)
         greens = PALM_GREENS['royal']
         fronds = []
         for i in range(n):
             a = i * 2 * math.pi / n + rng.uniform(-0.16, 0.16)
-            fronds.append((a, rng.uniform(78.0, 92.0), rng.uniform(10.0, 12.5), rng.uniform(-0.3, 0.3), 0))
+            fronds.append((a, rng.uniform(64.0, 74.0), rng.uniform(8.5, 10.5), rng.uniform(-0.3, 0.3), 0))
         for i in range(5):
             a = rng.uniform(0, 2 * math.pi)
-            fronds.append((a, rng.uniform(34.0, 46.0), 7.0, rng.uniform(-0.2, 0.2), 1))
+            fronds.append((a, rng.uniform(28.0, 38.0), 6.0, rng.uniform(-0.2, 0.2), 1))
         for i in range(dead):
             a = rng.uniform(0, 2 * math.pi)
-            fronds.append((a, rng.uniform(40.0, 52.0), 9.0, rng.uniform(-0.15, 0.15), 2))
-        return palm_crown(S, seed, fronds, greens, PALM_DEAD, ramp('#3a7a44', 0.5, 0.26, 0.3), 8.0)
+            fronds.append((a, rng.uniform(33.0, 43.0), 7.5, rng.uniform(-0.15, 0.15), 2))
+        return palm_crown(S, seed, fronds, greens, PALM_DEAD, ramp('#3a7a44', 0.5, 0.26, 0.3), 7.0)
     return make
 
 
@@ -16605,8 +16723,9 @@ def p_oil_streak():
 def p_sign_gantry():
     """An overhead sign gantry across a freeway from above (hung high), 14 m from post to post along y: its box truss
     (two chords, the zigzag between them, a catwalk's grating), and two green panels hung on it facing the traffic
-    (-x), laid back to be read: TOLL PLAZA 1/4 MILE over the far lanes, ALL LANES TOLL and an arrow down over the near
-    ones, each lit from below by two lamps on their arms (the emissive map)."""
+    (-x), laid back to be read: TOLL PLAZA 1/4 MILE over the far lanes, ALL LANES TOLL and its fare over the near
+    ones, each lit from below by two lamps on their arms (the emissive map). No lane arrow: seen from above, a sign's
+    arrow down its face points at the shoulder, not down a lane (the user, 2026-11-20)."""
     W, H = 80, 448
     cv, gl = Cv(W, H), Cv(W, H)
     rng = random.Random(10151)
@@ -16621,17 +16740,14 @@ def p_sign_gantry():
             line(ly, 56, y, 67, y + 6, shade(STEEL_L, 0.6))
             line(ly, 67, y + 6, 56, y + 12, shade(STEEL_L, 0.6))
     layer(cv, truss)
-    for (y0, y1, lines, arrow) in ((56, 176, ('TOLL', 'PLAZA', '1/4 MILE'), False), (300, 412, ('ALL', 'LANES', 'TOLL'), True)):
+    for (y0, y1, lines, fare) in ((56, 176, ('TOLL', 'PLAZA', '1/4 MILE'), None), (300, 412, ('ALL', 'LANES', 'TOLL'), '$1.00')):
         sign_plate(cv, 4, y0, 54, y1, SIGN_GREEN, r=2.0, border=1.0)
         top = y0 + 10
         for (k, txt) in enumerate(lines):
             words(cv, 29, top + k * 14, txt, SIGN_WHITE, 1.0, centre=True)
-        if arrow:
-            frect(cv, 28, y1 - 30, 30, y1 - 18, SIGN_WHITE)
-            for d in range(6):
-                frect(cv, 29 - d - 0.5, y1 - 18 + d, 29 + d + 0.5, y1 - 17 + d, SIGN_WHITE)
-        else:
-            frect(cv, 10, top + 40, 48, top + 41, SIGN_WHITE)
+        frect(cv, 10, top + 40, 48, top + 41, SIGN_WHITE)
+        if fare:
+            words(cv, 29, top + 50, fare, SIGN_WHITE, 1.0, centre=True)
         sign_wear(cv, rng, (6, y0 + 2, 52, y1 - 2), 6)
         for y in (y0 + 5.0, y1 - 5.0):                                     # its lamps, on arms out of the truss
             fill_capsule(cv, [(54, y), (6, y)], 0.8, lambda k, L, s, i, t: shade(STEEL_L, L))
@@ -16663,7 +16779,7 @@ MIAMI_PROPS = dict(royal_palm=royal_palm(10161, 16, 2), royal_palm_b=royal_palm(
                    awning_lavender=awning_of(ramp('#b49ae0', 0.5, 0.26, 0.3), ramp('#f4f0e6', 0.45, 0.24, 0.25), 10184))
 for _c in STUCCO:
     MIAMI_PROPS['deco_canopy_' + _c] = deco_canopy(_c)
-MIAMI_SIZES = dict(royal_palm=(192, 192), royal_palm_b=(192, 192), hibiscus_hedge=(96, 26), hibiscus_hedge_pink=(96, 26),
+MIAMI_SIZES = dict(royal_palm=(160, 160), royal_palm_b=(160, 160), hibiscus_hedge=(96, 26), hibiscus_hedge_pink=(96, 26),
                    billboard_tan=(256, 112), billboard_radio=(256, 112), pole_sign_motel=(80, 56), pole_sign_autos=(80, 56),
                    car_burnt=(140, 58), tent_tarp=(72, 52), barrel_fire=(24, 24), chainlink_fence=(128, 14),
                    chainlink_hole=(128, 14), guardrail_dented=(128, 10), crash_cushion_hit=(64, 56), call_box=(18, 20),
@@ -17069,22 +17185,112 @@ def p_mailbox_blue():
     return cv
 
 
-def p_mailbox_post():
-    """A house's mailbox on its post at the end of the drive, from above, 0.6 m: the tunnel-topped box painted aqua
-    (its curved top lit along its ridge), the door at +x, the red flag up on its side, a house number, rust."""
-    W, H = 20, 10
-    cv = Cv(W, H)
-    rng = random.Random(10401)
-    aq = ramp('#5ab8b0', 0.5, 0.26, 0.28)
-    fill_shape(cv, W / 2 - 1, H / 2 + 0.5, W / 2 - 3, H / 2 - 2.5, lambda u, v, L: shade(aq, 0.2 + 0.7 * (1 - abs(v + 0.6) / 3.5) ** 1.5 + L * 0.15), kind='rect', corner=0.8, bevel=0.5)
-    frect(cv, W - 4.5, 2.5, W - 3.5, H - 1.5, lambda c: dk(c, 0.35) if c[3] else c)   # the door's seam
-    fill_shape(cv, W - 2.7, H / 2 + 0.5, 0.6, 1.0, lambda u, v, L: shade(STEEL_L, 0.5 + L * 0.4))   # its latch
-    frect(cv, 6, 0.5, 12, 2.0, hx('#d02a2a'))                              # the flag, up
-    frect(cv, 6, 0.5, 12, 1.0, hx('#ff5a4a'))
-    words(cv, 4, 4.0, '1418', hx('#f4f0e6'), 0.5)
-    smudge(cv, rng, 4, (3, 2, W - 3, H - 1), (0.6, 1.4), 0.4, hx('#8a4a22'))
-    cv.outline()
-    return cv
+def mailbox_post(number, box, seed):
+    def make():
+        """A house's mailbox on its post at the end of the drive, from above, 0.6 m: the tunnel-topped box (its curved
+        top lit along its ridge), the door at +x, the red flag up on its side, the house's number, rust. One a house
+        (the block's numbers, its own paint): never the same number twice along a street."""
+        W, H = 20, 10
+        cv = Cv(W, H)
+        rng = random.Random(seed)
+        aq = ramp(box, 0.5, 0.26, 0.28)
+        fill_shape(cv, W / 2 - 1, H / 2 + 0.5, W / 2 - 3, H / 2 - 2.5, lambda u, v, L: shade(aq, 0.2 + 0.7 * (1 - abs(v + 0.6) / 3.5) ** 1.5 + L * 0.15), kind='rect', corner=0.8, bevel=0.5)
+        frect(cv, W - 4.5, 2.5, W - 3.5, H - 1.5, lambda c: dk(c, 0.35) if c[3] else c)   # the door's seam
+        fill_shape(cv, W - 2.7, H / 2 + 0.5, 0.6, 1.0, lambda u, v, L: shade(STEEL_L, 0.5 + L * 0.4))   # its latch
+        frect(cv, 6, 0.5, 12, 2.0, hx('#d02a2a'))                              # the flag, up
+        frect(cv, 6, 0.5, 12, 1.0, hx('#ff5a4a'))
+        light = sum(hx(box)[:3]) > 420                                         # (dark figures on a pale box)
+        words(cv, 4, 4.0, number, hx('#2a2430') if light else hx('#f4f0e6'), 0.5)
+        smudge(cv, rng, 4, (3, 2, W - 3, H - 1), (0.6, 1.4), 0.4, hx('#8a4a22'))
+        cv.outline()
+        return cv
+    return make
+
+
+def house_window(lit, seed):
+    def make():
+        """A house's window on its front wall (the wall at -y), laid back to be read, 1.75 m: two jalousie panes side by
+        side in a white aluminium frame, their glass louvres stepped one over the next (each lit along its top edge),
+        the crank under each, a concrete sill. `lit`: a lamp on inside, warm through the louvres, the shadow of the
+        blind's cord and a curtain's edge (the emissive map); else the night in them, dark blue glass, a streak of the
+        street's light."""
+        W, H = 56, 14
+        cv, gl = Cv(W, H), Cv(W, H)
+        rng = random.Random(seed)
+        frame = ramp('#e8e4dc', 0.42, 0.22, 0.3)
+        warm = ramp('#ffb860', 0.5, 0.25, 0.25)
+        night = ramp('#3a4a68', 0.55, 0.3, 0.3)
+        y0, y1 = 1.0, 11.0                                                 # the glass's head and foot
+
+        def body(ly):
+            fill_shape(ly, W / 2, (y0 + y1) / 2, W / 2 - 1.0, (y1 - y0) / 2 + 0.5, lambda u, v, L: shade(frame, 0.45 + L * 0.4), kind='rect', corner=0.5, bevel=0.5)
+            fill_shape(ly, W / 2, H - 1.75, W / 2, 1.25, lambda u, v, L: shade(ramp('#d8d0c0', 0.45, 0.22, 0.3), 0.3 + L * 0.5), kind='rect', corner=0.4, bevel=0.5)   # the sill
+        layer(cv, body)
+        for (a, b) in ((3.0, W / 2 - 1.0), (W / 2 + 1.0, W - 3.0)):         # two panes, a mullion between them
+            for k in range(6):                                             # six louvres, each over the next
+                ya = y0 + 0.75 + k * 1.5
+                for x in range(int(a * 2), int(b * 2)):
+                    for jj in range(3):
+                        yy = ya + jj * 0.5
+                        xx = (x + 0.5) / 2
+                        if lit:
+                            c = shade(warm, (0.95, 0.75, 0.45)[jj])
+                            if abs(xx - (a + 4.0)) < 0.3 or (xx > b - 6.0 and k < 5):
+                                c = dk(c, 0.35)                          # the blind's cord, the curtain drawn
+                        else:
+                            c = shade(night, (0.85, 0.45, 0.25)[jj])
+                            if abs((xx - a) - (yy - y0) * 1.6 - 5.0) < 1.0:
+                                c = lt(c, 0.25)                           # the street's light across the glass
+                        cv.dot(xx, yy, c)
+                        if lit:
+                            gl.dot(xx, yy, alpha(c, 235 if jj < 2 else 180))
+            frect(cv, a, y1 - 0.5, b, y1, dk(frame[1], 0.2))
+            fill_shape(cv, (a + b) / 2, y1 + 0.5, 1.2, 0.5, lambda u, v, L: shade(STEEL_L, 0.4 + L * 0.5), kind='rect', corner=0.2)   # the crank
+        frect(cv, W / 2 - 1.0, y0, W / 2 + 1.0, y1, lambda c: shade(frame, 0.7))   # the mullion
+        smudge(cv, rng, 4, (2, y1, W - 2, H - 1), (1.0, 2.5), 0.25)       # the sill's dirt
+        smudge(cv, rng, 2, (2, y0, W - 2, y1), (1.0, 2.0), 0.12, hx('#c8b896'))
+        return (cv, gl) if lit else cv
+    return make
+
+
+def p_house_door():
+    """A house's front door on its wall (the wall at -y), laid back to be read: a panelled door of stained wood in its
+    white frame, a brass knob and a peephole, a fan light of louvres over it, a step of concrete at its foot and the
+    porch light beside it on its bracket, a frosted lantern (lit: the emissive map)."""
+    W, H = 48, 16
+    cv, gl = Cv(W, H), Cv(W, H)
+    rng = random.Random(10421)
+    frame = ramp('#e8e4dc', 0.42, 0.22, 0.3)
+    teal = ramp('#7a4a2c', 0.5, 0.26, 0.3)                                # (wood: never read as the windows' glass)
+
+    def step(ly):
+        fill_shape(ly, 20.0, H - 1.75, 16.0, 1.75, lambda u, v, L: shade(ramp('#b8b0a4', 0.45, 0.22, 0.3), 0.25 + L * 0.55), kind='rect', corner=0.5, bevel=0.75)
+    layer(cv, step)
+
+    def door(ly):
+        fill_shape(ly, 20.0, 6.75, 14.0, 6.25, lambda u, v, L: shade(frame, 0.45 + L * 0.4), kind='rect', corner=0.4, bevel=0.5)
+        fill_shape(ly, 20.0, 7.5, 12.0, 5.0, lambda u, v, L: shade(teal, 0.35 + L * 0.45), kind='rect', corner=0.2, bevel=0.5)
+    layer(cv, door)
+    for (k, x) in enumerate(range(9, 31, 2)):                              # the fan light's louvres
+        frect(cv, x, 1.0, x + 1.0, 2.0, hx('#4a5a74') if k % 2 else hx('#5e7090'))
+    for (px0, px1) in ((10.0, 19.0), (21.0, 30.0)):                        # the panels, sunk and lit along their top
+        for (py0, py1) in ((4.0, 7.5), (8.5, 11.5)):
+            frect(cv, px0, py0, px1, py1, lambda c: dk(c, 0.12))
+            frect(cv, px0, py0, px1, py0 + 0.5, lambda c: dk(c, 0.3))
+            frect(cv, px0, py1 - 0.5, px1, py1, lambda c: lt(c, 0.18))
+    fill_shape(cv, 28.5, 8.0, 0.9, 0.9, lambda u, v, L: shade(ramp('#d8a840', 0.45, 0.22, 0.3), 0.4 + L * 0.6))   # the knob
+    cv.dot(20.0, 5.0, hx('#1a1820'))                                      # the peephole
+    smudge(cv, rng, 3, (8, 3, 32, 12), (1.0, 2.5), 0.18)
+
+    def lamp(ly):
+        frect(ly, 38.0, 4.5, 43.0, 5.5, shade(ramp('#2e2c34', 0.5, 0.25, 0.3), 0.5))   # its bracket
+        fill_shape(ly, 40.5, 6.5, 2.5, 3.5, lambda u, v, L: shade(ramp('#2e2c34', 0.5, 0.25, 0.3), 0.3 + L * 0.5), kind='rect', corner=0.8)
+    layer(cv, lamp)
+    hot, warm = hx('#fff4d8'), hx('#ffd08a')
+    px_paint(cv, 39.0, 4.5, 42.0, 9.0, lambda x, y, cur: hot if abs(x - 40.5) < 0.8 and 5.5 < y < 8.0 else warm)
+    frect(cv, 38.5, 3.0, 42.5, 4.0, shade(ramp('#2e2c34', 0.5, 0.25, 0.3), 0.6))   # its cap
+    px_paint(gl, 39.0, 4.5, 42.0, 9.0, lambda x, y, cur: (255, 244, 216, 255) if abs(x - 40.5) < 0.8 and 5.5 < y < 8.0 else (255, 208, 138, 230))
+    return cv, gl
 
 
 def p_pole_sign_strip():
@@ -17925,7 +18131,10 @@ SUBURB_PROPS = dict(sabal_palm=sabal_palm(112, 10281, 12, 3), sabal_palm_b=sabal
                     palm_young=p_palm_young, palm_stump=p_palm_stump,
                     bus_bench_bail=bus_bench('bail'), bus_bench_abogado=bus_bench('abogado'), payphone_pastel=p_payphone_pastel,
                     news_box_yellow=news_box_of('#e8b820', '#c8282c', 10701), news_box_red=news_box_of('#c02a2a', '#1a1a20', 10702),
-                    mailbox_blue=p_mailbox_blue, mailbox_post=p_mailbox_post, pole_sign_strip=p_pole_sign_strip,
+                    mailbox_blue=p_mailbox_blue, mailbox_post=mailbox_post('1402', '#5ab8b0', 10401),
+                    mailbox_post_b=mailbox_post('1410', '#2e2c34', 10402), mailbox_post_c=mailbox_post('1418', '#ece4d2', 10403),
+                    mailbox_post_d=mailbox_post('1426', '#a84a3a', 10404), pole_sign_strip=p_pole_sign_strip,
+                    house_window=house_window(False, 10422), house_window_lit=house_window(True, 10423), house_door=p_house_door,
                     yard_fence=yard_fence(0), yard_fence_gate=yard_fence(1), carport=p_carport, tv_antenna=p_tv_antenna,
                     lawn_flamingos=p_lawn_flamingos, oleander_pink=oleander('#f07aa8', 10711), oleander_white=oleander('#f4ecdc', 10712),
                     cart_loaded=p_cart_loaded, bedroll=p_bedroll, bags_pile=p_bags_pile, doorway_camp=p_doorway_camp,
@@ -17940,7 +18149,8 @@ SUBURB_PROPS['garden_wall_cream'] = garden_wall('cream')
 SUBURB_SIZES = dict(sabal_palm=(112, 112), sabal_palm_b=(104, 104), sabal_palm_ragged=(112, 112), coconut_palm_lean=(288, 112),
                     palm_young=(64, 64), palm_stump=(20, 20), bus_bench_bail=(64, 26), bus_bench_abogado=(64, 26),
                     payphone_pastel=(20, 18), news_box_yellow=(16, 13), news_box_red=(16, 13), mailbox_blue=(18, 16),
-                    mailbox_post=(20, 10), pole_sign_strip=(112, 88), yard_fence=(128, 12), yard_fence_gate=(128, 12),
+                    mailbox_post=(20, 10), mailbox_post_b=(20, 10), mailbox_post_c=(20, 10), mailbox_post_d=(20, 10),
+                    house_window=(56, 14), house_window_lit=(56, 14), house_door=(48, 16), pole_sign_strip=(112, 88), yard_fence=(128, 12), yard_fence_gate=(128, 12),
                     carport=(192, 104), tv_antenna=(56, 30), lawn_flamingos=(30, 20), oleander_pink=(56, 48),
                     oleander_white=(56, 48), cart_loaded=(24, 16), bedroll=(28, 12), bags_pile=(46, 24), doorway_camp=(72, 48),
                     market_stall=(80, 48), market_stall_coco=(80, 48), fruit_crate_orange=(20, 14), fruit_crate_mango=(20, 14),
@@ -17948,7 +18158,7 @@ SUBURB_SIZES = dict(sabal_palm=(112, 112), sabal_palm_b=(104, 104), sabal_palm_r
                     wash_bucket=(14, 14), hose_reel=(28, 18), tyre_stack=(24, 24), tyre_pile=(56, 40), tyre_loose=(22, 22),
                     tyre_rack=(64, 20), tyre_sign=(48, 18), garden_wall_pink=(96, 14), garden_wall_mint=(96, 14),
                     garden_wall_cream=(96, 14))
-SUBURB_GLOWING = ['payphone_pastel', 'pole_sign_strip', 'market_stall', 'market_stall_coco']
+SUBURB_GLOWING = ['payphone_pastel', 'pole_sign_strip', 'market_stall', 'market_stall_coco', 'house_window_lit', 'house_door']
 SUBURB_PROPS.update((n, fn) for n, (fn, _) in SUBURB_PAINT.items())
 SUBURB_SIZES.update((n, sz) for n, (_, sz) in SUBURB_PAINT.items())
 assert not set(SUBURB_SIZES) & set(CHASE_SIZES), set(SUBURB_SIZES) & set(CHASE_SIZES)   # never a name taken
@@ -18044,6 +18254,7 @@ EXPECTED = {
                   for n, (w, h) in PROP_SIZES.items() for g in ([''] + (['_glow'] if n in GLOWING else []))),
     'tiles': dict([(n + s, (32 * FINE, 32 * FINE)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2', '_v3', '_v4', '_v5')]
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof', 'stucco_pink', 'stucco_mint', 'stucco_peach', 'stucco_lilac')]
+                  + [(n + '_v%d' % k, (32, 32)) for n in STUCCO_TILES for k in range(1, 6)]
                   + [('neon_floor_glow', (32 * FINE, 32 * FINE))]),
     'roof': dict([(n, (w * FINE, h * FINE) if n in ROOF_FINE else (w, h)) for n, (w, h) in ROOF_SIZES.items()]
                  + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),

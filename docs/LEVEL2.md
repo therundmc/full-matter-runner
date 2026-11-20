@@ -954,3 +954,14 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   between its poles (two crossed the coupe); the camp's cardboard bed off the mattress and the tarp. LIGHT: the T at the
   alley's foot was a dark hole: a sodium lamp (445) and ONE WAY across from the alley; TOLL 1/2 MILE before the gantry's 1/4. QA 3 min
   seed 2 (god): PASS, 4 sessions, no death, 3 clears, no stall (THE ON-RAMP reached 3 times), the known `slow` only.
+- 2026-11-20: 2A'S SPRITES, SECOND PASS (branch polish/2a-sprites-2: what the layout polish left). A house number a
+  mailbox (mailbox_post 1402, _b 1410, _c 1418, _d 1426, each its own paint); the stucco wall tops P / M / Y / V a real
+  render (the trowel's sweeps in three shades strong enough for the night grade, pits; six draws a colour, `_v1` plain,
+  `_v2.._v5` a crack, a stain, a patch, a chip, by each cell's hash: render/MapRenderer.js wallTile) and a cap line in
+  along their open sides; the houses (cols 277-311) stucco fronts with their own house_window / house_window_lit
+  (jalousies, a lamp on inside) and house_door (wood, its porch light: the wall lamp gone), set in the wall (`hung`: a
+  car run along the fronts meets nothing, tests/kerb.test.mjs); royal palms 5 m across (160 px, they were 6 m); the
+  rails' ends either side of the road (guardrail_end_r, its posts behind it on the south rails; guardrail_end_trail /
+  _r, a plain buffer end where traffic leaves: no stripes), the toll's south rails turned round as the ramp's; the
+  gantry's ALL LANES TOLL without its down arrow (it pointed at the shoulder), its fare under a rule; highway_lamp_single
+  (one arm, toward the road) on the ramp's south side. Tests: tests/sprites2a.test.mjs.

@@ -374,11 +374,18 @@ export const PROPS = {
   // it, its signs on their posts, the delineators
   guardrail: { static: true, lasting: true, material: 'metal', w: 128, h: 6, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
   guardrail_end: { static: true, lasting: true, material: 'metal', w: 60, h: 14, hp: 99, chips: '#e8c020', sparks: true, sound: 'metal' },
+  // the same on a rail with the road at its -y (its posts behind it), and the plain ends the traffic leaves
+  guardrail_end_r: { static: true, lasting: true, material: 'metal', w: 60, h: 14, hp: 99, chips: '#e8c020', sparks: true, sound: 'metal' },
+  guardrail_end_trail: { static: true, lasting: true, material: 'metal', w: 60, h: 14, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
+  guardrail_end_trail_r: { static: true, lasting: true, material: 'metal', w: 60, h: 14, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
   crash_cushion: { static: true, material: 'plastic', w: 84, h: 82, hp: 10, chips: '#e8c020', sound: 'wood' },
   // the same in single file, before a toll island's nose: no wider than the island (the other stood into its lanes)
   crash_cushion_narrow: { static: true, material: 'plastic', w: 84, h: 40, hp: 10, chips: '#e8c020', sound: 'wood' },
   highway_lamp: { material: 'metal', r: 4, hp: 5, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.02,
     light: [{ r: 210, color: '#ffb46a', intensity: 0.85, x: -90 }, { r: 210, color: '#ffb46a', intensity: 0.85, x: 90 }] },
+  // its one arm along -x (toward the road: nothing to light behind it)
+  highway_lamp_single: { material: 'metal', r: 4, hp: 5, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.02,
+    light: [{ r: 210, color: '#ffb46a', intensity: 0.85, x: -90 }] },
   sign_freeway: { overhead: true, height: 0.012, pole: ['#4a4e58', 3], static: true, material: 'metal', r: 3, hp: 4, chips: '#1c6a4c', sound: 'metal', bends: 6 },
   sign_wrong_way: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#c8242c', sound: 'metal', bends: 6 },
   sign_speed_55: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#ece8de', sound: 'metal', bends: 6 },
@@ -503,6 +510,16 @@ export const PROPS = {
   news_box_red: { static: true, material: 'metal', w: 14, h: 11, hp: 4, chips: '#c02a2a', sound: 'metal' },
   mailbox_blue: { static: true, material: 'metal', w: 16, h: 14, hp: 6, chips: '#2a4a8a', sound: 'metal' },
   mailbox_post: { overhead: true, height: 0.012, pole: ['#6a5038', 3], static: true, material: 'wood', r: 2.5, hp: 3, chips: '#5ab8b0', sound: 'wood' },
+  mailbox_post_b: { overhead: true, height: 0.012, pole: ['#6a5038', 3], static: true, material: 'wood', r: 2.5, hp: 3, chips: '#2e2c34', sound: 'wood' },
+  mailbox_post_c: { overhead: true, height: 0.012, pole: ['#6a5038', 3], static: true, material: 'wood', r: 2.5, hp: 3, chips: '#ece4d2', sound: 'wood' },
+  mailbox_post_d: { overhead: true, height: 0.012, pole: ['#6a5038', 3], static: true, material: 'wood', r: 2.5, hp: 3, chips: '#a84a3a', sound: 'wood' },
+  // a house's front, laid on its wall's face: a jalousie window dark or lit from inside, the door and its porch light;
+  // set in the wall, not hung on it (hung: no body to catch a car run along the fronts, tests/kerb.test.mjs)
+  house_window: { hung: true, static: true, material: 'glass', w: 52, h: 4, hp: 2, chips: '#9ab8c8', glass: true, sound: 'glass' },
+  house_window_lit: { hung: true, static: true, material: 'glass', w: 52, h: 4, hp: 2, chips: '#9ab8c8', glass: true, sound: 'glass',
+    light: { r: 70, color: '#ffb860', intensity: 0.4, y: 8 } },
+  house_door: { hung: true, static: true, lasting: true, material: 'wood', w: 30, h: 4, hp: 99, chips: '#7a4a2c', sound: 'wood',
+    light: { r: 150, color: '#ffd9a0', intensity: 0.85, x: 16.5, y: 4 } },
   pole_sign_strip: { hum: 'neon', overhead: true, height: 0.05, pole: ['#d8d0c0', 5], static: true, material: 'metal', r: 4, hp: 6, chips: '#5ab8b0', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#ff4a9a', intensity: 0.6, flicker: 'buzz', y: -28 }, { r: 130, color: '#f4f8ff', intensity: 0.5, y: 10 }] },
   yard_fence: { static: true, material: 'mesh', w: 128, h: 4, hp: 14, chips: '#9ea4ae', sound: 'metal' },
