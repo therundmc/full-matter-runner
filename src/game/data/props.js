@@ -287,12 +287,12 @@ export const PROPS = {
   lorry: { static: true, lasting: true, blind: true, material: 'metal', w: 276, h: 76, hp: 99, chips: '#d2cbb8', sparks: true, sound: 'metal', blocksPath: true },
   // a cafe's terrace: the canvas awning hung on its front (the wall at -y) and the parasols over its tables are
   // `canopy`: a car driven under one tears it down (systems/Drive.js); the planters along its edge
-  awning: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#e0842c', sound: 'wood' },
+  awning: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#e0842c', sound: 'wood' },
   // shop awnings along the chase's fronts, the cafe's in other cloth (torn down by a car under them: Drive `canopy`)
-  awning_red: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b82030', sound: 'wood' },
-  awning_green: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a7a4a', sound: 'wood' },
-  awning_blue: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a4a9a', sound: 'wood' },
-  awning_wine: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#6a1a3a', sound: 'wood' },
+  awning_red: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b82030', sound: 'wood' },
+  awning_green: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a7a4a', sound: 'wood' },
+  awning_blue: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a4a9a', sound: 'wood' },
+  awning_wine: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#6a1a3a', sound: 'wood' },
   // what else stands on the chase's sidewalks and in its road works, light enough to be flung by a car
   traffic_cone: { material: 'plastic', r: 5, hp: 2, kg: 3, mu: 0.5, chips: '#ff6a1a', sound: 'wood' },
   sawhorse: { material: 'wood', w: 38, h: 8, hp: 3, kg: 14, mu: 0.5, chips: '#d0242c', sound: 'wood' },
@@ -339,8 +339,8 @@ export const PROPS = {
   sign_works: { material: 'metal', w: 14, h: 14, hp: 3, kg: 7, mu: 0.45, chips: '#f08a1c', sound: 'metal' },
   // over the street, out of everybody's reach (`hung`: no body; `lasting`: nothing brings them down): the railway's
   // bridge (along y; it fades over him as he drives under) and the freeway's sign on its truss (along x)
-  viaduct: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 144, h: 320, hp: 99, chips: '#3c4350', sound: 'metal' },
-  gantry_sign: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 306, h: 36, hp: 99, chips: '#1c6a4c', sound: 'metal',
+  viaduct: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'metal', w: 144, h: 320, hp: 99, chips: '#3c4350', sound: 'metal' },
+  gantry_sign: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'metal', w: 306, h: 36, hp: 99, chips: '#1c6a4c', sound: 'metal',
     light: [{ r: 70, color: '#fff0c8', intensity: 0.4, x: -65, y: 22 }, { r: 70, color: '#fff0c8', intensity: 0.4, x: 65, y: 22 }] },
   // ---- level 2A, part two (docs/LEVEL2.md segment 2; sprites: "level 2A, part two" in tools/generate_assets.py): the
   // works that close the street and the detour, the side street, the on-ramp, the toll. What a car goes through is
@@ -392,13 +392,13 @@ export const PROPS = {
   sign_toll_ahead: { overhead: true, height: 0.012, pole: ['#4a4e58', 3], static: true, material: 'metal', r: 3, hp: 4, chips: '#1c6a4c', sound: 'metal', bends: 6 },
   reflector_post: { static: true, material: 'plastic', r: 1.5, hp: 2, chips: '#e8e4da', sound: 'wood' },
   // the freeway's bridge over the side street: out of reach, it fades over him as he drives under (as the railway's)
-  overpass: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'stone', w: 576, h: 256, hp: 99, chips: '#a8a49a', sound: 'stone' },
+  overpass: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'stone', w: 576, h: 256, hp: 99, chips: '#a8a49a', sound: 'stone' },
   // the toll: islands and booths never give; the roof over the lanes is out of reach (it fades over him); the wooden
   // arm is torn off (its pieces, gate_arm_bit_*, are loose bits to throw), the steel one kills; the lane lights
   toll_island: { static: true, lasting: true, material: 'stone', w: 254, h: 46, hp: 99, chips: '#d8b030', sound: 'stone', blocksPath: true },
   toll_booth: { static: true, lasting: true, material: 'metal', glass: true, w: 92, h: 38, hp: 99, chips: '#d8d4c8', sound: 'metal', blocksPath: true,
     light: { r: 50, color: '#ffe2a8', intensity: 0.2, x: 13 } },   // (under the roof: a stronger one burnt a blob on its sheet)
-  toll_canopy: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 188, h: 636, hp: 99, chips: '#4e5562', sound: 'metal',
+  toll_canopy: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 188, h: 636, hp: 99, chips: '#4e5562', sound: 'metal',
     // its floods under it (the light map lies over the roof too: at 0.6 they burnt its sheet white; the level's own
     // floods at the lanes' mouths and past the gates light the plaza's ends)
     light: [{ r: 150, color: '#e8f0ff', intensity: 0.28, y: -216, flicker: 'buzz' }, { r: 150, color: '#e8f0ff', intensity: 0.28, y: -72 },
@@ -435,7 +435,7 @@ export const PROPS = {
     light: { r: 110, color: '#38f0dc', intensity: 0.55, y: -42, flicker: 'buzz' } },
   deco_office_teal: { static: true, lasting: true, material: 'stone', w: 156, h: 80, hp: 99, chips: '#58c4b8', sound: 'stone', blocksPath: true,
     light: { r: 110, color: '#38f0dc', intensity: 0.55, y: -42, flicker: 'buzz' } },
-  billboard_motel: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'wood', w: 376, h: 104, hp: 99, chips: '#ff4aa6', sound: 'wood',
+  billboard_motel: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'wood', w: 376, h: 104, hp: 99, chips: '#ff4aa6', sound: 'wood',
     light: [{ r: 130, color: '#ff8ac8', intensity: 0.45, x: -90, y: -20, flicker: 'buzz' }, { r: 130, color: '#ffe8c8', intensity: 0.45, x: 90, y: -20 }] },
   // ---- Miami, 1985 (generic dressing; sprites: "Miami, 1985" in tools/generate_assets.py). Royal palms (the pale
   // trunk is the pole, the crown hung high), hibiscus hedges, pastel stucco canopies along a front (hung: a neon tube
@@ -447,18 +447,18 @@ export const PROPS = {
   royal_palm_b: { material: 'wood', r: 8, hp: 16, static: true, chips: '#3a8a4a', sound: 'wood', overhead: true, dirt: true, height: 0.09, pole: ['#a8a49a', 10] },
   hibiscus_hedge: { static: true, vault: true, material: 'wood', w: 92, h: 20, hp: 8, chips: '#2e7a3a', dirt: true, sound: 'wood' },
   hibiscus_hedge_pink: { static: true, vault: true, material: 'wood', w: 92, h: 20, hp: 8, chips: '#2e7a3a', dirt: true, sound: 'wood' },
-  deco_canopy_pink: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#f0a8c0', sound: 'stone',
+  deco_canopy_pink: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#f0a8c0', sound: 'stone',
     light: { r: 100, color: '#3ae8ff', intensity: 0.6, flicker: 'buzz', y: 24 } },
-  deco_canopy_mint: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#9edcc6', sound: 'stone',
+  deco_canopy_mint: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#9edcc6', sound: 'stone',
     light: { r: 100, color: '#ff4a8a', intensity: 0.6, flicker: 'buzz', y: 24 } },
-  deco_canopy_peach: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#f6c49c', sound: 'stone',
+  deco_canopy_peach: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#f6c49c', sound: 'stone',
     light: { r: 100, color: '#ff4a8a', intensity: 0.6, flicker: 'buzz', y: 24 } },
-  deco_canopy_lavender: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#c2b0e4', sound: 'stone',
+  deco_canopy_lavender: { hum: 'neon', hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'stone', w: 128, h: 36, hp: 99, chips: '#c2b0e4', sound: 'stone',
     light: { r: 100, color: '#3ae8ff', intensity: 0.6, flicker: 'buzz', y: 24 } },
-  awning_pink: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#f08ab0', sound: 'wood' },
-  awning_mint: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#7ad0b0', sound: 'wood' },
-  awning_peach: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#f4a878', sound: 'wood' },
-  awning_lavender: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b49ae0', sound: 'wood' },
+  awning_pink: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#f08ab0', sound: 'wood' },
+  awning_mint: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#7ad0b0', sound: 'wood' },
+  awning_peach: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#f4a878', sound: 'wood' },
+  awning_lavender: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b49ae0', sound: 'wood' },
   pole_sign_motel: { hum: 'neon', overhead: true, height: 0.05, pole: ['#d8d0c0', 4], static: true, material: 'metal', r: 4, hp: 6, chips: '#f6c49c', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#ff4a9a', intensity: 0.75, flicker: 'buzz', y: -8 }, { r: 90, color: '#3ae8ff', intensity: 0.5, flicker: 'stutter', y: 12 }] },
   pole_sign_autos: { hum: 'neon', overhead: true, height: 0.05, pole: ['#d8d0c0', 4], static: true, material: 'metal', r: 4, hp: 6, chips: '#c2b0e4', sparks: true, glass: true, sound: 'metal',
@@ -469,17 +469,17 @@ export const PROPS = {
     light: { r: 110, color: '#3ae8ff', intensity: 0.8, flicker: 'stutter' } },
   neon_sign_flamingo: { hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 100, color: '#ff4a9a', intensity: 0.8, flicker: 'buzz' } },
-  billboard_tan: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 252, h: 104, hp: 99, chips: '#c8c4d0', sound: 'metal',
+  billboard_tan: { hung: true, lasting: true, overhead: true, height: 0.04, static: true, material: 'metal', w: 252, h: 104, hp: 99, chips: '#c8c4d0', sound: 'metal',
     light: [{ r: 130, color: '#fff0d0', intensity: 0.55, x: -90, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: -26, y: -10 },
       { r: 130, color: '#fff0d0', intensity: 0.55, x: 26, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: 90, y: -10 }] },
-  billboard_radio: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 252, h: 104, hp: 99, chips: '#c8c4d0', sound: 'metal',
+  billboard_radio: { hung: true, lasting: true, overhead: true, height: 0.04, static: true, material: 'metal', w: 252, h: 104, hp: 99, chips: '#c8c4d0', sound: 'metal',
     light: [{ r: 130, color: '#fff0d0', intensity: 0.55, x: -90, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: -26, y: -10 },
       { r: 130, color: '#fff0d0', intensity: 0.55, x: 26, y: -10 }, { r: 130, color: '#fff0d0', intensity: 0.55, x: 90, y: -10 }] },
   lot_light: { fixture: true, material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.03,
     light: [{ r: 170, color: '#f4f8ff', intensity: 0.7, x: -26, y: 40 }, { r: 170, color: '#f4f8ff', intensity: 0.7, x: 26, y: 40 }] },
-  sign_gantry: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 80, h: 448, hp: 99, chips: '#1c6a4c', sound: 'metal',
+  sign_gantry: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 80, h: 448, hp: 99, chips: '#1c6a4c', sound: 'metal',
     light: [{ r: 120, color: '#e8fff0', intensity: 0.55, x: -36, y: -108 }, { r: 120, color: '#e8fff0', intensity: 0.55, x: -36, y: 132 }] },
-  pennant_string: { hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 112, h: 12, hp: 2, chips: '#ff5aa0', sound: 'wood' },
+  pennant_string: { hung: true, overhead: true, height: 0.06, static: true, material: 'fabric', w: 112, h: 12, hp: 2, chips: '#ff5aa0', sound: 'wood' },
   car_burnt: { static: true, lasting: true, material: 'metal', w: 136, h: 54, hp: 99, chips: '#5a3a2a', sparks: true, sound: 'metal', blocksPath: true },
   tent_tarp: { static: true, material: 'fabric', w: 64, h: 44, hp: 6, chips: '#2a5ab8', sound: 'wood' },
   barrel_fire: { static: true, material: 'metal', r: 10, hp: 10, chips: '#7a3a24', sparks: true, sound: 'metal', blocksPath: true,
@@ -527,8 +527,8 @@ export const PROPS = {
   garden_wall_pink: { static: true, vault: true, material: 'stone', w: 96, h: 10, hp: 18, chips: '#f0a8c0', sound: 'stone', blocksPath: true },
   garden_wall_mint: { static: true, vault: true, material: 'stone', w: 96, h: 10, hp: 18, chips: '#9edcc6', sound: 'stone', blocksPath: true },
   garden_wall_cream: { static: true, vault: true, material: 'stone', w: 96, h: 10, hp: 18, chips: '#efe2c4', sound: 'stone', blocksPath: true },
-  carport: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'plastic', w: 188, h: 100, hp: 6, chips: '#b4d4a4', sound: 'wood' },
-  tv_antenna: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 54, h: 28, hp: 99, chips: '#a8acb4', sound: 'metal' },
+  carport: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'plastic', w: 188, h: 100, hp: 6, chips: '#b4d4a4', sound: 'wood' },
+  tv_antenna: { hung: true, lasting: true, overhead: true, height: 0.08, static: true, material: 'metal', w: 54, h: 28, hp: 99, chips: '#a8acb4', sound: 'metal' },
   lawn_flamingos: { material: 'plastic', w: 28, h: 18, hp: 1, kg: 1.5, mu: 0.5, chips: '#ff6aa0', sound: 'wood' },
   oleander_pink: { static: true, material: 'wood', w: 48, h: 40, hp: 6, chips: '#2a5a2e', dirt: true, sound: 'wood' },
   oleander_white: { static: true, material: 'wood', w: 48, h: 40, hp: 6, chips: '#2a5a2e', dirt: true, sound: 'wood' },
@@ -557,7 +557,7 @@ export const PROPS = {
   tyre_rack: { static: true, material: 'metal', w: 62, h: 18, hp: 8, chips: '#585a70', sparks: true, sound: 'metal' },
   tyre_sign: { material: 'wood', w: 46, h: 14, hp: 3, kg: 6, mu: 0.45, chips: '#c8a878', sound: 'wood' },
   // strung across the street
-  string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
+  string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
   // ---- the flat of the prologue (tools/build_tutorial.py; sprites: "The flat of the prologue" in
   // tools/generate_assets.py): his few things, light enough to be kicked about, and what is fixed to its walls
@@ -609,7 +609,7 @@ export const PROPS = {
     light: { r: 130, color: '#4ae8ff', intensity: 0.9, flicker: 'buzz' } },
   neon_sign_cocktail: { hum: 'neon', material: 'glass', w: 64, h: 6, hp: 4, static: true, chips: '#b44aff', sparks: true, glass: true, sound: 'glass',
     light: { r: 130, color: '#c060ff', intensity: 0.9, flicker: 'buzz' } },
-  laundry_line: { canopy: true, hung: true, overhead: true, height: 0, static: true, material: 'fabric', w: 160, h: 30, hp: 3, chips: '#f0a0bc', sound: 'wood' },
-  fire_escape: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'metal', w: 96, h: 44, hp: 99, chips: '#2a2a34', sound: 'metal' },
+  laundry_line: { canopy: true, hung: true, overhead: true, height: 0.05, static: true, material: 'fabric', w: 160, h: 30, hp: 3, chips: '#f0a0bc', sound: 'wood' },
+  fire_escape: { hung: true, lasting: true, overhead: true, height: 0.06, static: true, material: 'metal', w: 96, h: 44, hp: 99, chips: '#2a2a34', sound: 'metal' },
   palm_fronds: { hung: true, lasting: true, overhead: true, height: 0.08, static: true, material: 'wood', w: 88, h: 64, hp: 99, chips: '#3a8a3a', sound: 'wood' },
 };

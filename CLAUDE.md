@@ -50,9 +50,6 @@
   (`player_tail_l` / `_r`, KINDS `coat`) swung by entities/Skirt.js (numbers `COAT` in data/feel.js: it lags his
   turns, opens with his speed, hangs as a short hem at rest), drawn by CharacterAnim `drawSkirt`; on the floor it is
   spread under him (`player_rag_skirt`, Ragdoll `skirt`). Cosmetic only: no body, no hit circle.
-- Parallax (prop `height`, Prop.js): only for things on a pole (palms, lamps, signs: the pole ties top to foot) and
-  hanging lights; a rigid structure fixed to the ground or a wall (bridge, gantry, the toll's roof, billboard, awning,
-  fire escape, washing line) has none, or it slides over its abutments like a lamp on a wire (tests/parallax.test.mjs).
 - Walk and hands: entities/Gait.js (cadence and stride grow with speed, planted feet), arms and hands painted in
   render/LimbArt.js; long guns shouldered with `grip`, `fore`, `butt` (data/weapons.js); heads are their own sprite.
 - `BODY_SCALE` = 1.3 (Config): a standing pose is drawn 1.3 x about the feet (CharacterAnim `bodyFrame`; pose numbers
