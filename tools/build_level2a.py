@@ -1049,7 +1049,7 @@ for c in range(RAMP_X + 2, M0 - 1, 4):
 must('sign_wrong_way', RAMP_X + 8.5, R1 + 1.7, 0, on='=')                # (read upright, as every sign: it was turned)
 must('sign_wrong_way', RAMP_X + 8.5, R0 - 0.65, 0, on='"')
 must('sign_speed_55', RAMP_X + 13.0, R1 + 1.7, 0, on='=')
-must('sign_toll_ahead', RAMP_X + 21.0, R1 + 1.7, 0, on='=')
+must('sign_toll_ahead', RAMP_X + 4.5, R1 + 1.7, 0, on='=')                 # (half a mile before the gantry's quarter)
 for c in (515.5, 545.5):
     must('highway_lamp', c, R1 + 2.65, 90, on='"')
 lv.paint('merge_arrow', M0 + 12.0, LANES1[0])                           # (between two of the slabs' joints)
@@ -1786,7 +1786,7 @@ lights += TOLL_LIGHTS                                                    # (the 
 # leg 1 in 1985 (the neon, the billboards, the drum's fire and the lot are their props' own lights): the palms lit
 # from their feet, pink and cyan in turn, the green signs from below, more sodium over the merge (it was the dark end)
 lights += [[c, r, 2.6, '#ff4a9a' if k % 2 else '#3ae8ff', 0.5] for (k, (c, r)) in enumerate(((466.9, 48.8), (468.0, 42.3), (493.6, 42.1), (507.5, 50.3), (525.0, 50.3), (541.5, 50.3), (556.0, 50.3)))]
-lights += [[c, r, 2.2, '#e8fff0', 0.4] for (c, r) in ((RAMP_X - 3.0, 49.2), (RAMP_X + 21.0, 48.3), (RAMP_X + 13.0, 48.3))]
+lights += [[c, r, 2.2, '#e8fff0', 0.4] for (c, r) in ((RAMP_X - 3.0, 49.2), (RAMP_X + 4.5, 48.3), (RAMP_X + 13.0, 48.3))]
 lights += HARMONY_LIGHTS                                                 # (the harmony pass's: palms' feet, porches)
 lights += [[531.0, 41.5, 8, '#ffb46a', 0.32], [541.0, 44.5, 9, '#ffa860', 0.3], [552.0, 45.5, 8, '#ffa860', 0.34], [557.0, 40.0, 8, '#ffb46a', 0.3]]
 

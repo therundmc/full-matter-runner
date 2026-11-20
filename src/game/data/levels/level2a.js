@@ -458,7 +458,7 @@ export default {
     ['reflector_post', 500.5, 42.7, 0], ['reflector_post', 504.5, 42.7, 0], ['reflector_post', 508.5, 42.7, 0],
     ['reflector_post', 512.5, 42.7, 0], ['reflector_post', 516.5, 42.7, 0], ['reflector_post', 520.5, 42.7, 0],
     ['sign_wrong_way', 506.5, 48.7, 0], ['sign_wrong_way', 506.5, 42.35, 0], ['sign_speed_55', 511, 48.7, 0],
-    ['sign_toll_ahead', 519, 48.7, 0], ['highway_lamp', 515.5, 49.65, 90], ['highway_lamp', 545.5, 49.65, 90],
+    ['sign_toll_ahead', 502.5, 48.7, 0], ['highway_lamp', 515.5, 49.65, 90], ['highway_lamp', 545.5, 49.65, 90],
     // miami: the camp under the bridge (north bank)
     ['tent_tarp', 456.7, 42, 0], ['barrel_fire', 459.4, 42.2, 0], ['bin_bag', 458, 42.6, 0],
     // miami: the freeway's bank (palms, the billboard, the burnt car, the fence)
@@ -746,7 +746,7 @@ export default {
     [541.5, 50.3, 2.6, '#ff4a9a', 0.5],
     [556.0, 50.3, 2.6, '#3ae8ff', 0.5],
     [495.0, 49.2, 2.2, '#e8fff0', 0.4],
-    [519.0, 48.3, 2.2, '#e8fff0', 0.4],
+    [502.5, 48.3, 2.2, '#e8fff0', 0.4],
     [511.0, 48.3, 2.2, '#e8fff0', 0.4],
     [187.5, 9.0, 5, '#7a5ad8', 0.2],
     [219.6, 17.0, 4, '#ffa860', 0.16],
