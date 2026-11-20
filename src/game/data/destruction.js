@@ -337,6 +337,7 @@ export const DESTRUCTION = {
   guardrail: { height: 0.7, material: 'metal' },
   guardrail_end: { height: 0.8, material: 'metal' },
   crash_cushion: { height: 0.9, powder: '#c8b080', parts: [{ cut: 'wedges', n: 9 }] },
+  crash_cushion_narrow: { height: 0.9, powder: '#c8b080', parts: [{ cut: 'wedges', n: 5 }] },
   highway_lamp: { height: 10, drop: true, electric: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   sign_freeway: { height: 2.4, drop: true },
   sign_wrong_way: { height: 2.2, drop: true },

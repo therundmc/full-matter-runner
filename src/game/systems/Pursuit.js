@@ -345,6 +345,9 @@ export default class Pursuit {
     car.farT = v.x < tg.x - R.far ? (car.farT || 0) + dt : 0;
     car.heldT = Math.hypot(sl.x - v.x, sl.y - v.y) > R.close ? (car.heldT || 0) + dt : 0;
     if ((car.farT < R.t && car.heldT < R.held) || this.onScreen(v) || this.tell?.car === car || d?.bend) return;
+    // (nor while a toll's plaza is told: brought up in the lane beside his there, it was put across an island's nose
+    // from its gate's lane, too late to get round it; it comes back past the gates)
+    if (this.world.toll?.busy(real.x, Math.max(1, real.vel.x))) return;
     const x = real.x - this.C.spawn.near - v.w / 2, y = this.sides(real).other, L = this.route.legs[this.hisLeg];
     if (x - v.w < L.from * TILE || x + v.w > L.to * TILE) return;
     if (this.blockedAt(car, x + 120, y, 280)) return;

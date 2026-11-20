@@ -175,15 +175,16 @@ test('toll: each lane\'s gate stands across it at the islands\' end, its signal 
   assert.ok(lab.floor.some(([n]) => n === 'label_toll'), 'station 37 is labelled');
 });
 
-test('toll: nothing of the plaza\'s islands, booths or signals is in a lane; the roof is hung over them', () => {
+test('toll: nothing of the plaza\'s islands, their crash cushions, booths or signals is in a lane; the roof is hung over them', () => {
   const half = (t, deg) => { const d = PROPS[t]; const [w, h] = d.r ? [d.r * 2, d.r * 2] : [d.w, d.h]; return (Math.round(deg) % 180 === 90 ? w : h) / 64; };
   let n = 0;
   for (const [t, c, r, deg = 0] of level2a.props) {
-    if (!['toll_island', 'toll_booth', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change'].includes(t) || c < T.fan[0]) continue;
+    // (the cushions too: 2.6 m wide before a 1.5 m island they stood 0.6 m into each lane, burst by every car through)
+    if (!['toll_island', 'crash_cushion_narrow', 'crash_cushion', 'toll_booth', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change'].includes(t) || c < T.fan[0] || c > T.at + 1) continue;
     n++;
     for (const y of T.lanes) assert.ok(r + half(t, deg) <= y - 1.5 + 0.01 || r - half(t, deg) >= y + 1.5 - 0.01, `${t} at ${c}, ${r} in the lane of row ${y}`);
   }
-  assert.ok(n >= 5 + 4 + 4, `${n} islands, booths, signals`);
+  assert.ok(n >= 5 + 5 + 4 + 4, `${n} islands, cushions, booths, signals`);
   const roof = level2a.props.find(([t]) => t === 'toll_canopy');
   assert.ok(roof && PROPS.toll_canopy.hung && PROPS.toll_canopy.overhead && PROPS.toll_canopy.lasting, 'the roof: hung over everything');
   // its lanes (TOLL_LANES: 104, 248, 392, 536 px from its top edge) on the plaza's
@@ -367,4 +368,43 @@ test('toll: the roof over the plaza fades over his car as the railway bridge doe
   assert.ok(alphas[1] < 0.6 && alphas[2] < 0.6, 'see-through over him, in any lane');
   const isle = w.props.find((p) => p.type === 'toll_island');
   assert.ok(!isle.def.overhead && isle.def.lasting, 'the islands on the ground, never giving');
+});
+
+// ---------------------------------------------------------------- past the gates: where the road narrows
+test('toll: steered out wide past the gates and on to where the outer lanes end, the wheel is brought in ahead of the narrowing: never stopped on a rail\'s end', () => {
+  // (out of the outer wooden lane, the wheel held to the outside: the fan back's crash cushions and the rail behind
+  // them at col 627, the lane drop's at col 652; nose-on to the rail's end the car stood at 3 % of its speed)
+  for (const [row, key] of [[T.lanes[0], 'KeyW'], [T.lanes[2], 'KeyS']]) {
+    const s = start(Math.ceil(T.at) + 3, row, { speed: 13.3 }), { d, v, w, input } = s;
+    input.held.add(key);
+    let slowest = Infinity, wide = 0;
+    run(s, 4.2, { each: () => { slowest = Math.min(slowest, d.v); return v.x > 668 * TILE; } });
+    // (the freeway's guardrails there)
+    const rails = level2a.props.filter(([k, c]) => k === 'guardrail' && c > 656 && c < 668).map(([, , r]) => r * TILE);
+    wide = Math.max(Math.min(...rails) - v.body.bounds.min.y, v.body.bounds.max.y - Math.max(...rails));
+    assert.ok(w.player.alive && !d.dead, `${key}: alive`);
+    assert.ok(slowest > 0.8 * d.cruise, `${key}: never held up (${(slowest / d.cruise * 100).toFixed(0)} % of his speed at the slowest)`);
+    assert.ok(v.x > 668 * TILE, `${key}: on down the freeway (${(v.x / TILE).toFixed(0)})`);
+    assert.ok(wide < -2, `${key}: inside its guardrails (${wide.toFixed(0)} px out)`);
+  }
+  // (theirs: past the gates the leg is the four lanes the fan back closes to, then the freeway's two from where the
+  // outer two start to end: their slots are never out wide into a cushion)
+  const legs = legsOf(C), back = legs[legAt(legs, (T.at + 3) * TILE)], drop = legs[legAt(legs, 642 * TILE)];
+  assert.deepEqual(back.lanes, T.from, 'the fan back: the approach\'s four');
+  assert.equal(drop.lanes.length, 2, 'where the outer two end: the middle two');
+});
+
+test('toll: a pursuer left far behind is not brought back up while the plaza is told (put in the lane beside his there, it was across an island\'s nose), only past the gates', () => {
+  const s = start(T.fan[0] - 14, T.from[3], { speed: 13.3 }), { v, P } = s;
+  s.w.view = () => ({ x: v.x + 100, y: v.y, hw: 320, hh: 180 }); // (the picture: off it, a car may be brought up)
+  const car = s.P.spawn(v.x - 1500, T.from[2] * TILE, 0, 'chase', 13.3, 'gunner');
+  let jumpAt = null, was = car.v.x;
+  run(s, 3, { steer: true, each: () => {
+    if (jumpAt === null && car.v.x - was > 60) jumpAt = v.x;
+    was = car.v.x;
+    return false;
+  } });
+  assert.ok(jumpAt !== null, 'brought back up at last');
+  assert.ok(jumpAt > GX + CHASE.toll.past - 1, `past the gates, not in the plaza (he was at col ${(jumpAt / TILE).toFixed(1)})`);
+  assert.ok(car.state === 'chase', `and still after him (${car.state})`);
 });

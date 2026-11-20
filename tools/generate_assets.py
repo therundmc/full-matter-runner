@@ -11961,27 +11961,29 @@ def p_guardrail_end():
     return cv
 
 
-def p_crash_cushion():
+def p_crash_cushion(narrow=False):
     """A crash cushion in front of a pier, from above, 3 m: six sand barrels set one, two, three toward the traffic
     (-x), yellow plastic with their black lids, the front one wrapped in reflective sheeting, one lid split with the
-    sand showing, dust and tyre black on them."""
-    W, H = 96, 88
+    sand showing, dust and tyre black on them. `narrow`: before a toll island's nose (1.5 m wide: the 2.75 m one
+    stood half a metre into each lane beside it), three barrels in single file, the same paint."""
+    W, H = (96, 44) if narrow else (96, 88)
     cv = Cv(W, H)
     rng = random.Random(9771)
     yel = ramp('#e8c020', 0.5, 0.26, 0.28)
     lid = ramp('#2e2c34', 0.45, 0.22, 0.35)
-    for n, (x, y) in enumerate(((16, 44), (44, 30), (44, 58), (72, 16), (72, 44), (72, 72))):
+    spots = ((16, 22), (44, 22), (72, 22)) if narrow else ((16, 44), (44, 30), (44, 58), (72, 16), (72, 44), (72, 72))
+    for n, (x, y) in enumerate(spots):
         def barrel(ly, x=x, y=y, n=n):
             ring(ly, x, y, 0.0, 13.0, lambda dx, dy, d: shade(yel, 0.3 + light(dx / 13, dy / 13) * 0.7))
             ring(ly, x, y, 0.0, 10.6, lambda dx, dy, d: shade(lid, 0.45 + light(dx / 12, dy / 12) * 0.35) if d > 9.2 else lid[2])
             if n == 0:
                 ring(ly, x, y, 11.0, 13.0, lambda dx, dy, d: hx('#f4f2ea') if int((math.atan2(dy, dx) + 3.15) * 3) % 2 else hx('#e8c020'))
-            if n == 4:                                                     # split, the sand in it
+            if n == (2 if narrow else 4):                                  # split, the sand in it
                 px_paint(ly, x - 7, y - 3, x + 5, y + 4, lambda x_, y_, cur: shift(hx('#c4a46a'), rng.randint(-10, 10)) if abs(y_ - y - 0.5 * (x_ - x)) < 2.0 else None)
             fill_shape(ly, x - 2.5, y - 2.5, 1.2, 1.2, lambda u, v, L: shade(lid, 0.9))
         layer(cv, barrel)
     smudge(cv, rng, 12, (3, 3, W - 3, H - 3), (1.5, 4.0), 0.22, hx('#c8b896'))
-    smudge(cv, rng, 6, (3, 30, 30, 58), (1.0, 3.0), 0.4)
+    smudge(cv, rng, 6, (3, 8, 30, 36) if narrow else (3, 30, 30, 58), (1.0, 3.0), 0.4)
     return cv
 
 
@@ -12488,6 +12490,7 @@ RAMP_PROPS = dict(road_closed=p_road_closed, sign_detour=p_sign_detour(), sign_d
                   roller_door=p_roller_door, loading_dock=p_loading_dock, chainlink_gate=p_chainlink_gate,
                   pallet_stack=p_pallet_stack, oil_drum=p_oil_drum, sign_stop=p_sign_stop,
                   guardrail=p_guardrail, guardrail_end=p_guardrail_end, crash_cushion=p_crash_cushion,
+                  crash_cushion_narrow=lambda: p_crash_cushion(True),
                   highway_lamp=p_highway_lamp, sign_freeway=p_sign_freeway, sign_wrong_way=p_sign_wrong_way,
                   sign_speed_55=p_sign_speed_55, sign_toll_ahead=p_sign_toll_ahead, reflector_post=p_reflector_post,
                   toll_island=p_toll_island, toll_booth=p_toll_booth, toll_canopy=p_toll_canopy,
@@ -12499,7 +12502,7 @@ RAMP_SIZES = dict(road_closed=(128, 24), sign_detour=(42, 28), sign_detour_left=
                   water_barrier=(60, 20), excavator=(192, 96), dump_truck=(240, 84), works_light=(96, 72),
                   site_fence=(112, 20), roller_door=(96, 16), loading_dock=(128, 28), chainlink_gate=(128, 16),
                   pallet_stack=(40, 34), oil_drum=(20, 20), sign_stop=(20, 20), guardrail=(128, 10),
-                  guardrail_end=(64, 18), crash_cushion=(96, 88), highway_lamp=(208, 20), sign_freeway=(64, 48),
+                  guardrail_end=(64, 18), crash_cushion=(96, 88), crash_cushion_narrow=(96, 44), highway_lamp=(208, 20), sign_freeway=(64, 48),
                   sign_wrong_way=(38, 26), sign_speed_55=(22, 28), sign_toll_ahead=(54, 30), reflector_post=(6, 12),
                   toll_island=(256, 48), toll_booth=(96, 44), toll_canopy=(192, 640), gate_arm_wood=(112, 12),
                   gate_arm_bit_a=(46, 6), gate_arm_bit_b=(34, 6), gate_arm_bit_c=(24, 6), gate_steel=(112, 20),

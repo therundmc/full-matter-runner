@@ -64,7 +64,7 @@ SIZES = dict(
     road_closed=(124, 8), sign_detour=(38, 6), sign_detour_left=(38, 6), jersey_barrier=(96, 18), water_barrier=(56, 18),
     excavator=(184, 78), dump_truck=(236, 78), works_light=(60, 34), site_fence=(110, 4), roller_door=None,
     loading_dock=(128, 22), chainlink_gate=(126, 4), pallet_stack=(38, 32), oil_drum=(18, 18), sign_stop=(5, 5),
-    guardrail=(128, 6), guardrail_end=(60, 14), crash_cushion=(84, 82), highway_lamp=(8, 8), sign_freeway=(6, 6),
+    guardrail=(128, 6), guardrail_end=(60, 14), crash_cushion=(84, 82), crash_cushion_narrow=(84, 40), highway_lamp=(8, 8), sign_freeway=(6, 6),
     sign_wrong_way=(5, 5), sign_speed_55=(5, 5), sign_toll_ahead=(6, 6), reflector_post=(3, 3), toll_island=(254, 46),
     toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
     gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),

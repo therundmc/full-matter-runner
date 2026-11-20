@@ -53,7 +53,7 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'gantry_sign', 'car_bumper', 'car_bumper_black', 'car_mirror', 'car_hubcap', 'car_headlight', 'car_plate', 'car_grille',
   'road_closed', 'sign_detour', 'sign_detour_left', 'jersey_barrier', 'water_barrier', 'excavator', 'dump_truck', 'works_light',
   'site_fence', 'roller_door', 'loading_dock', 'chainlink_gate', 'pallet_stack', 'oil_drum', 'sign_stop', 'guardrail',
-  'guardrail_end', 'crash_cushion', 'highway_lamp', 'sign_freeway', 'sign_wrong_way', 'sign_speed_55', 'sign_toll_ahead',
+  'guardrail_end', 'crash_cushion', 'crash_cushion_narrow', 'highway_lamp', 'sign_freeway', 'sign_wrong_way', 'sign_speed_55', 'sign_toll_ahead',
   'reflector_post', 'toll_island', 'toll_booth', 'toll_canopy', 'gate_arm_wood', 'gate_arm_bit_a', 'gate_arm_bit_b',
   'gate_arm_bit_c', 'gate_steel', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change', 'overpass'];
 const ROAD_PAINT = [

@@ -996,7 +996,11 @@ NOSE = 603.0                # the islands' noses (8 m long: to col 611); a crash
 CANOPY_X = 608.0            # the roof's middle (6 m along the road: cols 605-611)
 GATE_X = 611.1              # the gates, at the islands' ends (the roof's exit)
 AFTER = (611, 627)          # the four lanes spread back to 2.5 m (the fan turned round)
+PLAZA_TO = 613              # the plaza's leg ends just past the gates (CHASE.toll.past: theirs go for their slots)
 DROP = (640, 652)           # the outer two end: merge arrows before, a hatched gore over each
+RAIL = (35.88, 50.12)       # the guardrails' rows: along the four lanes, the plaza's wide shoulders, the freeway's two
+RAIL_PLAZA = (30.88, 55.12)
+RAIL_FWY = (38.88, 47.12)
 MID = 43.0                  # the road's middle row all the way (the four lanes' at col 559)
 TOLL_CRUISE = 13.3          # px/step: 90 km/h
 APPROACH = (39.25, 41.75, 44.25, 46.75)                               # four lanes of 2.5 m: the freeway's two, leg 1's two
@@ -1048,7 +1052,7 @@ for (c, r) in ((566.5, 43.6), (584.0, 41.1), (597.0, 46.8), (608.5, 41.5), (621.
 
 lv.area('the toll: the plaza (islands, their cushions, the booths, the lane signals, the gates, the roof)')
 for (i, r) in enumerate(ISLANDS):
-    lv.prop('crash_cushion', NOSE - 84 / 64 - 0.05, r)
+    lv.prop('crash_cushion_narrow', NOSE - 84 / 64 - 0.05, r)          # (no wider than the island: never in a lane)
     lv.prop('toll_island', NOSE + 254 / 64, r)
     if i < 4:
         lv.prop('toll_booth', CANOPY_X, r)                            # the lane under it (+y) is its own
@@ -1069,8 +1073,8 @@ lv.area('the toll: guardrails, lamps, signs')
 # each run of rail starts with its end toward who comes; where the road narrows (past the plaza, at the lane drop) a
 # car still out wide meets that end: there it is a crash cushion (it bursts, the rail's thin end behind it only
 # clips him: never a death nobody told), not the terminal (`lasting`, as wide as a car's nose would need: the crash)
-for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], 35.88, 50.12, False), (FAN[0], AFTER[1], 30.88, 55.12, False),
-                                     (AFTER[1], DROP[1], 35.88, 50.12, True), (DROP[1], W - 1, 38.88, 47.12, True)):
+for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], *RAIL, False), (FAN[0], AFTER[1], *RAIL_PLAZA, False),
+                                     (AFTER[1], DROP[1], *RAIL, True), (DROP[1], W - 1, *RAIL_FWY, True)):
     for r in (top, bottom):
         if cushion:
             lv.prop('crash_cushion', a + 84 / 64 + 0.05, r + (0.55 if r > MID else -0.55))
@@ -1257,12 +1261,21 @@ LEGS = [
                 [RAMP_X - 1, TOLL_X - 1, 0, ROAD1[1] + 1.9]]},
     # THE TOLL: no bend, the legs follow one another by column (the car goes on in its row from one to the next:
     # Drive's framing eased across). The approach (the four lanes side by side the merge left: the freeway's two and
-    # leg 1's), the plaza from the fan to the fan back (its four lanes under the roof; the camera follows him across:
-    # `track`, the plaza is 20 m wide), four lanes again, the freeway's two (the middle ones)
-    {'from': TOLL0, 'to': FAN[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE},
-    {'from': FAN[0], 'to': AFTER[1], 'lanes': list(PLAZA), 'mid': MID, 'cruise': TOLL_CRUISE, 'track': 0.7},
-    {'from': AFTER[1], 'to': DROP[1], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE},
-    {'from': DROP[1], 'to': W, 'lanes': list(FREEWAY), 'mid': MID, 'cruise': TOLL_CRUISE},
+    # leg 1's), the plaza from the fan to just past the gates (its four lanes under the roof; the camera follows him
+    # across: `track`, the plaza is 20 m wide), four lanes again from there (the fan back: theirs are on the lanes the
+    # paint closes to before the road narrows, never out wide into its crash cushions), the freeway's two (the middle
+    # ones) from where the outer two start to end. The wheel is held inside the guardrails (`across`), and brought in
+    # ahead of where the road narrows (Drive.fronts looks C.frontAhead tiles on): the rail's thin end is never nose-on
+    {'from': TOLL0, 'to': FAN[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE,
+     'across': [[TOLL0, FAN[0] - 1, RAIL[0] + 0.22, RAIL[1] - 0.22]]},
+    {'from': FAN[0], 'to': PLAZA_TO, 'lanes': list(PLAZA), 'mid': MID, 'cruise': TOLL_CRUISE, 'track': 0.7,
+     'across': [[FAN[0], PLAZA_TO - 1, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22]]},
+    {'from': PLAZA_TO, 'to': DROP[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE,
+     'across': [[PLAZA_TO, AFTER[1] - 3, RAIL_PLAZA[0] + 0.22, RAIL_PLAZA[1] - 0.22],
+                [AFTER[1] - 2, DROP[0] - 1, RAIL[0] + 0.22, RAIL[1] - 0.22]]},
+    {'from': DROP[0], 'to': W, 'lanes': list(FREEWAY), 'mid': MID, 'cruise': TOLL_CRUISE,
+     'across': [[c, c + 3, RAIL[0] + 0.22 + k, RAIL[1] - 0.22 - k] for (k, c) in enumerate(range(DROP[0], DROP[1], 4))]
+     + [[DROP[1], W - 1, RAIL_FWY[0] + 0.22, RAIL_FWY[1] - 0.22]]},
 ]
 # a bend: the car's middle at `at` (col) on its leg, the script drives it along `path` (its corners [col, row], each
 # inner one rounded off by an arc of `radius` tiles) and hands it to leg `to` on the lane the path ends on
@@ -1320,15 +1333,14 @@ chase = {
 
 
 def lane_bands(leg):
-    """The rows a leg's lanes cover: [(top, bottom, what)], one band across them all (lanes side by side: leg 0's two
-    are the roadway's rows 11 to 15, leg 1's ROAD1), or one a lane on the plaza (islands between them: a lane 3 m
-    wide; a crash cushion before an island's nose only kept off the width of a car in the middle of it: `cushion`,
-    the band for it alone, or for all but it; None: for everything)."""
+    """The rows a leg's lanes cover: [(top, bottom)], one band across them all (lanes side by side: leg 0's two are
+    the roadway's rows 11 to 15, leg 1's ROAD1), or one a lane on the plaza (islands between them: a lane 3 m wide,
+    the crash cushions before the islands' noses kept out of it too)."""
     L = sorted(leg['lanes'])
     if L == sorted(PLAZA):
-        return [(r - h, r + h, cushion) for r in L for (h, cushion) in ((1.5, False), (0.95, True))]
+        return [(r - 1.5, r + 1.5) for r in L]
     half = (L[1] - L[0]) / 2
-    return [(L[0] - half, L[-1] + half, None)]
+    return [(L[0] - half, L[-1] + half)]
 
 
 def check_lanes():
@@ -1343,9 +1355,8 @@ def check_lanes():
             continue                                          # up or down a street across
         for leg in LEGS:
             if leg['from'] <= col < leg['to']:
-                for (top, bottom, cushion) in lane_bands(leg):
-                    if cushion is None or cushion == (kind == 'crash_cushion'):
-                        assert b[3] <= top or b[1] >= bottom, f'{kind} at {col},{row} is in a lane'
+                for (top, bottom) in lane_bands(leg):
+                    assert b[3] <= top or b[1] >= bottom, f'{kind} at {col},{row} is in a lane'
 
 
 if __name__ == '__main__':

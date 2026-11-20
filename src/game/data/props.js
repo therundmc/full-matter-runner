@@ -373,6 +373,8 @@ export const PROPS = {
   guardrail: { static: true, lasting: true, material: 'metal', w: 128, h: 6, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
   guardrail_end: { static: true, lasting: true, material: 'metal', w: 60, h: 14, hp: 99, chips: '#e8c020', sparks: true, sound: 'metal' },
   crash_cushion: { static: true, material: 'plastic', w: 84, h: 82, hp: 10, chips: '#e8c020', sound: 'wood' },
+  // the same in single file, before a toll island's nose: no wider than the island (the other stood into its lanes)
+  crash_cushion_narrow: { static: true, material: 'plastic', w: 84, h: 40, hp: 10, chips: '#e8c020', sound: 'wood' },
   highway_lamp: { material: 'metal', r: 4, hp: 5, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true, height: 0.02,
     light: [{ r: 210, color: '#ffb46a', intensity: 0.85, x: -90 }, { r: 210, color: '#ffb46a', intensity: 0.85, x: 90 }] },
   sign_freeway: { overhead: true, height: 0.012, pole: ['#4a4e58', 3], static: true, material: 'metal', r: 3, hp: 4, chips: '#1c6a4c', sound: 'metal', bends: 6 },

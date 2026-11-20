@@ -718,7 +718,7 @@ for (k, r) in enumerate(T_LANES):
     lv.paint('toll_text', 161.5, r, 90)
     lv.paint(f'toll_lane_{k + 1}', 163.5, r, 90)
 for (i, r) in enumerate(T_ISLES):
-    lv.prop('crash_cushion', T_NOSE - 84 / 64 - 0.05, r)
+    lv.prop('crash_cushion_narrow', T_NOSE - 84 / 64 - 0.05, r)
     lv.prop('toll_island', T_NOSE + 254 / 64, r)
     if i < 2:
         lv.prop('toll_booth', T_NOSE + 5.0, r)
