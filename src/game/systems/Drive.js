@@ -713,10 +713,9 @@ export default class Drive {
     else if (mid !== null && this.boxed(dt)) return null;
     if (this.v >= S.until * this.cruise) this.freeing = null;
     else if (this.stallT > S.after && !this.freeing) this.freeing = { side: this.wayOut(mid), y, t: 0 };
-    const F = this.freeing, forced = this.nosing?.forced;
+    const F = this.freeing;
     if (!F || mid === null) return null;
-    if (forced) F.side = forced;
-    else if (own) return own;
+    if (own) return own;
     this.tearHeld();
     if ((F.t += dt) > S.after) {
       if (Math.abs(y - F.y) < S.moved) F.side = -F.side; // (held that way too)
@@ -729,8 +728,7 @@ export default class Drive {
   // Crawling with its nose on what never gives (a `lasting` thing: the lorry), it has to get round one of its ends: not
   // `moved` px nearer to one than it ever was in each `after` s for `boxed` s (the way round shut: a car shoved in
   // there and pinned, the street's front; a car pushed against it creeps a few px; going back and forth gains
-  // nothing) and it is the crash he was told about: the street is his to get round, not to wait in (out of harm: no
-  // crash, `forced` the side round it, taken by unstick however he steers). True: it crashed
+  // nothing) and it is the crash he was told about: the street is his to get round, not to wait in. True: it crashed
   boxed(dt) {
     const S = this.C.stall, wall = this.nosedOn();
     if (!wall) return false;
@@ -740,9 +738,7 @@ export default class Drive {
       B.t = 0;
       B.best = Math.min(B.best, left);
     }
-    if (B.held < S.boxed - 1e-9) return false;
-    // (out of harm, god mode or the QA robot's --god: no crash; eased round its end however he steers: unstick)
-    if (this.world.player.invulnerable) { B.forced ||= this.roundOf(wall)?.side ?? 0; return false; }
+    if (B.held < S.boxed - 1e-9 || this.world.player.invulnerable) return false;
     this.crash({ a: this.van.body.angle });
     return true;
   }

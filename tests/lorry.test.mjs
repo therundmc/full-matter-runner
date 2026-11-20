@@ -216,14 +216,6 @@ test('lorry: boxed in at its flank (a car shoved into the way round), it is the 
   }
 });
 
-test('lorry: out of harm (god mode, the QA robot\'s --god), boxed at its flank steering into the dead end, he is eased round its tail, never stuck there', () => {
-  const s = nosed(false);
-  s.w.player.invulnerable = true;
-  s.input.held.add('KeyW'); // (up into the dead end, held: the QA robot stalled there for good)
-  assert.ok(run(s, 6, () => s.v.x > s.p.x + 40 && s.d.v > 0.6 * C.cruise), `round it and running (at ${s.v.x.toFixed(0)}, ${s.v.y.toFixed(0)})`);
-  assert.ok(s.w.player.alive && !s.d.dead, 'no crash');
-});
-
 test('lorry: nose on its flank at a crawl with the way round open, it eases round the end of its tail and runs on', () => {
   const s = nosed(false);
   assert.ok(run(s, 4, () => s.v.x > s.p.x + 40 && s.d.v > 0.6 * C.cruise), `round it and running (at ${s.v.x.toFixed(0)}, ${s.v.y.toFixed(0)})`);
