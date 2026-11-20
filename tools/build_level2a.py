@@ -1329,6 +1329,14 @@ chase = {
     # how it opens, the first time: the car standing, he finishes his cigarette and flicks it out, then the engine
     # and the grab (systems/LastDrag.js, CHASE.intro)
     'intro': 'drag',
+    # THE CHECKPOINTS (systems/Checkpoints.js; the user's call: 2A alone keeps them, one a part as the road was cut):
+    # the car's middle at `at` records it; a death after it restarts there, on its leg's lane (ours), rolling
+    'checkpoints': [
+        {'at': 0, 'name': 'THE STREET'},
+        {'at': BEND_AT - 22, 'name': 'THE DETOUR'},           # on the street, 1.3 s before the script's turn
+        {'at': SIDE_X + 16, 'name': 'THE FRONTAGE ROAD'},     # leg 1, out of the second corner
+        {'at': TOLL_X - 4, 'name': 'THE TOLL'},               # the merge's four lanes, before the toll's pursuers
+    ],
 }
 
 

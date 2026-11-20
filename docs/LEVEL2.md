@@ -13,7 +13,19 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
 - Level 2 is two levels (the user's call, CLAUDE.md Gameplay): **2A, the chase** (about 2 min 30, from the bar's
   district to a big roadside gas station, ending on the convertible crashing through its first pump) and **2B, the station**
   (on foot: the car burning on the forecourt, the boss's men falling back into the store). Dying in 2A restarts the
-  chase from 0:00; dying in 2B restarts 2B at the crash (he gets up off the ground, as level 1's opening).
+  chase at the last CHECKPOINT reached (the user's call, 2026-11-20: "comme il est special, on peut mettre des
+  checkpoints", the one exception to the no-checkpoint rule with the tutorial's rooms): one a part of the road as it
+  was cut (the level's `chase.checkpoints`, systems/Checkpoints.js): THE STREET (the start), THE DETOUR (col 416, on
+  the street 1.3 s before the script's turn), THE FRONTAGE ROAD (col 462, leg 1 out of the second corner), THE TOLL
+  (col 556, the merge's four lanes before the toll's two pursuers); each part to come adds its own. Reached, its name
+  is stamped under the road's bar a moment (CHECKPOINT, CHASE.checkpoint; placeholder sound `checkpoint`). A death
+  after it (R, the pad's A, a click, RETRY in the death screen's pause: Game.retry) reloads the level and starts the
+  car there, on its leg's lane (ours), at its cruise already rolling, the Uzi in hand, no cigarette nor grab, the
+  part's name on the level's card; the events behind it are not replayed, those ahead are armed as from a start
+  there, the props are the level's. The clock and the score are those it had when he reached it (a death costs the
+  part, not the run's time so far); a run through checkpoints is ranked like any (its time is the whole run's). RESTART
+  in the pause, Backspace and a start from the menus or the LEVELS page start from 0:00. Dying in 2B restarts 2B at
+  the crash (he gets up off the ground, as level 1's opening).
 - One hit kills still holds in the car: a shot told and not dodged into the open cabin, a nose-on hit on something
   that does not give, or being shoved off the road. Scrapes cost nothing (no health bar: his car is never shot up,
   burnt or blown); a corner clipped (what he hit covering under a fifth of his nose) is a jolt that takes his speed,
@@ -718,3 +730,14 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   for good) -> 3 clears, no stall. Not changed: the fan and the fan back are dark between their lamps (lit by his
   headlights; the lane paint reads), and a pursuer crossing late to his lane in the fan can still meet an island's
   nose (they follow or die).
+- 2026-11-20: CHECKPOINTS IN 2A (branch feature/chase-checkpoints; the user: "pour ce niveau, comme il est special, on
+  peut mettre des checkpoints, a chaque nouvelle partie decoupee"). The rule changed (Story and structure above, and
+  CLAUDE.md): the level's `chase.checkpoints` (THE STREET 0, THE DETOUR 416, THE FRONTAGE ROAD 462, THE TOLL 556;
+  tools/build_level2a.py), systems/Checkpoints.js (reached: kept on the game as `Game.chaseAt` with the run's clock,
+  Scoring.snapshot and the men counted; the HUD's CHECKPOINT card; the retry: World builds the chase as from it,
+  fromCheckpoint: Drive's `start` / `speed`, the events behind it dropped, then resume: no grab, the clock and the
+  score given back). Game.retry (after a death) / newGame (RESTART, from the beginning); the death screen's RETRY is
+  its own menu action. QA robot: its retries after a death start at the checkpoint (the report's "Checkpoints" line:
+  reached, retries started at one). Tests: tests/checkpoints.test.mjs. QA 3 min seed 2: PASS, 4 sessions, no death,
+  the end reached 3 times (DETOUR 4, FRONTAGE ROAD 3, TOLL 3 reached); seed 7: PASS, one death (a bullet on the
+  street: the retry at THE STREET), a heap warning across its 5 sessions.

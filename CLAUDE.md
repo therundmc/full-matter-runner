@@ -89,8 +89,11 @@
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
-- A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level
-  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is cut in STAGES played
+- A hard game (the user's rule): NO checkpoints, EXCEPT the tutorial's rooms and 2A's parts. Dying restarts the
+  level from its beginning, never mid-level, but in the tutorial (at its last room reached, `Game.tutorialAt`) and in
+  2A, the chase (the user's call: at the last of its parts reached, the level's `chase.checkpoints`, systems/
+  Checkpoints.js, `Game.chaseAt`: the street, the detour, the frontage road, the toll; later parts add theirs; the
+  clock and the score as they were there; `Game.retry` after a death, RESTART / Backspace from the beginning). A long level is cut in STAGES played
   in a row instead (data/campaign.js: the player's levels 00 tutorial, 01 CUEBALL, 02 and 03 JITTERS, 04 05 LUCKY,
   06 07 THE BOSS, each a list of the engine's levels): LEVEL 2 is level2a (the car chase, ending on the crash into
   the gas station) then level2b (the gas station fight, restarted from the crash); for the player it is one level,

@@ -144,6 +144,9 @@ export const CHASE = {
   // picture goes black over `fade` s, TO BE CONTINUED comes up at `title` and what is next at `name` (each over `rise`
   // s), a key passes it after `skipAfter`, the results follow at `hold`
   finish: { fade: 1.1, title: 0.9, name: 1.5, rise: 0.35, skipAfter: 1.6, hold: 5 },
+  // a checkpoint reached (the level's `chase.checkpoints`, systems/Checkpoints.js): the part's name stamped under the
+  // road's bar, in over `rise` s, held, gone over `fade` s by `hold`
+  checkpoint: { rise: 0.18, fade: 0.5, hold: 2.2 },
   // dead at the wheel (a told shot): the car runs on, losing `slow` px/step a second, drifting `drift` of its full
   // sideways speed toward the kerb (Drive.coast)
   coast: { slow: 3.2, drift: 0.22 },

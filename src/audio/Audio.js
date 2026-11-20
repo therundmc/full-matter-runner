@@ -130,6 +130,7 @@ export const META = {
   lorryBeep: { pri: 3, dur: 0.15, gap: 0.2, max: 1, gain: 0.7 }, lorryBrake: { pri: 2, dur: 0.5, gap: 0.3, max: 1, gain: 0.6 },
   awningRip: { pri: 1, dur: 0.4, gap: 0.15, max: 2, gain: 0.6 }, tyreSkid: { pri: 1, dur: 0.4, gap: 0.35, max: 1, gain: 0.45 },
   waterSpray: { pri: 0, dur: 0.3, gap: 0.25, max: 1, gain: 0.4 },
+  checkpoint: { pri: 2, dur: 0.5, gap: 1, max: 1, gain: 0.6 },
   tellClick: { pri: 2, dur: 0.2, gap: 0.15, max: 1, gain: 0.6 }, pursuerWreck: { pri: 3, dur: 1, gap: 0.2, max: 2, gain: 0.9 },
   // ... a car in trouble (systems/CarFx.js): placeholders
   carGrind: { pri: 1, dur: 0.35, gap: 0.12, max: 2, gain: 0.45 }, rimGrind: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.4 },
@@ -452,6 +453,8 @@ const FOLEY = {
   // flick (silent for now), the butt on the road, the engine starting
   cigDrag: [], cigFlick: [['swish', 0.25, 1.6]], buttHit: [['click', 0.3, 1.5]],
   engineRoar: [['thud', 0.7, 0.6], ['sheet', 0.3, 0.6, 0.04]],
+  // PLACEHOLDER for a chase's checkpoint reached (systems/Checkpoints.js)
+  checkpoint: [['click', 0.7, 0.8], ['swish', 0.3, 0.9, 0.03]],
   // PLACEHOLDERS for the pursuers (systems/Pursuit.js): a gunman's tell starting (the hammer cocked), a pursuer's car
   // wrecked on what does not give
   tellClick: [['click', 0.8, 0.7], ['click', 0.5, 1.3, 0.05]],

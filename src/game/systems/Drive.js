@@ -226,7 +226,8 @@ export function frontsAt(map, c, r, most = 8) {
 export default class Drive {
   // o: the level's `chase` ({ van: [col, row], cruise, lanes, end, legs, bends }) or the lab's ({ exit: true }, a
   // route of its own maybe: { legs, bends }); van: the vehicle he gets into (none: one of CHASE.vehicle's model is
-  // made at o.van, facing +x, already at its cruise speed)
+  // made at o.van, facing +x, already at its cruise speed). A restart at a checkpoint (systems/Checkpoints.js) puts
+  // it at o.start [col, row] instead, going o.speed px/step (the route is still measured from o.van)
   constructor(world, o = {}, van = null) {
     this.world = world;
     this.o = o;
@@ -238,15 +239,16 @@ export default class Drive {
     this.camY = null;                 // the view's middle across while it is eased to a leg's framing or follows him (acrossStep)
     this.viewW = null;                // world px across the view, as last framed
     this.far = 0;                     // px along the route, the most so far (progress: never back)
-    if (van || o.van) this.legI = legAt(this.route.legs, van ? van.x : o.van[0] * TILE);
+    const at = o.start ?? o.van;
+    if (van || at) this.legI = legAt(this.route.legs, van ? van.x : at[0] * TILE);
     this.cruise = this.leg.cruise;
     if (!van) {
-      van = new Vehicle(world, o.vehicle ?? CHASE.vehicle, o.van[0] * TILE, o.van[1] * TILE, 0);
+      van = new Vehicle(world, o.vehicle ?? CHASE.vehicle, at[0] * TILE, at[1] * TILE, 0);
       world.props.push(van);
     }
     this.van = van;
     this.bendI = this.route.bends.findIndex((b) => b.x > van.x); // the next bend on his way (-1: none)
-    this.v = o.van ? this.cruise : 0; // px/step along the road
+    this.v = o.van ? o.speed ?? this.cruise : 0; // px/step along the road
     this.u = 0;                       // px/step across it
     this.shoveT = 0;                  // s of the shove left
     this.shoves = 0;                  // how many it has thrown (a shove lands once on a pursuer: lunge)

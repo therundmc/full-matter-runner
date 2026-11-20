@@ -95,7 +95,7 @@ test('menu: the pause of the death screen offers RETRY instead of RESUME; going 
   const live = new Menu('pause', ctx(false)), dead = new Menu('pause', ctx(true));
   assert.deepEqual(labels(live), ['RESUME', 'OPTIONS', 'RESTART', 'QUIT TO MENU']);
   assert.deepEqual(labels(dead), ['RETRY', 'OPTIONS', 'QUIT TO MENU']);
-  assert.deepEqual(dead.activate(), { type: 'restart' });
+  assert.deepEqual(dead.activate(), { type: 'retry' }, 'a retry: at the last checkpoint where the level has them');
   assert.deepEqual(dead.back(), { type: 'resume' });
 });
 
