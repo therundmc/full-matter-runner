@@ -765,10 +765,12 @@ test('tutorial: the reload - the world all but stops while his hands work, and n
   assert.equal(p.haste, 1);
   assert.equal(s.t.pace(0.016, none), 1);
   assert.ok(men.every((g) => g.react > 0), 'loaded: still a beat of grace');
+  assert.equal(s.t.due({ id: 'slide', who: men[0] }), false, 'the held fire of the calm is no shot coming: no SLIDE lesson');
   s.wait(RELOAD.grace + 0.1);
   for (const g of men) g.react = 0;
   s.tick();
   assert.ok(men.every((g) => !g.react), 'then they are on him again');
+  assert.equal(s.t.due({ id: 'slide', who: men[0] }), true, 'and a shot of theirs is due again');
 });
 
 test('tutorial: the bat holds until the corridor\'s gunman and breaks on him; his gun is empty, the magazine comes with the shield', () => {

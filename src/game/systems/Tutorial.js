@@ -57,6 +57,8 @@ const MOVED = 70;      // px walked before MOVE goes away
 const UP = -24;        // px a hint floats over what it points at ...
 const MAN = -37;       // ... over a man: clear of what he says (the barks float 16 px over him)
 const SIDE = 11;              // px either side of the stairs' middle they come up at
+const CALM = 0.15;            // s a guard is kept from firing or striking, at least, through the reload's calm (RELOAD)
+const BOTTLE = 110;           // px: the blast of the propane bottle's place when the bottle went before its fuse (blow)
 
 const smooth = (k) => { const u = Math.min(1, Math.max(0, k)); return u * u * (3 - 2 * u); };
 // 0..1 with a little overshoot on the way: a pop
@@ -163,8 +165,9 @@ const DUE = {
   shoot: (T, s, p, h, D) => inLine(T, p, { x: h.ax, y: h.ay }, D.range),
   throw: (T, s, p, h, D) => inLine(T, p, h.who, D.range),
   reload: now,
-  // he is in the gunman's sights and the shot is told: about to come, or coming
-  slide: (T, s, p, h, D) => !h.who.dormant && (h.who.react ?? 0) <= D.lead && inLine(T, p, h.who, Infinity),
+  // he is in the gunman's sights and the shot is told: about to come, or coming (never in the reload's calm, where
+  // nobody fires: its held react is no shot coming)
+  slide: (T, s, p, h, D) => T.world.time >= T.calm && !h.who.dormant && (h.who.react ?? 0) <= D.lead && inLine(T, p, h.who, Infinity),
   dive: now,
 };
 
@@ -510,7 +513,7 @@ export default class Tutorial {
     if (live && !s.gasLeak) ignite(s, (s.W ?? 0) / 2, (s.H ?? 0) / 2, BLAST.jet - Math.PI + s.body.angle, BLAST.fuse);
     w.after(BLAST.fuse, () => {
       w.shake(BLAST.shake);
-      if (!live) w.explode(q.x, q.y, { radius: 110, source: 'propane' });
+      if (!live) w.explode(q.x, q.y, { radius: BOTTLE, source: 'propane' });
       (this.gas || []).forEach((g, k) => { if (k && !g.dead && !g.dying) w.after(BLAST.breach[0] * k, () => g.break(-Math.PI / 2, 2)); });
     });
     let t = w.time + BLAST.fuse + BLAST.breach[0];
@@ -609,6 +612,7 @@ export default class Tutorial {
   update() {
     const w = this.world, p = w.player;
     if (p && this.blast?.t != null) this.chain();
+    if (p && (!p.alive || this.over)) p.haste = 1; // (the reload's real pace is the lesson's only)
     if (!p || !p.alive || this.over) return;
     // the jump: he is going through a window onto the alley
     const v = p.vaulting;
@@ -642,7 +646,7 @@ export default class Tutorial {
     const gun = p.weapon && p.def?.kind === 'gun';
     p.haste = gun && p.reloading > 0 ? 1 / Math.max(0.02, w.game?.timeScale ?? 1) : 1;
     if (gun && (p.reloading > 0 || (p.weapon.mag <= 0 && p.reserveCount?.() > 0))) this.calm = w.time + RELOAD.grace;
-    if (w.time < this.calm) for (const g of w.enemies) g.react = Math.max(g.react || 0, 0.15);
+    if (w.time < this.calm) for (const g of w.enemies) g.react = Math.max(g.react || 0, CALM);
     if (s) {
       this.call(s, p);
       // walked up to, in front: he looks up (walked up to the stairs: those coming up them are there)
