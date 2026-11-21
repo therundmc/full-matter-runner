@@ -342,3 +342,16 @@ test('scoring: watching an execution to its end pays x the multiplier and winds 
   assert.ok(Math.abs(sc.comboEnd - (2.4 + C.window * W.refill)) < 1e-9, 'the whole window again');
   assert.equal(sc.combo, 2, 'no kill added');
 });
+
+test('finisher: killed in the middle of one, the man he was finishing is let go (never left floored for good)', async () => {
+  const { default: Character } = await load('game/entities/Character.js');
+  const s = scene('knife', 0, false);
+  s.p.startExecution(s.g);
+  assert.ok(s.g.executing && s.p.execution);
+  const base = Character.prototype.kill;
+  Character.prototype.kill = function () { this.alive = false; };
+  try { s.p.kill(0, 'bullet'); } finally { Character.prototype.kill = base; }
+  assert.equal(s.p.alive, false);
+  assert.equal(s.p.execution, null);
+  assert.equal(s.g.executing, false, 'his knocked clock runs again (Enemy.updateKnocked)');
+});

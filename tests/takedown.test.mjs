@@ -526,3 +526,15 @@ test('lab: the takedowns station has a dummy at each context, unaware, and each 
   }
   assert.ok(LAB.floor.some(([name]) => name === 'label_takedowns'));
 });
+
+test('takedown: killed in the middle of one, the man he held is let go', async () => {
+  const { default: Character } = await load('game/entities/Character.js');
+  const s = scene('knife');
+  s.p.startTakedown(s.g, { f: takedownFor(s.p.def, s.p.weapon), front: false });
+  assert.equal(s.g.held, s.p);
+  const base = Character.prototype.kill;
+  Character.prototype.kill = function () { this.alive = false; };
+  try { s.p.kill(0, 'bullet'); } finally { Character.prototype.kill = base; }
+  assert.equal(s.p.takedown, null);
+  assert.equal(s.g.held, null);
+});

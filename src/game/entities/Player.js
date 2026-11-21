@@ -600,7 +600,7 @@ export default class Player extends Character {
   // whatever his hands were about is dropped where it stands (the getaway takes him over: World.startOutro): the
   // throw wound up, the swing's step, LOCK's turn, a dead man's weapon his hand was going to (let go on the floor)
   releaseHands() {
-    if (this.shield) this.endShield(true);
+    if (this.shield) this.endShield();
     this.throwHold = null;
     this.lunge = null;
     this.facingLock = null;
@@ -1409,9 +1409,14 @@ export default class Player extends Character {
 
   knock(angle) { this.kill(angle, 'melee'); }
 
-  // killed with a man in his arms: the man is let go (alive, he turns on him)
+  // killed with a man in his arms: the man is let go (alive, he turns on him); one he was finishing or taking down
+  // is let go too (else he stays floored / held for good)
   kill(angle, cause, killer, by, how) {
-    if (this.alive && !this.invulnerable && this.shield) this.endShield(true);
+    if (this.alive && !this.invulnerable) {
+      if (this.shield) this.endShield();
+      if (this.execution) { this.execution.target.executing = false; this.execution = null; }
+      if (this.takedown) this.endTakedown();
+    }
     super.kill(angle, cause, killer, by, how);
   }
 

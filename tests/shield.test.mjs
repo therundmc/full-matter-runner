@@ -614,3 +614,17 @@ test('shield: the man a lesson keeps for it is never floored - a blow, a thing t
   Enemy.prototype.knock.call(g, 1.2, 'throw');
   assert.ok(g.knocked === 0 && g.dormant && reeled.length === 1 && reeled[0][1] === 1.2, 'on his feet, still his back turned');
 });
+
+test('shield: a slick floor never takes his feet while he holds a man (the pair walks as one), it does once he lets go', async () => {
+  const { default: Slips } = await load('game/systems/Slips.js');
+  const { w, p } = held();
+  w.liquids = { at: () => ({ slip: true, kind: 'beer' }) };
+  const slips = new Slips(w, { speed: 0, stride: 1, odds: { player: 1, enemy: 0, civilian: 0 }, noise: 0 });
+  assert.equal(slips.standing(p), false, 'holding him');
+  let slipped = 0;
+  p.slip = () => { slipped++; };
+  for (let i = 0; i < 5; i++) { Matter.Body.setPosition(p.body, { x: p.x + 3, y: p.y }); slips.update(); }
+  assert.equal(slipped, 0);
+  p.endShield();
+  assert.equal(slips.standing(p), true, 'let go, he can slip again');
+});

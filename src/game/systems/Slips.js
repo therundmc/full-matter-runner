@@ -25,10 +25,11 @@ export default class Slips {
     this.runs = new Map(); // character -> { d, x, y }
   }
 
-  // can he lose his feet now? (on them, not in the middle of a move of his own)
+  // can he lose his feet now? (on them, not in the middle of a move of his own; a man held as a shield keeps his
+  // feet: the pair walks as one, Player.updateShield)
   standing(ch) {
     return ch.alive && !(ch.knocked > 0) && !ch.vaulting && !ch.slide && !ch.slipped && !ch.held && !ch.offstage
-      && !ch.execution && !ch.takedown && !(ch.slipGrace > this.world.time);
+      && !ch.execution && !ch.takedown && !ch.shield && !(ch.slipGrace > this.world.time);
   }
 
   update() {
