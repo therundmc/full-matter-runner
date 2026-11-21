@@ -123,7 +123,7 @@ export const EXEC = {
 export const killBeat = (f) => f.kill ?? f.beats.length - 1;
 // s (real) from the start until he is dead, and until the player is let go if he watches it all
 const span = (f, n) => ((f.quick ? EXEC.quickMount : EXEC.mount) + f.beats.slice(0, n).reduce((s, [wait]) => s + wait, 0)) / EXEC.rate;
-export const killTime = (f) => span(f, killBeat(f) + 1);
+export const killTime = (f) => span(f, killBeat(f) + 1); // (kept for the tests)
 export const lockTime = (f) => span(f, f.beats.length) + f.after / EXEC.rate;
 
 // the family of the weapon in hand (EXECUTIONS key). d: weapon definition, weapon: the one in hand (an empty gun, or
@@ -135,6 +135,7 @@ export function finisherFamily(d, weapon) {
 }
 
 // the family's own execution, whatever goes on around
+// (kept for the tests: the game picks with finisherChoice)
 export const finisherFor = (d, weapon) => FINISHERS[EXECUTIONS[finisherFamily(d, weapon)].long[0]];
 
 // One of `names` (keys of table T: FINISHERS, TAKEDOWNS) that the weapon in hand can do (enough rounds, something to

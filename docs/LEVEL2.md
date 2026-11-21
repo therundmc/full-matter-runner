@@ -828,7 +828,7 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   building), the bend's line down its middle (col 446.5), the table above. ENGINE (systems/Drive.js, Pursuit.js,
   CarFx.js, ChaseCam.js; CHASE.bend.smash): in a bend a loose thing up to 450 kg is thrown by hand and bursts (all but
   metal over 6 hp), a car met is scraped along its flank (a sensor pair CarFx still showers for as long as they
-  overlap, a dent every 0.07 s on both, its alarm, a mirror torn off, `carScraped`), what it pushes against never
+  overlap, a dent every 0.07 s on both, its alarm, a mirror torn off), what it pushes against never
   drags its speed under 60 % of the bend's; the first thing smashed opens ChaseCam 'smash' (x0.35 for 0.6 s real, over a
   bend's breath); pursuers plough the same way, fall back at once when on his flank, are never wrecked by a wall in a
   bend, the first to scrape a `snare` car (level prop option) is wrecked there (no exit: it piles up), one jammed is

@@ -53,13 +53,12 @@ export const CLUTTER = {
   bill_crumpled: { sprite: 'bill_crumpled', r: 1.8, flutter: 'cash' },
   bill_folded: { sprite: 'bill_folded', r: 2, flutter: 'cash' },
   // level 1's interiors: a rack of clean glasses on the back of the bar, a telephone, loose paperwork, a mug of
-  // coffee (hot: it steams), a video tape, a box of soap powder (a white puff when it is knocked off), folded
+  // coffee, a video tape, a box of soap powder (a white puff when it is knocked off), folded
   // washing, the house's ledger, an adding machine, an ashtray nobody emptied (still smouldering)
   glass_rack: { sprite: 'glass_rack', r: 4.5, glass: { kind: 'water', area: 0, share: 1 }, broken: 'glass_broken', kg: 2.5, material: 'glass', land: 'clutterBottle' },
   phone: { sprite: 'phone', r: 3.5, kg: 1.6, material: 'plastic', land: 'clutterTill', mu: 0.7 },
   papers: { sprite: 'papers', r: 3.5, flutter: 'paper' },
   mug: { sprite: 'mug', r: 2, glass: { kind: 'booze', area: 16, share: 0.7 }, kg: 0.35, material: 'ceramic', land: 'clutterClink' },
-  mug_hot: { sprite: 'mug', r: 2, smoke: true, glass: { kind: 'booze', area: 16, share: 0.7 }, kg: 0.35, material: 'ceramic', land: 'clutterClink' },
   vhs: { sprite: 'vhs', r: 3, kg: 0.25, material: 'plastic', land: 'clutterChips' },
   soap: { sprite: 'soap', r: 2.6, ash: true, kg: 0.5, material: 'fabric' },
   folded: { sprite: 'folded', r: 4, kg: 0.6, material: 'fabric' },
@@ -87,8 +86,7 @@ export const CLUTTER_HIT = {
 // table; the pot and the hands on the poker table; the bricks and the scale on the dope table): an `ember` over a
 // painted ashtray gives it its thread of smoke.
 export const SETS = {
-  // the counter, module by module from the kegs' end (customers on +y, the bartender on -y)
-  counter_kegs: [['napkin', -8, 1.5, 10], ['peanuts', 5, 1, 0], ['pint_empty', 11.5, -5, 0]],
+  // the counter, module by module (customers on +y, the bartender on -y)
   counter_regular: [['coaster', -3, 2, 0], ['pint_half', -3, 2, 0], ['ashtray_lit', 6, 1, 20], ['shot', 11, 2.5, 0], ['napkin_crumpled', 13, -1, 40]],
   counter_middle: [['pint', -9, 1.5, 0], ['coaster', 4, 2, 15], ['peanuts', 9, -0.5, 0], ['pint_empty', -2, -6, 0]],
   counter_pour: [['liquor', -9, -5, 0], ['shot', -4, 2, 0], ['shot', -0.5, 2.5, 0], ['pitcher', 8, 0.5, 30], ['napkin', 13, 2, -15]],
@@ -108,9 +106,8 @@ export const SETS = {
   booth: [['pitcher', -16, -7, 0], ['pint_half', 14, 5, 0], ['napkin', 1, 9, 25], ['ember', 14, -4.5, 0]],
   pool_rail: [['pint_half', -38, -1, 0], ['ashtray_lit', 10, 20.5, 0]],
   poker: [['liquor', 8, -11.5, 0], ['shot', 12, -9, 0], ['ember', 16.5, -7.5, 0], ['chips', -18, -3, 0], ['chips', -17, 2, 0]],
-  // the boss's desk (his whisky, his cigar, the night's takings), the men's round table, the case on the floor
-  boss_desk: [['lowball', -9.5, 1, 0], ['bands', -17.5, 0, 8], ['bands', -15, 3, -20], ['cigar', 11, 8.5, -30], ['ember', 13.5, 7, 0]],
-  // CUEBALL's, now the back room is his: a whisky, the takings in bands, a loose bill
+  // CUEBALL's desk (the back room is his): a whisky, the takings in bands, a loose bill; the men's round table, the
+  // case on the floor
   cueball_desk: [['lowball', -9.5, 1, 0], ['bands', -17.5, 0, 8], ['bands', -15, 3, -20], ['bill', 10, 7, 25]],
   men_table: [['beer_bottle', 8.5, 5.5, 0], ['beer_bottle', -1, 9.5, 0], ['cards', -8.5, 4, 20], ['ember', -5, -3, 0]],
   cash_floor: [['bands', -15, 2, 70], ['bands', -14.5, -5, 100], ['bill', -18, -1, 30]],

@@ -2310,7 +2310,7 @@ export default class Enemy extends Character {
       this.gate = -1;
       this.gateFor = want;
       this.gateWait += dt;
-      if (!this.standBack(dt, want, heading)) this.gateWait = 0; // sent somewhere else meanwhile
+      if (!this.standBack(dt, want)) this.gateWait = 0; // sent somewhere else meanwhile
       return false;
     } else {
       this.gate = want;
@@ -2385,7 +2385,7 @@ export default class Enemy extends Character {
 
   // Wait for a doorway: clear of its mouth (a tile out from it and a tile and a bit to one side, out of the way of
   // whoever comes through), eyes on it; false when it is no longer on his way.
-  standBack(dt, key, heading) {
+  standBack(dt, key) {
     const map = this.world.map, w = map.w, cx = key % w, cy = Math.floor(key / w);
     const dcx = (cx + 0.5) * TILE, dcy = (cy + 0.5) * TILE, dx = this.x - dcx, dy = this.y - dcy;
     if (Math.hypot(dx, dy) > AI.gate.far) return false;

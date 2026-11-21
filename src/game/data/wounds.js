@@ -1,4 +1,4 @@
-// How a body bleeds, by what hit it and how (fx/Gore.js, entities/Projectile.js, Corpse / Ragdoll).
+// How a body bleeds, by what hit it and how (fx/Gore.js, entities/Projectile.js, Ragdoll).
 // A weapon names its profile with `wound` (data/weapons.js); kills without a weapon fall back on CAUSE_WOUND. The
 // blood follows what was done: a punch leaves almost nothing, a club a few heavy drops and a small slow pool, a knife
 // thrust a thin dark line, its slash a thin arc, a cut throat the biggest pool of the game; buckshot and rifles tear.

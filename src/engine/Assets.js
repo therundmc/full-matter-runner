@@ -2,7 +2,7 @@
 // civN: ambient passers-by and customers; dancerN: the dancers of a VIP room
 const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'cueball', 'lucky', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8',
   'dancer1', 'dancer2', 'tramp'];
-const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
+const CHAR_PARTS = ['torso', 'head', 'down', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 const SPRITE_LIST = [
   ...CHARACTERS.flatMap((c) => CHAR_PARTS.map((p) => `characters/${c}_${p}`)),

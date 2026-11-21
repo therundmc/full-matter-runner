@@ -77,7 +77,6 @@ export function tipOver(p, dirA, power = 1, by = null) {
   w.sound('binTip', at.x, at.y, 0.9);
   // a guard knocking one over on his way is not news to the others
   if (!by?.isEnemy) w.noise(at.x, at.y, t.noise, by?.isPlayer ? by : null, 'clatter');
-  w.events.emit('propTipped', { prop: p, x: at.x, y: at.y, dirA: at.a, by });
   return true;
 }
 

@@ -49,11 +49,6 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore, floor = null) {
   return best;
 }
 
-// can `viewer` see character `ch`? (walls and closed doors block)
-export function canSeeCharacter(world, viewer, ch) {
-  return lineOfSight(world, viewer.x, viewer.y, ch.x, ch.y);
-}
-
 // walls and closed doors block sight
 export function lineOfSight(world, x0, y0, x1, y1) {
   if (world.map.raycast(x0, y0, x1, y1)) return false;

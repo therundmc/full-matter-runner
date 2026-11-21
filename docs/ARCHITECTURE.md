@@ -57,7 +57,7 @@ src/
       Openings.js         geometry of doors / windows in walls (DOM-free, unit-tested): door leaves of a run of door
                           tiles, the wall tiles holding each opening up (`heldBy`)
     systems/              rules, called by World or driven by events
-      Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
+      Ballistics.js       traceBullet, lineOfSight, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Kick.js             the player's feet on a standing guard: who a slide's end kicks (range, cone, timing), who is in
@@ -357,7 +357,7 @@ src/
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
-                          kind level `looks` draws him as), Civilian, Prop (a billboard's face: Board), Vehicle, Door, Window, Debris, Ragdoll, Corpse,
+                          kind level `looks` draws him as), Civilian, Prop (a billboard's face: Board), Vehicle, Door, Window, Debris, Ragdoll,
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per
                           gun family: data/feel.js `recoil`; pure, unit-tested)
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
@@ -468,7 +468,6 @@ decides on (a case meets walls only, a round's hit is traced from his real place
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run, what hangs on it) |
 | `propHit` | `{ prop, x, y, dirA, kind, power }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster), PoolBalls, Clutter |
 | `propFlipped` | `{ prop, to, x, y, dirA }` | Prop.flip (a table tipped on its side; `to`: the upended table) | Clutter (what stood on it flies) |
-| `propTipped` | `{ prop, x, y, dirA, by }` | systems/Tipping.tipOver (a street bin knocked over; `by`: who, when known) | - |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster), Clutter |
 | `spill` | `{ x, y, kind, area, dur?, a? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing), a guard's glass or leak, a customer's glass | Liquids (px2 of floor a `LIQUIDS.kinds` liquid covers, at once or over `dur` seconds, thrown toward `a`) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles, a bin knocked over: `clatter`) | Director (hearing), Threats (a guard who makes noise can be placed) |

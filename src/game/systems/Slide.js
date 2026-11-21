@@ -8,7 +8,7 @@ export function slideSpeed(k, run, cfg) {
   return run * (cfg.end + (cfg.boost - cfg.end) * u * u);
 }
 
-// distance covered by an unobstructed slide (px)
+// distance covered by an unobstructed slide (px; kept for the tests)
 export function slideDistance(run, cfg, dt = 1 / 60) {
   const s = new Slide(0, run, cfg);
   let d = 0;

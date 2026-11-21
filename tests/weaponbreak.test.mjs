@@ -46,7 +46,7 @@ function world(victims = []) {
     decals: new Proxy({ paint: (fn) => w.painted.push(fn) }, { get: (o, k) => o[k] ?? noop }),
     addBody: noop, removeBody: noop, addDebris: (d) => w.debris.push(d), removeDebris: (d) => { d.dead = true; },
     addItem: (it) => w.items.push(it), removeItem: (it) => { it.dead = true; },
-    addCorpse: (c) => w.corpses.push(c), onKill: noop, damageWall: noop,
+    addCorpse: (c) => w.corpses.push(c), onKill: noop, damageWall: noop, physics: { bodies: () => [], add: noop, remove: noop },
   };
   return w;
 }
@@ -244,7 +244,7 @@ test('break: a club that breaks on a takedown\'s kill leaves the pose whole thro
   }
 });
 
-// a guard of no particular look (his body: a Corpse) with a pistol, killed through Character.kill
+// a guard of no particular look with a pistol, killed through Character.kill
 function gunman(w, x = 14, mag = 5) {
   const g = Object.create(Character.prototype);
   Object.assign(g, { world: w, kind: 'nobody', team: 'enemy', alive: true, knocked: 0, angle: Math.PI, radius: 8, voice: 1,

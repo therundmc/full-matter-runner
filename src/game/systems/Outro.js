@@ -21,7 +21,7 @@ export { OUTRO }; // (its numbers: data/outro.js; Game, World and ui/Screens rea
 
 const ease = (k) => k * k * (3 - 2 * k); // smoothstep
 
-// 'walk' -> 'board' -> 'ignition' -> 'drive'
+// 'walk' -> 'board' -> 'ignition' -> 'drive' (kept for the tests: the timeline's order)
 export function outroPhase(t, o = OUTRO) {
   if (t < o.walk) return 'walk';
   if (t < o.lights) return 'board';
@@ -30,7 +30,8 @@ export function outroPhase(t, o = OUTRO) {
 }
 
 // the beats of an open car's getaway, finer: 'walk' -> 'vault' (over the door) -> 'seat' (settling, the hands to the
-// wheel, the key) -> 'start' (the starter cranking) -> 'idle' (caught) -> 'wheelspin' -> 'bite' (it goes)
+// wheel, the key) -> 'start' (the starter cranking) -> 'idle' (caught) -> 'wheelspin' -> 'bite' (it goes). Kept for
+// the tests
 export function outroBeat(t, o = OUTRO) {
   if (t < o.walk) return 'walk';
   if (t < o.walk + o.vault) return 'vault';

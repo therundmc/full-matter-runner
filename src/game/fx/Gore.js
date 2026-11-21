@@ -1,8 +1,7 @@
 import { sprite } from '../../engine/Assets.js';
 import { rand, randi, chance, angDiff, pick } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
-import Corpse from '../entities/Corpse.js';
-import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
+import Ragdoll from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
 import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, TEAR, SKULL, KNEELS, woundFor, blowScale, markOf } from '../data/wounds.js';
 import { fling, wallBehind, splashWall, floorLine } from './Spatter.js';
@@ -96,8 +95,8 @@ export function gore(world, ch, angle, cause, by, how) {
   // an opened artery (a wound's `artery`) spurts a while once he is down
   const artery = wd.artery && chance(wd.artery[0]) ? wd.artery[1] * rand(0.8, 1.2) : 0;
   const bleeding = { pool: rand(wd.pool[0], wd.pool[1]) * Math.sqrt(more), poolRate: wd.rate, spurt: wd.spurt || artery, dry: cause === 'snap' };
-  if (hasRagdoll(k)) {
-    // physical body; close shotgun blasts tear limbs off
+  {
+    // his body (every kind has its ragdoll); close shotgun blasts tear limbs off
     const detach = scripted ? [] : tornLimbs(tear);
     const whole = mode === 'corpse' && !detach.length;
     // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
@@ -118,9 +117,6 @@ export function gore(world, ch, angle, cause, by, how) {
       back: !!dying && dying !== 'throes' && !kneels && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
       killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,
     }));
-  } else {
-    const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
-    world.addCorpse(new Corpse(world, corpseImg, x, y, angle, slide, { headless: mode === 'headless', ...bleeding }));
   }
 
   if (mode === 'headless') {

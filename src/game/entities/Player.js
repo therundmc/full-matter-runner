@@ -954,7 +954,7 @@ export default class Player extends Character {
 
   // the foot on his head: floored, thrown back along the kick (a whiff when he is no longer there to take it)
   landKick() {
-    const k = this.kick, K = PLAYER.slide.kick, tg = k.target, w = this.world;
+    const k = this.kick, K = PLAYER.slide.kick, tg = k.target;
     k.landed = true;
     if (!standing(tg) || Math.hypot(tg.x - this.x, tg.y - this.y) > K.range + 6) return;
     k.hitAt = { x: tg.x, y: tg.y }; // the foot stays out where it met him (CharacterAnim kickPose)

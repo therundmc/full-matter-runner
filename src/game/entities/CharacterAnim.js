@@ -2007,7 +2007,7 @@ function variantPose(f, what, u, td, d, V, C) {
 export function takedownPose(ch, P, V) {
   const td = ch.takedown, f = td.f, d = td.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
   const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1), D = td.d, side = td.side;
-  const thud = Math.exp(-td.hit * 14), first = td.i === 0 && !td.done;
+  const thud = Math.exp(-td.hit * 14);
   const kick = td.done && what === 'shot' ? Math.exp(-td.t * 9) : 0;
   const N = D + ON.nape, T = D + ON.throat, M = D + ON.mouth, H = D + ON.head;
   // into it as he closes in, out of it over the end of `after`
@@ -2199,7 +2199,7 @@ export function heldPose(ch, P) {
 // kill: the hold taken up, then the wrench or the slice itself, each 0 .. 1), kind (that kill's, or null)
 const HOLD = { m: 0, limp: 0, j: 0, back: 0, side: 0, take: 0, wr: 0, kind: null };
 const WRENCH_AT = 0.45; // share of the kill's motion that takes the hold up before the wrench
-export function holdAt(sh, t) {
+function holdAt(sh, t) {
   const S = SHIELD.pose, H = HOLD, b = sh.target.breath || 0, k = sh.kill;
   H.m = smooth(sh.t / SHIELD.set);
   H.limp = sh.dead ? smooth((t - sh.dead.t) / S.limp.in) : 0;

@@ -46,7 +46,7 @@ function room() {
     shake() {}, hitstop() {}, slowmo: (k, s) => log.slow.push([k, s]),
     addScore: (points, x, y, label) => log.scored.push([points, label]),
     addItem: (it) => log.items.push(it), removeItem(it) { it.dead = true; }, addDebris: (d) => log.debris.push(d), addCorpse: (c) => log.corpses.push(c),
-    onKill: (ch, cause, killer, how) => log.kills.push({ ch, cause, how }),
+    onKill: (ch, cause, killer, how) => log.kills.push({ ch, cause, how }), physics: { bodies: () => [], add() {}, remove() {} },
     sightLine: () => true, lineOfSight: () => true, pathForGuard: (a, b, c, d) => findPath(map, a, b, c, d),
     get enemiesLeft() { return this.enemies.filter((e) => e.alive && !e.yielded).length; },
   };

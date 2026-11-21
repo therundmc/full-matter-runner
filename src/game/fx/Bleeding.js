@@ -1,4 +1,4 @@
-// How a body bleeds once it is down (shared by Corpse and Ragdoll; no DOM): the jets of a severed neck or an
+// How a body bleeds once it is down (Ragdoll's; no DOM): the jets of a severed neck or an
 // opened artery, pumped beat by beat, the pool seeping under it once it lies still, the trail it wipes while it slides.
 import { rand, chance } from '../../engine/math.js';
 import { THROAT } from '../data/wounds.js';

@@ -1066,7 +1066,7 @@ export default class Drive {
   }
 
   // the first touch of a car he scrapes in a bend: its alarm and its hazards, a mirror torn off, the panel crumpled
-  // there, a burst of sparks and glass; the picture kicked (told on 'carScraped': { car, by, x, y })
+  // there, a burst of sparks and glass, the picture shaken
   flanked(h) {
     const w = this.world, C = this.C, v = this.van, e = h.e, a = Math.atan2(h.vy, h.vx);
     e.hit?.(0, h.x, h.y, a + Math.PI / 2, 1, 'blunt');
@@ -1078,7 +1078,6 @@ export default class Drive {
     w.shake(C.hit.shake * 0.8);
     this.bump('hit', 0.6);
     w.events.emit('ride', { beat: 'hit', x: h.x, y: h.y });
-    w.events.emit('carScraped', { car: e, by: v, x: h.x, y: h.y });
     this.smashed(h.x, h.y);
   }
 

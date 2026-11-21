@@ -28,7 +28,7 @@ import MapRenderer from '../render/MapRenderer.js';
 import WorldRenderer from '../render/WorldRenderer.js';
 import Lighting from '../render/Lighting.js';
 import Particles from '../fx/Particles.js';
-import { traceBullet, lineOfSight, canSeeCharacter, brushFittings } from '../systems/Ballistics.js';
+import { traceBullet, lineOfSight, brushFittings } from '../systems/Ballistics.js';
 import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence, watchOpenings } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
@@ -396,7 +396,6 @@ export default class World {
   sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.smoke.blocks(x0, y0, x1, y1) && !this.curtained(x0, y0, x1, y1); }
   // whether a curtain's cloth hangs across the line (systems/Curtains.js: parted wide enough, it does not)
   curtained(x0, y0, x1, y1) { return this.curtains.blocks(x0, y0, x1, y1); }
-  canSeeCharacter(viewer, ch) { return canSeeCharacter(this, viewer, ch); }
   traceBullet(x0, y0, x1, y1, team, ignore, floor) { return traceBullet(this, x0, y0, x1, y1, team, ignore, floor); }
   explode(x, y, opts) { explode(this, x, y, opts); }
   damageWall(cx, cy, dmg, x, y, dirA, power) { damageWall(this, cx, cy, dmg, x, y, dirA, power); }

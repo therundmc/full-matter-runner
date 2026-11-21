@@ -20,7 +20,7 @@ const KERBED = new Set(['toll_island', 'toll_booth']);
 
 // the booth over plaza lane `y` (world px) nearest x: the booth stands on the island above its lane (the builder's
 // rule: the lane under it, +y, is its own), within `reach` px along the road; null: none
-export function boothOver(props, x, y, reach = 200) {
+function boothOver(props, x, y, reach = 200) {
   let best = null, bd = Infinity;
   for (const p of props) {
     if (p.type !== 'toll_booth' || p.dead || p.y >= y || y - p.y > 3 * 32) continue;
@@ -31,7 +31,7 @@ export function boothOver(props, x, y, reach = 200) {
 }
 
 // where a booth's basket is (world px)
-export function basketOf(p) {
+function basketOf(p) {
   const a = p.body?.angle ?? 0, c = Math.cos(a), s = Math.sin(a);
   return { x: p.x + BASKET[0] * c - BASKET[1] * s, y: p.y + BASKET[0] * s + BASKET[1] * c };
 }

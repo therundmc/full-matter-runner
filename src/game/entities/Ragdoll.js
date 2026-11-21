@@ -37,8 +37,6 @@ const HEAD_R = 4.5;   // the head's radius, for what marks it
 // much bigger (it comes up toward the eye), px within which the player can pull it out
 export const PLANTED = { part: 0.65, len: 0.75, size: 1.1, reach: 28 };
 
-// rag_* sprites are intact limbs; the gib sprites stand in when they are missing
-export function hasRagdoll(kind) { return !!(spriteOpt(`characters/${kind}_rag_torso`) || spriteOpt(`characters/${kind}_gib_torso`)); }
 
 // Physical dead body: torso + head + 2 arms + 2 legs held by pin joints.
 // Limbs can be torn off (constraint removed). Baked into the floor once everything settles.

@@ -23,7 +23,7 @@ test('assets: of the people only the standing characters are finer than the worl
   for (const n of ['characters/thug_torso', 'characters/player_torso', 'characters/civ3_torso', 'characters/dancer1_torso', 'characters/boss_head',
     'weapons/pistol', 'weapons/tire_iron']) assert.ok(FINE.test(n), n);
   for (const n of ['characters/thug_rag_torso', 'characters/thug_rag_torso_up', 'characters/brute_gib_torso', 'characters/thug_rag_head', 'characters/thug_down',
-    'characters/boss_dead0', 'weapons/rocket']) assert.ok(!FINE.test(n), n);
+    'characters/boss_gib_torso', 'weapons/rocket']) assert.ok(!FINE.test(n), n);
 });
 
 test('assets: the furniture, the lamps, the vehicles and the floors are painted at twice the world density, the neon and the walls are not', () => {
