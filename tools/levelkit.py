@@ -22,6 +22,8 @@ import math
 import os
 import random
 
+from sprite_tables import FLOOR, ROOF_SIZES, SIZES as SPRITE_SIZES
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOLID = set(' #XPMYV')   # (P, M, Y, V: stucco walls in pastels, src/game/world/TileMap.js WALLS)
 WALLS = set('#XPMYV')
@@ -30,87 +32,12 @@ GUARDS = set('pushrbkmji')
 # the kinds of door (keep in step with DOORS.kinds in src/game/data/doors.js)
 DOOR_KINDS = ('wood', 'reinforced', 'stall', 'fire', 'bar', 'swing', 'staff', 'office', 'gaming', 'flat', 'wired', 'shop')
 
-# hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
-# None = hangs from the ceiling / sits on a wall: never in the way
-SIZES = dict(
-    cash_case=(20, 14), table=(44, 26), table_round=(28, 28), card_table=(58, 36), dope_table=(44, 26), gas_bottle=(12, 12), dance_stage=(48, 48), desk=(46, 24), chair=(14, 14), armchair=(26, 26), sofa=(64, 28),
-    plant=(15, 15), tv=(22, 15), fridge=(22, 22), oven=(20, 20), sink=(26, 18), toilet=(13, 21), bed=(44, 64),
-    pool_table=(80, 44), arcade=(22, 27), crate=(19, 19), barrel=(18, 18), bookshelf=(40, 11), speaker=(14, 14),
-    dj_booth=(58, 22), bar_counter=(32, 19), dumpster=(58, 34), trash_can=(15, 15), jukebox=(28, 20),
-    hydrant=(11, 11), bench=(50, 15), palm_tree=(9, 9), streetlight=(6, 6), floor_lamp=(10, 10), table_lamp=(15, 15),
-    car=(136, 54), car2=(130, 52), van=(156, 60), convertible=(168, 60), pursuer=(136, 54), chain_fence=(32, 4), bottle_shelf=(40, 11), back_bar=(40, 8), washer=(22, 22),
-    neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None, alarm_box=None,
-    neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
-    neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
-    ceiling_fan=None, mirror_ball=None, extinguisher=None,
-    fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 48),
-    apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11), laundry_basket=(18, 13),
-    ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
-    velvet_rope=(30, 6), sandwich_board=(16, 12), ash_urn=(10, 10), neon_sign_mirage=None, neon_sign_open=None,
-    vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
-    keg=(16, 16), beer_tap=None, curtain=None, fire_alarm=None,
-    frame_photo=None, frame_gold=None, poster_fight=None, poster_band=None, dartboard=None, pay_phone=None,
-    coat_hooks=None, towel_dispenser=None, neon_sign_beer=None, neon_sign_bay=None,
-    poster_pinup=None, poster_revue=None, mirror_strip=None, neon_sign_lips=None, cocktail_table=(24, 24),
-    conduit=None, flyers=None,
-    lorry=(276, 76), awning=None, neon_sign_diner=None,
-    awning_red=None, awning_green=None, awning_blue=None, awning_wine=None, traffic_cone=(10, 10), sawhorse=(38, 8),
-    cardboard_box=(15, 13), paper_bundle=(13, 9), fruit_stand=(34, 16), shopping_cart=(20, 12), mailbox=(13, 13),
-    # level 2A's street (a post's hitbox: the post, not its plate or its arm)
-    traffic_light=(8, 8), bus_shelter=(126, 46), sign_noparking=(5, 5), sign_oneway=(5, 5), sign_speed=(5, 5), sign_bus=(5, 5),
-    bollard=(7, 7), street_tree=(8, 8), arrow_board=(60, 34), compressor=(54, 28), barricade=(64, 7), sign_works=(14, 14),
-    viaduct=None, gantry_sign=None,
-    # level 2A, part two: the works and the detour, the side street, the on-ramp, the toll (generate_assets.py RAMP_PROPS)
-    road_closed=(124, 8), sign_detour=(38, 6), sign_detour_left=(38, 6), jersey_barrier=(96, 18), water_barrier=(56, 18),
-    excavator=(184, 78), dump_truck=(236, 78), works_light=(60, 34), site_fence=(110, 4), roller_door=None,
-    loading_dock=(128, 22), chainlink_gate=(126, 4), pallet_stack=(38, 32), oil_drum=(18, 18), sign_stop=(5, 5),
-    guardrail=(128, 6), guardrail_end=(60, 14), guardrail_end_r=(60, 14), guardrail_end_trail=(60, 14),
-    guardrail_end_trail_r=(60, 14), highway_lamp_single=(8, 8), crash_cushion=(84, 82), crash_cushion_narrow=(84, 40), highway_lamp=(8, 8), sign_freeway=(6, 6),
-    sign_wrong_way=(5, 5), sign_speed_55=(5, 5), sign_toll_ahead=(6, 6), reflector_post=(3, 3), channelizer=(6, 6), toll_island=(254, 46),
-    toll_booth=(92, 38), toll_canopy=None, gate_arm_wood=(110, 4), gate_arm_bit_a=(42, 4), gate_arm_bit_b=(30, 4),
-    gate_arm_bit_c=(20, 4), gate_steel=(110, 8), lane_signal_go=(5, 5), lane_signal_stop=(5, 5), sign_exact_change=(5, 5),
-    overpass=None,   # the freeway's bridge over the side street (generate_assets.py FWY_PROPS): hung high, never in the way
-    # ART DECO 1985 (generate_assets.py DECO_PROPS): generic dressing (a palm's or a lamp's box its trunk / post)
-    palm_fan=(9, 9), palm_fan_small=(9, 9), hibiscus_bush=(24, 24), hibiscus_bush_red=(24, 24), planter_deco_pink=(44, 44),
-    planter_deco_teal=(44, 44), deco_lamp=(6, 6), police_car=(136, 54), deco_office_pink=(156, 80), deco_office_teal=(156, 80),
-    billboard_motel=None,
-    # Miami, 1985 (generate_assets.py MIAMI_PROPS): generic street dressing (a palm or a sign by its pole, the burnt car by
-    # its shell; hung: the billboards, the canopies, the pennants, the awnings)
-    royal_palm=(16, 16), royal_palm_b=(16, 16), hibiscus_hedge=(92, 20), hibiscus_hedge_pink=(92, 20), billboard_tan=None,
-    billboard_radio=None, pole_sign_motel=(8, 8), pole_sign_autos=(8, 8), car_burnt=(136, 54), tent_tarp=(64, 44),
-    barrel_fire=(20, 20), chainlink_fence=(128, 4), chainlink_hole=(128, 4), guardrail_dented=(128, 6),
-    call_box=(5, 5), pennant_string=None, lot_light=(6, 6), sign_gantry=None, awning_pink=None, awning_mint=None,
-    awning_peach=None, awning_lavender=None, deco_canopy_pink=None, deco_canopy_mint=None, deco_canopy_peach=None,
-    deco_canopy_lavender=None, neon_sign_motel=None, neon_sign_vacancy=None, neon_sign_flamingo=None,
-    # Miami, 1986, the alley (generate_assets.py ALLEY_PROPS): the city's own; what hangs on a wall face or overhead: None
-    produce_crates=(38, 28), box_stack=(32, 26), fruit_cart=(56, 30), news_stand=(34, 14), neon_box_pink=(34, 10),
-    neon_box_cyan=(34, 10), scooter_mint=(54, 18), scooter_pink=(54, 18), domino_table=(28, 28), dumpster_mint=(58, 34),
-    dumpster_pink=(58, 34), dumpster_aqua=(58, 34), stucco_trim_pink=None, stucco_trim_mint=None, stucco_trim_peach=None,
-    ac_drip=None, graffiti_neon_a=None, graffiti_neon_b=None, neon_sign_botanica=None, neon_sign_cocktail=None,
-    laundry_line=None, fire_escape=None, palm_fronds=None,
-    # the suburb going to Miami (generate_assets.py SUBURB_PROPS): a palm, a pay phone or a sign by its post; hung: None
-    sabal_palm=(12, 12), sabal_palm_b=(12, 12), sabal_palm_ragged=(12, 12), coconut_palm_lean=(10, 10), palm_young=(6, 6),
-    palm_stump=(16, 16), bus_bench_bail=(62, 22), bus_bench_abogado=(62, 22), payphone_pastel=(5, 5), news_box_yellow=(14, 11),
-    news_box_red=(14, 11), mailbox_blue=(16, 14), mailbox_post=(5, 5), mailbox_post_b=(5, 5), mailbox_post_c=(5, 5), mailbox_post_d=(5, 5),
-    house_window=None, house_window_lit=None, house_door=None, pole_sign_strip=(8, 8), yard_fence=(128, 4),
-    yard_fence_gate=(128, 4), garden_wall_pink=(96, 10), garden_wall_mint=(96, 10), garden_wall_cream=(96, 10), carport=None,
-    tv_antenna=None, lawn_flamingos=(28, 18), oleander_pink=(48, 40), oleander_white=(48, 40), cart_loaded=(22, 14),
-    bedroll=(26, 10), bags_pile=(44, 22), doorway_camp=(68, 40), market_stall=(78, 44), market_stall_coco=(78, 44),
-    fruit_crate_orange=(18, 12), fruit_crate_mango=(18, 12), fruit_crate_coconut=(18, 12), market_sign=(42, 14),
-    carwash_sign=(70, 6), carwash_board=(22, 14), wash_bucket=(12, 12), hose_reel=(26, 16), tyre_stack=(22, 22),
-    tyre_pile=(52, 36), tyre_loose=(20, 20), tyre_rack=(62, 18), tyre_sign=(46, 14),
-    # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
-    shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
-    tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
-    plastic_chair=(13, 13), cig_machine=(22, 15), ice_bin=(18, 13), coat_rack=(8, 8), bottle_crate=(14, 10), wet_sign=(9, 7),
-    mop_bucket=(12, 12), water_cooler=(13, 13), filing_cabinet=(16, 20), safe=(22, 22), pallet=(38, 30), steel_shelf=(40, 12),
-    hand_truck=(12, 22), security_mirror=None, cig_rack=None, price_board=None, tape_rack=None, notice_board=None,
-    coin_changer=None, hand_dryer=None, graffiti=None, wall_clock=None, cleaning_rack=None,
-    # the flat of the prologue
-    nightstand=(14, 10), chair_jacket=(14, 14), duffel_bag=(20, 10), coffee_table=(32, 18), record_player=(20, 14),
-    worktop=(38, 16), bucket=(9, 9), plant_dead=(12, 12), boiler=None, mirror_cracked=None, mailboxes=None, calendar=None,
-    propane=(16, 16),
-)
+# a prop's hitbox in px (None: it hangs on a wall or from a ceiling, never in the way), the floor paint (sprites laid
+# by Level.paint) and the rooftop dressing's size in px: from the sprite registry (tools/sprites/registry.py, a
+# prop's `box` / `hung` / `floor`; keep the boxes in step with src/game/data/props.js and Vehicle.js)
+SIZES = dict(SPRITE_SIZES)
+# props drawn with a roof piece's sprite (data/props.js `sprite`), on a walkable roof
+SIZES.update(ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48))
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
 ROUND = {'dance_stage', 'table_round', 'cocktail_table'}
@@ -134,45 +61,6 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                stucco_trim_pink=96, stucco_trim_mint=96, stucco_trim_peach=96, ac_drip=24, graffiti_neon_a=62,
                graffiti_neon_b=62, neon_sign_botanica=60, neon_sign_cocktail=64)
 
-# sprites that are floor paint (Level.paint)
-FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
-         'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
-# level 2A's street painted on its ground (ROAD_PAINT in tools/generate_assets.py): kerbs, markings, covers, patches
-FLOOR += tuple('kerb_' + s + v for s in 'nsew' for v in ('', '_low')) + tuple('kerb_' + s + v for s in 'ns' for v in ('_4', '_red', '_yellow'))
-FLOOR += tuple('kerb_' + k + q for k in ('corner_', 'bend_') for q in ('ne', 'nw', 'se', 'sw')) + ('kerb_in', 'kerb_ramp_n', 'kerb_ramp_s')
-FLOOR += ('zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_arrow', 'road_arrow_turn', 'road_bus', 'road_stop',
-          'road_slow', 'road_keep', 'road_clear', 'road_only', 'hatch_yard', 'hatch_bay', 'drain', 'manhole_sq', 'valve_cap',
-          'road_patch_a', 'road_patch_b', 'road_patch_c', 'road_crack_a', 'road_crack_b', 'tree_grate', 'trench', 'spoil',
-          'steel_plate', 'viaduct_shadow')
-# ... and level 1's own
-FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_marks')
-# ... and its part two's (RAMP_PAINT): the works' cut and heaps, the detour's and the freeway's paint, the toll's
-FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
-          'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow',
-          'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
-          'overpass_shadow', 'gore_taper', 'lane_taper', 'plaza_fan')
-# ... and Miami's (MIAMI_PAINT): a dumped mattress, litter, an old crash's tyre marks and debris, a dealer's display
-# ramp, a concrete ramp's joints, an oil streak
-FLOOR += ('mattress_dumped', 'litter_a', 'litter_b', 'tyre_marks', 'crash_debris', 'display_ramp', 'expansion_joint', 'oil_streak')
-# ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
-FLOOR += ('bar_mat', 'cardboard_flat')
-# ART DECO 1985's (DECO_PAINT): rain standing on the asphalt, the neon in it
-FLOOR += ('puddle_neon', 'puddle_neon_b')
-# ... and the suburb going to Miami's (SUBURB_PAINT): fallen fronds and coconuts, a drive, lawns gone to seed, a bed and a
-# sign on the sidewalk, bottles, a car wash's puddle
-FLOOR += ('palm_frond_fallen', 'sabal_frond_fallen', 'coconuts_fallen', 'driveway', 'lawn_dry_a', 'lawn_dry_b',
-          'cardboard_bed_blanket', 'cardboard_sign', 'litter_bottles', 'soap_puddle')
-# the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
-FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
-          'cutlery_spill', 'runner_corner')
-LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
-          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend', 'toll', 'billboard')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
-
-# rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
-ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
-                  antenna=(34, 34), bulkhead=(62, 54), skylight=(46, 30), skylight_tv=(46, 30), skylight_dark=(46, 30),
-                  rail_bed=(148, 32))
 # the lit ones: (radius, offset along the piece's +y) of their glow in px (keep in sync with src/game/data/roofs.js)
 ROOF_GLOW = dict(bulkhead=(56, 30), skylight=(62, 0), skylight_tv=(54, 0))
 
@@ -335,7 +223,7 @@ class Level:
     # ---- something lying flat, painted on the floor once and for all (a doormat, a carpet runner, a flight of stairs):
     # nobody bumps into it and no round stops on it
     def paint(self, sprite, col, row, deg=0):
-        assert sprite in FLOOR or sprite[6:] in LABELS and sprite.startswith('label_'), f'{sprite} is not floor paint'
+        assert sprite in FLOOR, f'{sprite} is not floor paint'
         self.floor.append([sprite, *self.at(col, row), deg])
 
     # ---- a fire burning at (col, row) from the start
