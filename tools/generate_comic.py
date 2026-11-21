@@ -17,12 +17,15 @@ import os
 from PIL import Image
 
 from comic.kit import OUT_DIR, PANELS
+from pngout import prune
 import comic.panels  # noqa: F401  (registers every panel)
 
 
 def main():
     for name, (paint, size) in PANELS.items():
         paint().save(name, size)
+    for name in prune(OUT_DIR, set(PANELS)):                    # a panel renamed or dropped
+        print('deleted stale comic/%s.png' % name)
     for name, (_, size) in PANELS.items():
         path = os.path.join(OUT_DIR, name + '.png')
         with Image.open(path) as im:

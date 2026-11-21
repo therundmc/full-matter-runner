@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from comic import title_art as art  # noqa: E402
 from comic.kit import CYAN, FLUO, INK, PINK, ROOT  # noqa: E402
+from pngout import save_png  # noqa: E402
 
 TITLE_DIR = os.path.join(ROOT, 'assets', 'sprites', 'title')
 DATA = os.path.join(ROOT, 'src', 'game', 'data', 'titleart.js')
@@ -45,17 +46,17 @@ def layers():
         if n.endswith('.png') and n[:-4] not in LAYERS:
             os.remove(os.path.join(TITLE_DIR, n))
     sky, signs, ember = art.sky_layer()
-    sky.im.save(os.path.join(TITLE_DIR, 'poster_sky.png'))
-    art.city_layer(live=True)[0].im.save(os.path.join(TITLE_DIR, 'poster_city.png'))
-    art.front_layer().im.save(os.path.join(TITLE_DIR, 'poster_front.png'))
+    save_png(sky.im, os.path.join(TITLE_DIR, 'poster_sky.png'))
+    save_png(art.city_layer(live=True)[0].im, os.path.join(TITLE_DIR, 'poster_city.png'))
+    save_png(art.front_layer().im, os.path.join(TITLE_DIR, 'poster_front.png'))
     on, boxes = art.logo()
-    on.save(os.path.join(TITLE_DIR, 'logo.png'))
-    art.logo(lit=set())[0].save(os.path.join(TITLE_DIR, 'logo_off.png'))
-    art.board_bg()[0].im.save(os.path.join(TITLE_DIR, 'board_bg.png'))
+    save_png(on, os.path.join(TITLE_DIR, 'logo.png'))
+    save_png(art.logo(lit=set())[0], os.path.join(TITLE_DIR, 'logo_off.png'))
+    save_png(art.board_bg()[0].im, os.path.join(TITLE_DIR, 'board_bg.png'))
     for done in range(len(art.TARGETS) + 1):
-        art.board_overlay(done, live=True).im.save(os.path.join(TITLE_DIR, 'board_%d.png' % done))
-    art.options_bg().im.save(os.path.join(TITLE_DIR, 'options_bg.png'))
-    art.things_sheet().im.save(os.path.join(TITLE_DIR, 'options_things.png'))
+        save_png(art.board_overlay(done, live=True).im, os.path.join(TITLE_DIR, 'board_%d.png' % done))
+    save_png(art.options_bg().im, os.path.join(TITLE_DIR, 'options_bg.png'))
+    save_png(art.things_sheet().im, os.path.join(TITLE_DIR, 'options_things.png'))
     for n in LAYERS:
         with Image.open(os.path.join(TITLE_DIR, n + '.png')) as im:
             assert im.size[0] % 3 == 0 and im.size[1] % 3 == 0, (n, im.size)

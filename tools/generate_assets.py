@@ -16,6 +16,8 @@ import random
 
 from PIL import Image
 
+from pngout import prune, save_png
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
 RNG = random.Random(1337)
@@ -18463,10 +18465,15 @@ EXPECTED = {
 
 def main():
     sprites = build()
+    written = 0
     for (group, name), cv in sorted(sprites.items()):
         d = os.path.join(OUT_DIR, group)
         os.makedirs(d, exist_ok=True)
-        cv.img.save(os.path.join(d, name + '.png'))
+        written += save_png(cv.img, os.path.join(d, name + '.png'))
+    # what this generator no longer makes goes (its own groups only: comic/ and title/ are tools/comic's)
+    for group in sorted({g for g, _ in sprites}):
+        for name in prune(os.path.join(OUT_DIR, group), {n for g, n in sprites if g == group}):
+            print('deleted stale %s/%s.png' % (group, name))
     # verify every expected file exists with the exact size
     n = 0
     for group, items in EXPECTED.items():
@@ -18478,7 +18485,7 @@ def main():
                 assert im.mode == 'RGBA', path
             n += 1
     assert n == len(sprites), (n, len(sprites))
-    print('generated %d sprites into %s' % (n, OUT_DIR))
+    print('generated %d sprites into %s (%d written, the others unchanged)' % (n, OUT_DIR, written))
 
 
 if __name__ == '__main__':
