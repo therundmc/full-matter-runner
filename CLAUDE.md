@@ -88,7 +88,8 @@
 - Recorded today: gunshots in assets/sound/shots; the foley bank assets/sound/foley.wav + src/audio/bank.js, built by
   `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json (never edit bank.js by hand).
 - Keep Music.js's public API (setTrack, start, stop, setIntensity, setCombat, setCombo, setJukebox): recorded music
-  must bring layers / stems per intensity (calm, tension, fight, kill chain) behind it.
+  must bring layers / stems per intensity (calm, tension, fight, kill chain) behind it (setJukebox: a no-op today,
+  the synthesized jukebox band is gone).
 - Every pack goes in assets/sound/CREDITS.md with its licence. Paid packs' source files are not redistributable:
   keep them out of the repo (an ignored folder) when the licence says so.
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.

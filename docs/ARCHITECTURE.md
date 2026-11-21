@@ -550,7 +550,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Soundtrack (audio/Music.js): a registry of tracks (audio/tracks/index.js), one a level (level `music`, `trackOf`;
   the default is 'synthwave', the score below), the title screen playing `MENU_TRACK`. Music.js keeps the game's
   state (intensity, fight, chain) and hands it to the player of the track playing; a new track starts on its own
-  downbeat while the old one fades. audition.html (repo root) plays every track live with its levels of intensity;
+  downbeat while the old one fades (setJukebox stays in its API and does nothing: the jukebox has no band). audition.html
+  (repo root) plays every track live with its levels of intensity;
   tools/render_music.mjs renders them offline in headless Edge (WAV extracts in audition/, loudness per part and per
   layer, the kick's timing).
 - Groove tracks (audio/groove/Groove.js, data in audio/tracks/<id>.js, instruments in groove/voices.js, harmony and
@@ -1219,7 +1220,8 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   the CPU per section (engine/Profiler.js `PROF`: `if (PROF.on) PROF.begin('x')` ... `end('x')`, off and free until
   the overlay shows; the sections and their parents are `SECTIONS` in Perf.js), the card (renderer, the lens' GPU
   time where EXT_disjoint_timer_query is exposed, texture uploads), the JS heap and an estimate of the big buffers
-  by owner (each owner's `bytes()`, engine/Bytes.js: typed arrays vs canvases), the world's counts, the quality.
+  by owner (each owner's `bytes()`, engine/Bytes.js: typed arrays vs canvases), the world's counts (the sound voices and
+  the music's one-shots in flight, Music.liveVoices, among them), the quality.
   `game.perf.snapshot()` returns the same as a plain object; `{ ...game.perf }` stays F4's numbers (the QA robot).
 - `window.game` in the console.
 - `npm test` runs the Node unit tests.
