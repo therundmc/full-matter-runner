@@ -9,6 +9,7 @@
 // and age: `cloud`), never per frame, from their own numbers (nothing is drawn from the game's random stream).
 import { CARFX } from '../data/carfx.js';
 import { shown } from '../fx/Particles.js';
+import { hexRgb } from '../../engine/math.js';
 
 const SIZES = [3, 4, 5, 6, 8, 10, 12, 14, 17, 20, 24, 28, 33, 39, 46]; // px across: the sizes a cloud is kept at
 const VARIANTS = 3;
@@ -18,14 +19,13 @@ const made = new Map();
 // what the clouds made so far hold, bytes (the perf overlay)
 export const carFxBytes = () => { let n = 0; for (const c of made.values()) n += c.width * c.height * 4; return n; };
 
-const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
 // one cloud: `size` px across, of `tone`, shape `variant`, at age stage k of U.steps (0: whole)
 function cloud(tone, size, variant, k, U = CARFX.puffs) {
   const key = `${tone}|${size}|${variant}|${k}`;
   let c = made.get(key);
   if (c) return c;
-  const T = U.tones[tone], A = U.art, cols = T.colors.map(rgb);
+  const T = U.tones[tone], A = U.art, cols = T.colors.map(hexRgb);
   // (its own numbers: the same shape whatever its stage, so a billow ages in place instead of jumping)
   let seed = (size * 7919 + variant * 104729 + tone.length * 31337) >>> 0;
   const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);

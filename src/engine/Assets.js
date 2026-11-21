@@ -169,7 +169,7 @@ export const OPTIONAL_LIST = [
   ...[...DECO_PROPS, ...DECO_PAINT, ...DECO_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...INTERIOR_PROPS, ...INTERIOR_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...FLAT_PROPS, ...FLAT_PAINT].map((n) => `props/${n}`),
-  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
+  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare',
     // what the player's melee weapons break into (data/weapons.js parts)
     'bat_head', 'bat_handle', 'knife_blade', 'knife_handle'].map((n) => `weapons/${n}`),
@@ -185,9 +185,9 @@ export const OPTIONAL_LIST = [
   // the comic panels of the opening, of the leap's card and of level 1's ending (tools/generate_comic.py), painted
   // finer than the title they are drawn on
   ...['sleep', 'door', 'pry', 'box', 'count', 'pour', 'match_dark', 'match', 'fire', 'wake_shut', 'wake',
-    'alley', 'drive', 'office', 'office_phone', 'matchbook',
-    // one full-screen card a man, front on (the targets, for a screen between levels; the runner's for a menu)
-    'target_cueball', 'target_lucky', 'target_jitters', 'target_boss', 'card_runner'].map((n) => `comic/${n}`),
+    'alley', 'drive', 'office', 'office_phone', 'matchbook'].map((n) => `comic/${n}`),
+  // (tools/comic's full-screen cards, target_* and card_runner, are painted but not loaded: nothing draws them since
+  // the hit list took the screen between levels, ui/title/HitList.js)
   // the title's stills (tools/comic/title.py): the poster's three layers and the logo (ui/title/Poster.js), the hit
   // list's board and what is pinned to it, one per number of targets dead (ui/title/HitList.js)
   // and the options' table and what lies on it (ui/title/Options.js)

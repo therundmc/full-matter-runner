@@ -50,10 +50,10 @@ export const CINE_END = PAGES.at(-1).end + CINE.out;
 
 // The timeline at t: page (the comic page up, or null: the black between pages and at the end), over (the level's
 // card is next).
-export function cineView(t, C = CINE) {
+export function cineView(t) {
   return {
     page: PAGES.find((p) => t >= p.start && t < p.end) || null,
-    over: t >= PAGES.at(-1).end + C.out,
+    over: t >= CINE_END,
   };
 }
 

@@ -18,6 +18,7 @@ import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
 import { chance, clamp, angDiff } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
 import { PROF } from '../../engine/Profiler.js';
+import { Movers } from '../../engine/Interp.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
 import { gripOn } from '../data/materials.js';
 import Audio from '../../audio/Audio.js';
@@ -87,6 +88,9 @@ import TollFx from '../systems/TollFx.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
+// a sound is muffled by a wall between it and the player (walledOff) from `near` px of him (closer, it is heard
+// round the corner) to `far` px (further, too faint for the wall to matter, and not worth the ray)
+const EAR = { near: 90, far: 2400 };
 
 export default class World {
   constructor(game, level) {
@@ -114,6 +118,7 @@ export default class World {
     this.addBody(this.wallBodies);
     this.addBody(this.map.buildEdgeBodies()); // nobody walks off an open map border (traffic / passers-by excepted)
     this.wallsDirty = false;
+    this.moving = new Movers(); // what moves without a body, drawn between two steps (movers)
     this.particles = new Particles(this);
 
     this.player = null;
@@ -164,7 +169,7 @@ export default class World {
     this.tipping = new Tipping(this);             // street bins run into go over
     this.propPhysics = new PropPhysics(this);     // loose furniture pushed with its weight, scuffing the floor
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
-    this.weather = new Weather(this, level);               // the rain: open sky, its puddles, drips off the eaves
+    this.weather = new Weather(this, level);               // the wet of an earlier rain: open sky, its puddles
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
     this.smoke = new Smoke(this, level);                   // the air and what it carries: smoke, soot, powder, steam
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
@@ -218,6 +223,7 @@ export default class World {
     this.tollFx = this.toll ? new TollFx(this) : null; // a toll's plaza hit: its arms' splinters, the crash on a boom (looks)
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
+    this.movesOwn();
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
     this.checkpoints?.resume(); // (started at a checkpoint: the clock and the score it kept)
   }
@@ -359,7 +365,7 @@ export default class World {
     const p = this.player;
     if (!p || x === undefined) return false;
     const d = Math.hypot(x - p.x, y - p.y);
-    return d > 90 && d < 2400 && !this.lineOfSight(p.x, p.y, x, y);
+    return d > EAR.near && d < EAR.far && !this.lineOfSight(p.x, p.y, x, y);
   }
   // the run's clock: from `clockFrom` (0; level 2A's opening does not count: it starts as the car pulls away,
   // Drive.launch) to his death
@@ -420,10 +426,25 @@ export default class World {
   }
 
   // what moves without a body, for the picture drawn between two steps (engine/Interp.js): lists of things with x, y
-  movers() {
-    const M = this.moving || (this.moving = [null, null, null]);
-    M[0] = this.particles.list; M[1] = this.projectiles; M[2] = this.critters.list;
-    return M;
+  movers() { return this.moving.lists(); }
+
+  // a source of points moved by hand once a step, drawn between two steps from now on (engine/Interp.js Movers):
+  // fn(out) pushes its lists onto out
+  moves(fn) { this.moving.add(fn); }
+
+  // the points the world's own systems move by hand: sparks and smoke, rounds, rats and pigeons, the pool balls (on
+  // their table), a car's billows, the streaks of air past his car, the cigarette's smoke and butt (2A's opening),
+  // loose paper, litter. (Each in one list only: Movers)
+  movesOwn() {
+    this.moves((out) => {
+      out.push(this.particles.list, this.projectiles, this.critters.list, this.carFx.puffs, this.papers.list, this.litter.list);
+      for (const set of this.poolBalls.sets.values()) out.push(set);
+      const d = this.drive;
+      if (d) {
+        out.push(d.wind);
+        if (d.drag) { out.push(d.drag.smoke); if (d.drag.butt) out.push([d.drag.butt]); }
+      }
+    });
   }
 
   // ---------------- the getaway (systems/Outro) ----------------
@@ -562,7 +583,7 @@ export default class World {
       }
       if (o.ruts) {
         const xs = [...rear, ...o.ruts].map((r) => r.x), M = O.marks, from = o.ruts;
-        this.decals.paint?.((g) => {
+        this.decals.paint((g) => {
           g.strokeStyle = `rgba(${M.color}, ${spin > 0 ? M.spin : M.slide})`;
           g.lineWidth = M.w;
           g.lineCap = 'round';
@@ -697,7 +718,7 @@ export default class World {
     if (this.drive) {
       // what the van ran into, the end of the road; its engine heard
       this.drive.after(dt);
-      Audio.motor('drive', this.drive?.motor(dt) ?? null);
+      Audio.motor('drive', this.drive.motor(dt));
     }
     P?.begin('chase');
     this.pursuit?.after(dt);
@@ -736,7 +757,6 @@ export default class World {
     this.papers.update(dt);
     this.litter.update(dt);
     this.curtains.update(dt);
-    this.weather.update();
     P?.begin('smoke');
     this.smoke.update(dt);
     P?.end('smoke');

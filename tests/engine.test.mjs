@@ -51,3 +51,25 @@ test('segment vs polygon / circle / segment', () => {
   assert.equal(segCircle(0, 5, 10, 5, 5, 0, 2), null);
   assert.ok(Math.abs(segSeg(0, 0, 10, 0, 5, -5, 5, 5) - 0.5) < 1e-9);
 });
+
+test('Camera: what it keeps in the world and calls in view is measured at the zoom it draws at (z)', async () => {
+  const { default: Camera } = await load('engine/Camera.js');
+  // held on whole px (at a wheel) a director's scale is rounded to a whole zoom: 2 x 1.3 is drawn at 3
+  const cam = new Camera();
+  cam.resize(1920, 1080, 2);
+  cam.pixel = true;
+  cam.scale = 1.3;
+  assert.equal(cam.z, 3);
+  const r = cam.viewRadius();
+  assert.ok(Math.abs(r.x - (1920 / 3 / 2 + 40)) < 1e-9 && Math.abs(r.y - (1080 / 3 / 2 + 40)) < 1e-9);
+  // a punch-in draws closer: the view is smaller, and may come nearer the world's edge
+  const foot = new Camera();
+  foot.resize(1280, 720, 2);
+  foot.bounds = { w: 4000, h: 4000 };
+  foot.snap(0, 0);
+  const x0 = foot.x;
+  foot.punch(0.5);
+  foot.snap(0, 0);
+  assert.ok(Math.abs(x0 - (1280 / 2 / 2 + 10)) < 1e-9);
+  assert.ok(Math.abs(foot.x - (1280 / foot.z / 2 + 10)) < 1e-9 && foot.x < x0);
+});

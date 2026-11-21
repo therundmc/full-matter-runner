@@ -13,8 +13,8 @@
 // that ends on a fill. The whole mix is lowpassed in the calm (the record heard from the next room), opens with the
 // tension and is wide open in a fight; it pumps under the kick, harder as the fight grows, and is driven a little
 // into a saturation at the top of a chain.
-// Public API (as audio/Synthwave.js): start(), stop(), setIntensity(0..1), setCombat(on), setCombo(n),
-// setJukebox(v) (no band of its own: kept for the interface), release() (drops the cached instruments).
+// Public API (as audio/Synthwave.js): start(), stop(), setIntensity(0..1), setCombat(on), setCombo(n), release()
+// (drops the cached instruments).
 // The constructor takes the track and an optional (context, destination) so that it can be rendered offline.
 import Audio from '../Audio.js';
 import { render, INSTRUMENTS } from './voices.js';
@@ -411,7 +411,6 @@ export default class Groove {
     this.smooth = 0;      // the intensity, smoothed bar by bar
     this.combat = false;
     this.combo = 0;
-    this.jukebox = 0;
     this.stage = 0;
     this.passes = {};
     this.cache = new Map(); // render key -> AudioBuffer
@@ -448,7 +447,6 @@ export default class Groove {
   setIntensity(v) { this.target = clamp(v, 0, 1); }
   setCombat(on) { this.combat = !!on; }
   setCombo(n) { this.combo = n || 0; }
-  setJukebox(v) { this.jukebox = clamp(v || 0, 0, 1); }
 
   // the instrument for a spec, rendered on first use
   buffer(spec) {

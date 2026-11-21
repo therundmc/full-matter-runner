@@ -1,8 +1,7 @@
-// The wet of a level after the rain, and the rain itself when `RAIN.falls` is on (it is off: the user wants none;
-// level `soundscape.rain`, 0..1; RAIN in data/atmosphere.js). What is kept here is what does not move: which tiles are under the open sky, the puddles of rain lying in the
-// open (where they lie: the water itself is liquid on the floor, systems/Liquids.js fills their hollows) and the
-// spots where water drips off the eaves and any ladder in the open. The drops themselves are not stored:
-// render/WeatherArt.js hashes each one's place and timing from the time (cheap, nothing to update). DOM-free; laid out with its own seeded random numbers, so the
+// The wet of a level after an earlier rain (level `wet` / `soundscape.rain`, 0..1; RAIN in data/atmosphere.js; no
+// rain falls: the user). What is kept here does not move: which tiles are under the open sky (the wet floors mirror
+// there: render/Lighting.js) and the puddles of rain lying in the open (where they lie: the water itself is liquid on
+// the floor, systems/Liquids.js fills their hollows). DOM-free; laid out with its own seeded random numbers, so the
 // game's random sequence is not touched and the puddles lie in the same places every time.
 import { TILE, AMBIENCE } from '../Config.js';
 import { RAIN } from '../data/atmosphere.js';
@@ -53,13 +52,9 @@ export default class Weather {
     this.cfg = cfg;
     this.k = clamp((level.wet ?? level.soundscape?.rain ?? 0) * cfg.look, 0, 1); // how wet it is seen to be (level `wet`)
     this.puddles = [];
-    this.drips = [];
     if (!this.k) return;
-    const map = world.map;
-    this.rand = seeded(hashString(level.name || 'level'));
-    this.sky = skyGrid(map);
-    this.layPuddles(map);
-    this.dripsLaid = !cfg.falls; // (no drips when it is not raining) a ladder is a prop: laid at the first step
+    this.sky = skyGrid(world.map);
+    this.layPuddles(world.map, seeded(hashString(level.name || 'level')));
   }
 
   // under the open sky at (x, y) px
@@ -82,8 +77,8 @@ export default class Weather {
   }
 
   // puddles of rain in the open: never on top of each other, their shape a few lobes like a spill's
-  layPuddles(map) {
-    const c = this.cfg.puddles, R = this.rand, cells = this.openFloors(map, new Set(c.floors));
+  layPuddles(map, R) {
+    const c = this.cfg.puddles, cells = this.openFloors(map, new Set(c.floors));
     const want = Math.round((cells.length / 100) * c.per);
     for (let tries = 0; this.puddles.length < want && tries < want * 20; tries++) {
       const [cx, cy] = cells[Math.floor(R() * cells.length)];
@@ -92,46 +87,7 @@ export default class Weather {
       // flatter and more ragged than a spill: water lying in a dip of the ground
       const lobes = [], n = c.lobes;
       for (let i = 0; i < n; i++) lobes.push({ a: (i + (R() - 0.5) * 0.8) * TAU / n, d: 0.3 + R() * 0.5, s: 0.28 + R() * 0.3, ph: R() * TAU });
-      this.puddles.push({ x, y, r: c.r[0] + R() * (c.r[1] - c.r[0]), squash: c.squash[0] + R() * (c.squash[1] - c.squash[0]), lobes, alpha: 1, seed: R() * 100 });
+      this.puddles.push({ x, y, r: c.r[0] + R() * (c.r[1] - c.r[0]), squash: c.squash[0] + R() * (c.squash[1] - c.squash[0]), lobes });
     }
-  }
-
-  // drip spots: along the foot of walls in the open (the eaves above) and under ladders in the open
-  layDrips() {
-    this.dripsLaid = true;
-    const map = this.world.map, d = this.cfg.drips, R = this.rand, spots = [];
-    const wall = (x, y) => map.isWallChar(x, y);
-    for (let y = 0; y < map.h; y++) {
-      for (let x = 0; x < map.w; x++) {
-        if (!this.sky[y * map.w + x] || map.isSolid(x, y)) continue;
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (wall(x + dx, y + dy)) spots.push([x, y, dx, dy]);
-      }
-    }
-    const want = Math.round((spots.length / 100) * d.per);
-    for (let i = 0; i < want && spots.length; i++) {
-      const [x, y, dx, dy] = spots.splice(Math.floor(R() * spots.length), 1)[0];
-      // a few px out from the wall face, anywhere along it
-      const along = 4 + R() * (TILE - 8), out = 3 + R() * 3;
-      const px = dx ? (x + (dx > 0 ? 1 : 0)) * TILE - dx * out : x * TILE + along;
-      const py = dy ? (y + (dy > 0 ? 1 : 0)) * TILE - dy * out : y * TILE + along;
-      this.drips.push(this.drip(px, py));
-    }
-    for (const p of this.world.props) {
-      if (p.type !== 'ladder' || !this.open(p.x, p.y)) continue;
-      for (let i = 0; i < d.ladder; i++) {
-        const a = p.body.angle, u = (R() - 0.5) * p.def.w * 0.8, v = (R() - 0.5) * p.def.h * 0.8;
-        this.drips.push(this.drip(p.x + u * Math.cos(a) - v * Math.sin(a), p.y + u * Math.sin(a) + v * Math.cos(a)));
-      }
-    }
-  }
-
-  drip(x, y) {
-    const [a, b] = this.cfg.drips.every, R = this.rand;
-    return { x, y, period: a + R() * (b - a), seed: R() * 100 };
-  }
-
-  update() {
-    if (!this.k) return;
-    if (!this.dripsLaid) this.layDrips();
   }
 }

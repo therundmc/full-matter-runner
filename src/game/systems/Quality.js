@@ -14,13 +14,13 @@ export function setQuality(level) {
 }
 
 // the level a player's settings ask for: his own choice, or the one AUTO is at
-export function levelOf(settings) {
+export function qualityLevel(settings) {
   if (settings.quality !== 'auto' && QUALITY[settings.quality]) return settings.quality;
   return QUALITY[settings.autoQuality] ? settings.autoQuality : 'high';
 }
 
 // what the option's row shows: AUTO with the level it chose beside it
-export const qualityLabel = (settings) => (QUALITY[settings.quality] ? settings.quality.toUpperCase() : `AUTO (${levelOf(settings).toUpperCase()})`);
+export const qualityLabel = (settings) => (QUALITY[settings.quality] ? settings.quality.toUpperCase() : `AUTO (${qualityLevel(settings).toUpperCase()})`);
 
 // AUTO's watch: fed every frame, it answers the level to go down to when the game does not keep up (else null)
 export class QualityWatch {

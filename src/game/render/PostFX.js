@@ -1,7 +1,8 @@
 import { LIGHTING as L } from '../Config.js';
 
-// Full-screen colour grading: saturation/contrast, teal shadows / magenta highlights, chromatic aberration
-// on heavy shake, film grain. Pixel art stays crisp (no resampling of the base image).
+// The 2D stand-in for the lens (render/PostGL.js) where WebGL is not there: full-screen colour grading
+// (saturation/contrast, teal shadows / magenta highlights), the red channel shifted on heavy shake, film grain. Pixel
+// art stays crisp (no resampling of the base image); at the wheel nothing moves a px of it (no shifted channel).
 export default class PostFX {
   constructor() {
     this.tmp = null;
@@ -22,8 +23,8 @@ export default class PostFX {
     return c;
   }
 
-  // shake: camera trauma 0..1.2
-  apply(ctx, W, H, shake) {
+  // shake: camera trauma 0..1.2; wheel: at the wheel (Game.wheel: the scene drawn 1:1, nothing may resample it)
+  apply(ctx, W, H, shake, wheel = false) {
     if (!L.enabled) return;
     const cv = ctx.canvas, gr = L.grade;
     ctx.save();
@@ -42,7 +43,7 @@ export default class PostFX {
     ctx.fillRect(0, 0, W, H);
 
     // red channel shifted sideways while the screen shakes hard
-    const ca = Math.round(L.aberration * Math.max(0, shake - 0.15) * (H / 1080));
+    const ca = wheel ? 0 : Math.round(L.aberration * Math.max(0, shake - 0.15) * (H / 1080));
     if (ca >= 1) {
       if (!this.tmp || this.tmp.width !== W || this.tmp.height !== H) {
         this.tmp = document.createElement('canvas');

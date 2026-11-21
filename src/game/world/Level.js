@@ -135,7 +135,7 @@ export function buildLevel(world, level) {
     if (opt?.tips === false) p.noTip = true;
     if (opt?.flies) p.flies = true; // flies over it (render/PropLife.js)
     if (opt?.seep) p.seep = opt.seep; // it drips or fumes (systems/Seeps.js)
-    if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
+    if (opt?.clutter) world.clutter.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)
     if (opt?.route && p.isVehicle) p.route = opt.route; // ... along the level's `routes[name]` (legs, bends: the lab)

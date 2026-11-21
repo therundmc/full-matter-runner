@@ -2,15 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { default: Lens, driveLens } = await load('game/render/Lens.js');
+const { default: Lens } = await load('game/render/Lens.js');
 const { POST } = await load('game/data/post.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 
 // a 1920 x 1080 picture looking at the world from (0, 0), two picture px per world px
 const view = (more = {}) => ({
   W: 1920, H: 1080, scale: 2, toScreen: (x, y) => ({ x: 960 + x * 2, y: 540 + y * 2 }),
-  state: 'play', phase: 'normal', powerOn: true, timeScale: 1, trauma: 0, look: false,
-  player: { x: 0, y: 0, angle: 0, move: null }, heat: [], lights: [], ...more,
+  state: 'play', phase: 'normal', powerOn: true, trauma: 0,
+  player: { x: 0, y: 0 }, heat: [], lights: [], ...more,
 });
 const run = (lens, sec, v = view()) => { for (let i = 0; i < sec * 60; i++) lens.update(1 / 60, v); };
 
@@ -23,10 +23,9 @@ test('lens: at rest the fringe is the resting one, nothing bends, the grading is
   assert.equal(u.frame, 0);
   assert.equal(u.glitch, 0);
   assert.ok([...u.waves].every((n) => n === 0) && [...u.heat].every((n) => n === 0));
-  assert.ok(Math.abs(u.grade.sat - POST.grades.calm.sat) < 0.01 && Math.abs(u.edge - POST.focus.edge) < 0.01 && u.blur < 0.01);
+  assert.ok(Math.abs(u.grade.sat - POST.grades.calm.sat) < 0.01 && u.blur < 0.01);
   // the user's rule: at rest the lens is hardly there
-  assert.ok(POST.fringe.rest <= 1 && POST.tube.curve <= 0.008 && POST.focus.edge <= 0.15 && POST.glow.strength <= 0.2 && POST.rays.strength <= 0.2);
-  assert.deepEqual(u.smear, [0, 0]);
+  assert.ok(POST.fringe.rest <= 1 && POST.tube.curve <= 0.008 && POST.glow.strength <= 0.2 && POST.rays.strength <= 0.2);
 });
 
 test("lens: a kill of the player's kicks the fringe, the colours and the zoom toward the victim, then all of it dies", () => {
@@ -118,7 +117,7 @@ test('lens: the grading follows the situation and eases there', () => {
   }
 });
 
-test('lens: the tape tears at death and at a start, a menu softens the whole picture, looking far softens the edges', () => {
+test('lens: the tape tears at death and at a start, the results soften the whole picture, nothing else does', () => {
   const lens = new Lens();
   run(lens, 1);
   lens.update(1 / 60, view({ state: 'dead' }));
@@ -137,20 +136,8 @@ test('lens: the tape tears at death and at a start, a menu softens the whole pic
   assert.ok(lens.blur < 0.02);
   lens.update(1 / 60, view({ state: 'play' }));
   assert.equal(lens.grade.sat, POST.grades.calm.sat);
-  run(lens, 2, view({ look: true }));
-  assert.ok(lens.blur < 0.02 && Math.abs(lens.edge - POST.focus.look) < 0.01);
-});
-
-test('lens: a slide smears the picture along the move, slow motion streams it from the player', () => {
-  const lens = new Lens();
-  run(lens, 1, view({ player: { x: 0, y: 0, angle: Math.PI / 2, move: 'slide' } }));
-  let u = lens.uniforms(view());
-  assert.ok(Math.abs(u.smear[0]) < 1e-4 && Math.abs(u.smear[1] + POST.speed.slide) < 1e-3, 'downward on screen is -y for the lens');
-  run(lens, 1);
-  u = lens.uniforms(view());
-  assert.ok(Math.hypot(...u.smear) < 1e-4);
-  run(lens, 1, view({ timeScale: 0.2 }));
-  assert.ok(Math.abs(lens.uniforms(view()).radial - 0.8 * POST.speed.slow) < 1e-3);
+  run(lens, 2, view({ state: 'title', player: null }));
+  assert.ok(lens.blur < 0.02, 'the title is sharp');
 });
 
 test('lens: hot spots and lamps are handed over in the picture frame, capped', () => {
@@ -208,7 +195,7 @@ test('lens: a comic page over the world (the leap after the blast) shows clean, 
   assert.ok([...u.heat, ...u.waves, ...u.lights].every((n) => n === 0), 'no shimmer, no ring, no rays');
   assert.equal(u.zoom, 0);
   assert.equal(u.frame, 0);
-  assert.deepEqual(u.centre, [0.5, 0.5]);
+  assert.deepEqual(u.focus, [0.5, 0.5]);
   assert.ok(Math.abs(u.grade.sat - POST.grades.menu.sat) < 1e-6 && u.grade.tintK === POST.grades.menu.tintK, 'the grade of a page, at once');
 });
 
@@ -230,14 +217,10 @@ test('lens: at the wheel the picture is drawn 1:1 and the lens leaves the road a
   u = lens.uniforms(wheel);
   assert.equal(u.zoom, 0);
   assert.ok(u.rush.k > 1, 'the kick is there, in the band: its streaks and its darkening, harder');
-  // NOTHING at the wheel moves a px of the picture (the user: "the cars are deformed at the edges of the screen"):
-  // no trails laid over it, no stretch, no colours parted, even kicked; what is left is added over it or dims it
-  for (const k of ['mix', 'pull', 'split']) assert.equal(u.rush[k], 0, `rush.${k}`);
+  // NOTHING at the wheel moves a px of the picture (the user: "the cars are deformed at the edges of the screen"),
+  // even kicked: no fringe, no zoom, no barrel, no wave; what is left is added over it or dims it
   assert.equal(u.fringe, 0, 'no fringe at the wheel');
-  assert.ok(u.zoom === 0 && u.curve === 0 && u.scan === 0);
-  assert.deepEqual(driveLens({ mix: 0.9, pull: 0.06, split: 7 }, 1), { mix: 0, pull: 0, split: 0 }, 'whatever the table says');
-  for (const k of ['mix', 'pull', 'split', 'fringe']) assert.equal(POST.speed.drive[k], 0, `POST.speed.drive.${k}`);
-  assert.equal(POST.speed.drive.kick.fringe, 0);
+  assert.ok(u.zoom === 0 && u.curve === 0 && u.scan === 0 && u.waveWidth === 0);
   assert.ok(u.rush.dark > 0 && u.rush.lines.glow > 0 && u.rush.lines.share > 0, 'the streaks of air and the band dimmed: added, not resampled');
   assert.equal(POST.speed.drive.kick.zoom, undefined);
   // on foot: as it was
@@ -247,4 +230,89 @@ test('lens: at the wheel the picture is drawn 1:1 and the lens leaves the road a
   bus.emit('kill', { victim: { x: 0, y: 0 }, killer: player, cause: 'bullet' });
   u = foot.uniforms(view());
   assert.ok(u.curve === POST.tube.curve && u.scan === POST.tube.scan && u.rush.flat === 0 && u.rush.k === 0 && u.zoom > 0);
+});
+
+test('lens: without WebGL the 2D stand-in shifts the red channel on a hard shake, never at the wheel', async () => {
+  const { default: PostFX } = await load('game/render/PostFX.js');
+  // a 2D context that records what is drawn onto it (a canvas of its own for the shifted copy, the grain's)
+  const ctx2d = () => new Proxy({ draws: [] }, {
+    get: (o, k) => (k in o ? o[k] : k === 'drawImage' ? (...a) => o.draws.push(a) : k === 'getContext' ? () => ctx2d() : k === 'createImageData' ? (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }) : () => ({})),
+    set: (o, k, v) => { o[k] = v; return true; },
+  });
+  globalThis.document = { createElement: () => ctx2d() };
+  try {
+    const shifted = (wheel) => {
+      const ctx = ctx2d();
+      ctx.canvas = { width: 1280, height: 720 };
+      new PostFX().apply(ctx, 1280, 720, 1.2, wheel);
+      return ctx.draws.some((a) => a[1] > 0); // (the shifted copy is drawn ca px to the right)
+    };
+    assert.equal(shifted(false), true, 'on foot: the red channel parts');
+    assert.equal(shifted(true), false, 'at the wheel: nothing moves a px of the picture');
+  } finally {
+    delete globalThis.document;
+  }
+});
+
+// A WebGL context that compiles nothing: it reads the uniforms each shader declares and records what is set
+function fakeGL() {
+  const progs = [], sets = [];
+  const decl = (src) => [...src.matchAll(/uniform\s+\w+\s+([^;]+);/g)].flatMap((m) => m[1].split(',').map((n) => n.trim().replace(/\[\d+\]$/, '')));
+  const own = {
+    createShader: () => ({}), shaderSource: (sh, src) => { sh.src = src; }, getShaderParameter: () => true,
+    createProgram: () => { const p = { shaders: [], names: [] }; progs.push(p); return p; },
+    attachShader: (p, sh) => p.shaders.push(sh),
+    getProgramParameter: (p, k) => (k === 'ACTIVE_UNIFORMS' ? (p.names = p.shaders.flatMap((sh) => decl(sh.src))).length : true),
+    getActiveUniform: (p, i) => ({ name: p.names[i] }),
+    getUniformLocation: (p, name) => ({ p, name }),
+    getExtension: () => null,
+  };
+  const gl = new Proxy(own, {
+    get: (o, k) => {
+      if (k in o) return o[k];
+      if (/^[A-Z0-9_]+$/.test(k)) return k;
+      if (/^uniform/.test(k)) return (loc, ...v) => sets.push({ loc, v: v.flatMap((x) => (typeof x === 'object' ? [...x] : [x])) });
+      return () => ({});
+    },
+  });
+  return { gl, progs, sets };
+}
+
+test("lens: every uniform PostGL's shaders declare is set by render, with a number, and nothing set is undeclared", async () => {
+  // the class of bug: a uniform left out of render() stays 0 on the card (a look silently gone), a misspelt one is
+  // swallowed by WebGL (uniform1f on a null location does nothing)
+  const { createPost } = await load('game/render/PostGL.js');
+  const { gl, progs, sets } = fakeGL(), el = () => ({ width: 0, height: 0, style: {}, addEventListener() {}, getContext: (k) => (k === 'webgl' ? gl : {}) });
+  globalThis.document = { createElement: el };
+  try {
+    const post = createPost({ width: 1280, height: 720, after() {} });
+    assert.ok(post, 'the lens is made on the fake card');
+    assert.equal(progs.length, 4);
+    const check = (u, what) => {
+      sets.length = 0;
+      post.render(u, 1.5);
+      for (const s of sets) {
+        assert.ok(s.loc, `${what}: a uniform set that no shader declares`);
+        assert.ok(s.v.every((n) => Number.isFinite(n)), `${what}: ${s.loc.name} set to ${s.v}`);
+      }
+      for (const p of progs) for (const name of p.names) assert.ok(sets.some((s) => s.loc?.p === p && s.loc.name === name), `${what}: ${name} never set`);
+    };
+    // every pass on: the glow, the shafts, the soft picture (the results)
+    const lens = new Lens(), all = (u) => ({ ...u, glow: { ...POST.glow, strength: 0.1 }, rays: { ...POST.rays, strength: 0.1 }, blur: 0.5 });
+    run(lens, 1);
+    check(all(lens.uniforms(view({ lights: [{ x: 10, y: 10, k: 1 }] }))), 'on foot');
+    const wheel = view({ drive: { k: 0.9, angle: 0.3, x: 40, y: 20 } });
+    run(lens, 1, wheel);
+    check(all(lens.uniforms(wheel)), 'at the wheel');
+  } finally {
+    delete globalThis.document;
+  }
+});
+
+test('lens: at the wheel no hot air bends the picture (it moves no px there), on foot it does', () => {
+  const lens = new Lens(), hot = [{ x: 10, y: 10, kind: 'fire' }];
+  const foot = lens.uniforms(view({ heat: hot }));
+  assert.ok([...foot.heat].some((n) => n !== 0), 'a fire shimmers on foot');
+  const wheel = lens.uniforms(view({ heat: hot, drive: { k: 0.5, angle: 0, x: 0, y: 0 } }));
+  assert.ok([...wheel.heat].every((n) => n === 0), 'none at the wheel');
 });

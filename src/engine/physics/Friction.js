@@ -46,9 +46,3 @@ function roll(b, v, slide, rolling) {
   const r = Math.sign(across) * Math.max(0, Math.abs(across) - rolling);
   if (a !== along || r !== across) Body.setVelocity(b, { x: a * c - r * s, y: a * s + r * c });
 }
-
-// stopping distance (px) of a body sliding at v (px/step) with friction mu: v2 / (2 mu g)
-export function stoppingDistance(v, mu) {
-  const vps = v * 60;
-  return (vps * vps) / (2 * mu * G * PX_PER_M);
-}

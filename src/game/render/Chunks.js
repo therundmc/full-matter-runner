@@ -22,7 +22,9 @@ export function toDrop(alive, near, cache, keep) {
 }
 
 // One context standing for several: every call and every setting goes to each of them; a transform given in the
-// whole layer's pixels is moved by each chunk's offset (dx, its left edge in those pixels). Reads come from the first.
+// whole layer's pixels is moved by each chunk's offset (dx, its left edge in those pixels). A setting read and
+// getTransform come from the first; any other call returns what the last one returned (the same for all of them as
+// long as it reads no pixels: never read the picture back through it, getImageData would be one chunk's).
 export function spread(parts) {
   if (parts.length === 1 && parts[0].dx === 0) return parts[0].g;
   const first = parts[0];

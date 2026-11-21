@@ -1182,8 +1182,8 @@ export default class Pursuit {
     return v.toWorld(a.sx + dx * t0, a.sy + dy * t0);
   }
 
-  // the told shot reached him at the wheel: dead as any man shot (Character.kill: the death screen, R restarts the
-  // level from its start); in an open car he stays at the wheel, slumped over it; nobody driving, the car runs on,
+  // the told shot reached him at the wheel: dead as any man shot (Character.kill: the death screen, R retries from the
+  // last checkpoint reached); in an open car he stays at the wheel, slumped over it; nobody driving, the car runs on,
   // drifts and stops (Drive.coast)
   killRunner(tg, a) {
     const w = this.world, p = w.player, d = w.drive;

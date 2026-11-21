@@ -4,6 +4,8 @@ export const randi = (a, b) => Math.floor(rand(a, b + 1));
 export const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const chance = (p) => Math.random() < p;
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+// v kept to 0..1 (not a number: 0)
+export const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0);
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const frac = (v) => v - Math.floor(v);
 // r = [a, b]: the point k of the way from a to b
@@ -16,6 +18,13 @@ export const bump = (k, a = 0, b = 1) => (k <= a || k >= b ? 0 : Math.sin((Math.
 
 // 0..1 noise of a number (the sin hash): the same n, the same value
 export const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+
+// 0..1 of a whole-number cell (x, y), well mixed (no visible lattice, unlike a plain x*a ^ y*b); s: another draw
+export function cellHash(x, y, s = 0) {
+  let h = (x * 374761393 + y * 668265263 + s * 974711) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 // FNV-1a of a string, unsigned 32 bits (a seed from a name)
 export function hashString(str) {

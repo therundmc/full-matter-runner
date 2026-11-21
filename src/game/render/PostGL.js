@@ -1,11 +1,11 @@
 // The last pass of the picture, on the graphics card. The game still draws its scene on its 2D canvas; this takes that
 // canvas as a texture and puts it on screen through a few small programs (WebGL 1, no dependency):
 //
-//   scene -> half size, blurred            the soft picture (focus, colour bleed)
+//   scene -> half size, blurred            the soft picture (behind the results)
 //         -> quarter size, bright parts    blurred: the glow; streaked toward the lamps: the shafts
-//   scene + soft + glow + shafts -> screen bent (zoom kick, tube, torn tape, shock waves, heat), fringed, smeared,
-//                                          graded, with its impact frame, scan lines, vignette and grain; at the
-//                                          wheel, its edges streaked by the speed (the road itself left as drawn)
+//   scene + soft + glow + shafts -> screen bent (zoom kick, tube, torn tape, shock waves, heat), fringed, graded,
+//                                          with its impact frame, scan lines, vignette and grain; at the wheel, its
+//                                          edges streaked by the speed and dimmed (every px of the scene as drawn)
 //
 // What each number means: render/Lens.js (`uniforms`) and data/post.js. `createPost` returns null when WebGL is not
 // there or the lens is switched off: the game then draws as it always did. The HUD is not ours: it goes on its own
@@ -16,7 +16,7 @@ import { PROF } from '../../engine/Profiler.js';
 
 // a number of data/post.js written into a shader (a float literal)
 const num = (v) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
-const TAPE = POST.tube.tape, SHIMMER = POST.heat.shimmer, SHAFT = POST.rays, EDGE = POST.focus.shape;
+const TAPE = POST.tube.tape, SHIMMER = POST.heat.shimmer, SHAFT = POST.rays;
 
 const VERT = `
 attribute vec2 aPos;
@@ -74,15 +74,15 @@ void main() {
 
 const FINAL = `${HEAD}
 uniform sampler2D uScene, uSoft, uGlow, uRays;
-uniform vec2 uRes, uSrc, uFocus, uCentre, uSmear;
-uniform float uTime, uFringe, uZoom, uFrame, uGlitch, uCurve, uScan, uScanStep, uMask, uBleed, uGrain, uVignette;
-uniform float uEdge, uBlur, uGlowK, uRaysK, uRadial, uWaveWidth, uToneKnee, uToneSoften, uSharp;
+uniform vec2 uRes, uSrc, uFocus;
+uniform float uTime, uFringe, uZoom, uFrame, uGlitch, uCurve, uScan, uScanStep, uMask, uGrain, uVignette;
+uniform float uBlur, uGlowK, uRaysK, uWaveWidth, uToneKnee, uToneSoften, uSharp;
 uniform vec4 uWaves[4];
 uniform vec4 uHeat[6];
 uniform vec3 uGain, uLift, uTint;
 uniform float uSat, uCon, uTintK;
 uniform vec2 uRushDir, uRushAt, uRushBand, uRushCar;
-uniform float uFlat, uRush, uRushLen, uRushRows, uRushFlick, uRushMix, uRushPull, uRushSplit, uRushDark, uRushShare, uRushRun, uRushGlow;
+uniform float uFlat, uRush, uRushRows, uRushDark, uRushShare, uRushRun, uRushGlow;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -130,57 +130,38 @@ void main() {
       uv += vec2(sin(uv.y * ${num(SHIMMER.waves[0])} + uTime * ${num(SHIMMER.rates[0])}) / asp, cos(uv.x * asp * ${num(SHIMMER.waves[1])} - uTime * ${num(SHIMMER.rates[1])})) * ${num(SHIMMER.amp)} * h.w * f * f;
     }
   }
-  // at the wheel: how far this point is into the band the speed works on (0 on the road and round his car, 1 on
-  // the picture's edges, measured across the way he goes), and that band stretched along the road about his car.
-  // The scene is drawn 1:1 there (uFlat): out of the band every px comes out as it was drawn, so the lens' own
-  // fringe is kept to the band too
-  float rush = 0.0, lens = 1.0;
-  vec2 along = uRushDir * vec2(1.0 / asp, 1.0);
+  // the lens: colours part toward the corners (none at the wheel: uFringe 0)
+  vec2 dir = uv - 0.5;
+  vec2 fr = dir * dot(dir, dir) * uFringe * 2.83 / uRes.y;
+  vec3 col = vec3(scene(uv + fr).r, scene(uv).g, scene(uv - fr).b);
+  // at the wheel (uFlat): how far this point is into the band the speed works on (0 on the road and round his car,
+  // 1 on the picture's edges, measured across the way he goes). There the band is dimmed and streaks of air are
+  // added over it; every px of the scene stays where it was drawn
+  float rush = 0.0;
   if (uFlat > 0.5) {
     vec2 mid = (uv - 0.5) * vec2(asp, 1.0);
-    lens = smoothstep(uRushBand.x, uRushBand.y, abs(dot(mid, vec2(-uRushDir.y, uRushDir.x))))
-      * smoothstep(uRushCar.x, uRushCar.y, length((uv - uRushAt) * vec2(asp, 1.0)));
-    rush = lens * uRush;
-    uv -= along * dot((uv - uRushAt) * vec2(asp, 1.0), uRushDir) * uRushPull * rush;
+    rush = smoothstep(uRushBand.x, uRushBand.y, abs(dot(mid, vec2(-uRushDir.y, uRushDir.x))))
+      * smoothstep(uRushCar.x, uRushCar.y, length((uv - uRushAt) * vec2(asp, 1.0))) * uRush;
   }
-  // the lens: colours part toward the corners (and along the road in that band)
-  vec2 dir = uv - 0.5;
-  vec2 fr = dir * dot(dir, dir) * uFringe * lens * 2.83 / uRes.y + along * uRushSplit * rush / uRes.y;
-  vec3 col = vec3(scene(uv + fr).r, scene(uv).g, scene(uv - fr).b);
   if (rush > 0.002) {
-    // what is bright leaves a trail behind it along the road, row by row, each row its own length: pixel combs
     float rowAt = dot(uv * vec2(asp, 1.0), vec2(-uRushDir.y, uRushDir.x)) * uRushRows, row = floor(rowAt), k = min(1.0, rush);
-    float n = hash(vec2(row, floor(uTime * uRushFlick)));
-    vec2 st = along * uRushLen * min(rush, 1.3) * (0.25 + 0.75 * n * n) / 10.0;
-    vec3 trail = col;
-    if (uRushMix > 0.0) for (int i = 1; i <= 10; i++) trail = max(trail, texture2D(uScene, uv - st * float(i)).rgb * (1.0 - float(i) / 11.0));
-    col = mix(col, trail, k * uRushMix) * (1.0 - uRushDark * k);
+    vec3 lit = col; // (what the streaks take their colour from: the scene before it is dimmed)
+    col *= 1.0 - uRushDark * k;
     // streaks of air: on a few rows, dashes running back along the road, their head bright, the colour of what
     // light they cross
     float h1 = hash(vec2(row, 7.0));
     if (h1 > 1.0 - uRushShare && fract(rowAt) < 0.5) {
       float x = dot(uv * vec2(asp, 1.0), uRushDir), duty = 0.07 + 0.2 * k * hash(vec2(row, 3.0));
       float ph = fract(x * (0.5 + h1) + uTime * uRushRun * (0.6 + 0.8 * hash(vec2(row, 5.0))) + h1 * 17.0);
-      col += mix(vec3(0.94, 0.9, 0.82), trail * 1.6, 0.55) * step(ph, duty) * (1.0 - ph / duty) * uRushGlow * k;
+      col += mix(vec3(0.94, 0.9, 0.82), lit * 1.6, 0.55) * step(ph, duty) * (1.0 - ph / duty) * uRushGlow * k;
     }
   }
-  // speed: smeared along the move, streaming from the player in slow motion
-  vec2 bv = uSmear + (uv - uCentre) * uRadial;
-  if (dot(bv, bv) > 0.0000001) {
-    vec3 acc = col;
-    for (int i = 1; i <= 6; i++) acc += texture2D(uScene, uv - bv * (float(i) / 6.0)).rgb;
-    col = acc / 7.0;
-  }
-  // focus: soft toward the edges, soft all over behind a menu
-  vec3 soft = texture2D(uSoft, uv).rgb;
-  float edge = smoothstep(${num(EDGE.from)}, 1.0, length(c * vec2(1.0, ${num(EDGE.tall)})) * ${num(EDGE.k)});
-  col = mix(col, soft, clamp(edge * uEdge + uBlur, 0.0, 1.0));
+  // focus: soft all over behind the results
+  col = mix(col, texture2D(uSoft, uv).rgb, clamp(uBlur, 0.0, 1.0));
   // glow and shafts
   col += texture2D(uGlow, uv).rgb * uGlowK + texture2D(uRays, uv).rgb * uRaysK;
   // highlights rolled off: bright stays bright, never a flat white
   col -= max(col - uToneKnee, 0.0) * uToneSoften;
-  // tape: the colour runs, the drawing does not
-  col = mix(col, vec3(dot(col, LUMA)) + soft - dot(soft, LUMA), uBleed);
   // grading
   col = clamp(col, 0.0, 1.0);
   col = mix(vec3(dot(col, LUMA)), col, uSat);
@@ -369,7 +350,7 @@ class Post {
     const blur = (src, dst, x, y) => this.pass(this.blurP, src, dst, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform2f(l.uStep, x, y); });
     // what nothing shows this frame is not made (a strength of 0: the QUALITY option, Lens.uniforms; the soft
     // picture is the glow's source too)
-    const glow = u.glow.strength > 0, rays = glow && u.rays.strength > 0, soft = glow || u.edge > 0.001 || u.blur > 0.001 || u.bleed > 0;
+    const glow = u.glow.strength > 0, rays = glow && u.rays.strength > 0, soft = glow || u.blur > 0.001;
     // the soft picture
     if (soft) {
       blur(this.sceneTex, h0, 1 / h0.w, 0);
@@ -390,8 +371,6 @@ class Post {
       g.uniform2f(l.uRes, W, H);
       g.uniform2f(l.uSrc, S.width, S.height);
       g.uniform2f(l.uFocus, u.focus[0], u.focus[1]);
-      g.uniform2f(l.uCentre, u.centre[0], u.centre[1]);
-      g.uniform2f(l.uSmear, u.smear[0], u.smear[1]);
       g.uniform4fv(l.uWaves, u.waves);
       g.uniform4fv(l.uHeat, u.heat);
       g.uniform3fv(l.uGain, u.grade.gain); g.uniform3fv(l.uLift, u.grade.lift); g.uniform3fv(l.uTint, u.grade.tint);
@@ -400,14 +379,14 @@ class Post {
       g.uniform2f(l.uRushCar, R.car[0], R.car[1]);
       const one = Object.assign(this.one, {
         uTime: t % 1000, uFringe: u.fringe, uZoom: u.zoom, uFrame: u.frame, uGlitch: u.glitch, uCurve: u.curve, uScan: u.scan,
-        uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette,
-        uGlowK: glow ? u.glow.strength : 0, uRaysK: rays ? u.rays.strength : 0, uEdge: soft ? u.edge : 0, uBlur: soft ? u.blur : 0,
+        uScanStep: u.scanStep, uMask: u.mask, uGrain: u.grain, uVignette: u.vignette,
+        uGlowK: glow ? u.glow.strength : 0, uRaysK: rays ? u.rays.strength : 0, uBlur: soft ? u.blur : 0,
         uSharp: H > S.height * 1.01 ? H / S.height : 0, // the scene smaller than the window: brought up sharp (scene())
-        uRadial: u.radial, uWaveWidth: u.waveWidth,
+        uWaveWidth: u.waveWidth,
         uToneKnee: u.tone.knee, uToneSoften: u.tone.soften,
         uSat: u.grade.sat, uCon: u.grade.con, uTintK: u.grade.tintK,
         uRushShare: R.lines.share, uRushRun: R.lines.run, uRushGlow: R.lines.glow,
-        uFlat: R.flat, uRush: R.k, uRushLen: R.len, uRushRows: R.rows, uRushFlick: R.flick, uRushMix: R.mix, uRushPull: R.pull, uRushSplit: R.split, uRushDark: R.dark,
+        uFlat: R.flat, uRush: R.k, uRushRows: R.rows, uRushDark: R.dark,
       });
       for (const k in one) g.uniform1f(l[k], one[k]);
     });
