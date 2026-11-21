@@ -1,6 +1,6 @@
-// The sprite folders against what uses them: every PNG is one engine/Assets.js loads (none left over by a renamed or
-// dropped sprite: the generators prune their folders), and every prop sprite is placed by a level, spawned by the
-// code or kept in STOCK (tools/generate_assets.py) for a level to come.
+// The sprite folders against what uses them: every PNG is one engine/Assets.js loads or one kept in STOCK
+// (tools/generate_assets.py; none left over by a renamed or dropped sprite: the generators prune their folders), and
+// every prop sprite is placed by a level, spawned by the code or kept in STOCK for a level to come.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -9,6 +9,9 @@ import { load } from './setup.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SPRITES = ROOT + 'assets/sprites/';
+const gen = readFileSync(ROOT + 'tools/generate_assets.py', 'utf8');
+// STOCK's names: a prop's by its name, any other still by its path (group/name)
+const STOCK = new Set([...gen.match(/^STOCK = \(([\s\S]*?)^\)/m)[1].matchAll(/'([a-z0-9_/]+)'/g)].map((m) => (m[1].includes('/') ? m[1] : `props/${m[1]}`)));
 const onDisk = readdirSync(SPRITES).flatMap((g) => readdirSync(SPRITES + g).filter((f) => f.endsWith('.png')).map((f) => `${g}/${f.slice(0, -4)}`));
 
 // what loadAssets asks for: a stub Image records each src and answers at once
@@ -20,9 +23,10 @@ async function loaded() {
   return new Set(asked);
 }
 
-test('sprites: the PNGs on disk are exactly the sprites the game loads', async () => {
+test('sprites: the PNGs on disk are exactly the sprites the game loads, and what is kept in STOCK', async () => {
   const listed = await loaded(), disk = new Set(onDisk);
-  assert.deepEqual(onDisk.filter((n) => !listed.has(n)), [], 'on disk, never loaded (stale: the generator prunes it)');
+  assert.deepEqual(onDisk.filter((n) => !listed.has(n) && !STOCK.has(n)), [], 'on disk, never loaded (stale: the generator prunes it)');
+  for (const n of STOCK) assert.ok(disk.has(n), `STOCK names ${n}, which is not on disk`);
   assert.deepEqual([...listed].filter((n) => !disk.has(n)), [], 'loaded, not on disk');
 });
 
@@ -45,16 +49,13 @@ test('sprites: every prop sprite is placed by a level, spawned by the code, or k
   };
   scan(ROOT + 'src');
   const src = code.join('\n'), spawned = (n) => new RegExp(`['"\`/]${n}['"\`]`).test(src);
-  const gen = readFileSync(ROOT + 'tools/generate_assets.py', 'utf8');
-  const STOCK = new Set([...gen.match(/^STOCK = \(([\s\S]*?)^\)/m)[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]));
   const props = onDisk.filter((n) => n.startsWith('props/')).map((n) => n.slice(6));
   // a family's sprites go with their base: its light map, a car's hood and door, a table flipped, a gun or a billboard
   // stripped, a billboard's frame
   const base = (n) => n.replace(/_(glow|hood|door|flipped|bare|frame)$/, '');
-  const orphans = props.filter((n) => !placed.has(n) && !placed.has(base(n)) && !spawned(n) && !spawned(base(n)) && !STOCK.has(base(n)));
+  const orphans = props.filter((n) => !placed.has(n) && !placed.has(base(n)) && !spawned(n) && !spawned(base(n)) && !STOCK.has(`props/${base(n)}`));
   assert.deepEqual(orphans, [], 'prop sprites nothing uses: place them, delete them, or add them to STOCK');
-  for (const n of STOCK) {
-    assert.ok(props.includes(n), `STOCK names ${n}, which is not a prop sprite`);
+  for (const n of [...STOCK].filter((s) => s.startsWith('props/')).map((s) => s.slice(6))) {
     assert.ok(!placed.has(n), `${n} is placed by a level now: take it out of STOCK`);
   }
 });

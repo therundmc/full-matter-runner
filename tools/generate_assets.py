@@ -22,8 +22,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
 
 # STOCK: props painted and listed in engine/Assets.js that no level places yet, kept for the levels to come (the
-# user's call, 2026-11-21). tests/sprites.test.mjs checks every prop sprite is placed by a level, spawned by the code
-# or named here: a new orphan is caught, and a stock sprite a level starts to use leaves this list.
+# user's call, 2026-11-21), and by its path any other still on disk the game does not load yet (the comic's cards,
+# tools/generate_comic.py: art for a future menu). tests/sprites.test.mjs checks every prop sprite is placed by a
+# level, spawned by the code or named here, and every PNG is loaded or named here: a new orphan is caught, and a
+# stock sprite a level starts to use leaves this list.
 STOCK = (
     'carwash_sign', 'carwash_board', 'wash_bucket', 'hose_reel', 'soap_puddle',                  # a car wash
     'tyre_stack', 'tyre_pile', 'tyre_loose', 'tyre_rack', 'tyre_sign',                           # a tyre yard
@@ -33,6 +35,7 @@ STOCK = (
     'sawhorse', 'sign_stop', 'sign_detour_left', 'detour_arrow_paint_left',                      # road works
     'parking_bay', 'plaza_line', 'plaza_stripes', 'road_arrow_turn', 'road_only', 'gore_hatch', 'expansion_joint',
     'velvet_rope', 'entry_carpet', 'bed', 'dj_booth',                                            # a club, a flat
+    'comic/target_cueball', 'comic/target_lucky', 'comic/target_jitters', 'comic/target_boss', 'comic/card_runner',
 )
 
 # --------------------------------------------------------------------------
