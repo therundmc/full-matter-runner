@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { lungeTarget } = await load('game/systems/Lunge.js');
 const { PLAYER } = await load('game/Config.js');
@@ -101,8 +102,6 @@ test('lunge: a held man beyond the margin, down, held or behind a wall: today\'s
 // ---- played by the player: one swing, the button down for a frame, on a world that only knows what it needs ----
 const { default: Player } = await load('game/entities/Player.js');
 const { AIM } = await load('game/data/aim.js');
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 
 const { meleeLock } = await load('game/systems/AimCue.js');
 const { updateFacing } = await load('game/entities/Facing.js');

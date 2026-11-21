@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 // the sprites, loaded as the browser does (sizes from the files)
 const ROOT = new URL('../', import.meta.url);
@@ -31,8 +32,6 @@ const { default: Player } = await load('game/entities/Player.js');
 const { newPose, takedownPose } = await load('game/entities/CharacterAnim.js');
 
 const { Body } = Matter;
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const WORN = Object.entries(WEAPONS).filter(([, d]) => d.wear);
 
 // a world that keeps what flies off, falls and is painted; victims: who stands in reach

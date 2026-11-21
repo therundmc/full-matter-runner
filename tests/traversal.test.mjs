@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { PROPS } = await load('game/data/props.js');
@@ -12,8 +13,6 @@ const { default: level } = await load('game/data/levels/level1.js');
 
 const { Bodies, Body } = Matter;
 const px = (t) => t * TILE;
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 
 // level 1's walls and furniture (tiles: changes to the map, [col, row, char]), everything else a no-op
 function world(tiles = [], extra = []) {

@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
+import { quiet } from './helpers.mjs';
 
 // no DOM under Node: a sprite not loaded is an 8 px placeholder, painted nowhere
 const nul = new Proxy({}, { get: (t, k) => t[k] ?? (() => nul), set: (t, k, v) => { t[k] = v; return true; } });
@@ -28,7 +29,6 @@ const { angDiff } = await load('engine/math.js');
 
 const { Bodies } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 
 // size in world px of a sprite painted at twice the world's density (IHDR)
 function pngSize(name) {

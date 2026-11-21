@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {}, drawImage() {} }) }) };
 const { default: Player } = await load('game/entities/Player.js');
@@ -21,8 +22,6 @@ const { lockTarget, meleeLock } = await load('game/systems/AimCue.js');
 const { lungeTarget } = await load('game/systems/Lunge.js');
 const { PLAYER } = await load('game/Config.js');
 
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const DT = 1 / 60;
 
 function world() {

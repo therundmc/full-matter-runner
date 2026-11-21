@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { sink } from './helpers.mjs';
 
 const { arcadeAt, ARCADE, laundryAt, LAUNDRY } = await load('game/ai/Pastimes.js');
 const { pastimeHands } = await load('game/render/PastimeArt.js');
@@ -95,7 +96,6 @@ const { findPath } = await load('engine/nav/Pathfinding.js');
 const { default: Enemy, keptAt } = await load('game/entities/Enemy.js');
 const { default: Director } = await load('game/ai/Director.js');
 const { Body } = Matter;
-const sink = new Proxy({}, { get: () => () => {} });
 
 // a bare room, a guard at one end, his bat stood against the wall at the other, the player in a corner far off
 function room(arms = [14.5, 3.5]) {

@@ -1,14 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { WEAPONS } = await load('game/data/weapons.js');
 const { default: Character } = await load('game/entities/Character.js');
 const { default: Player } = await load('game/entities/Player.js');
 
 // a world that only knows what a blow needs: every effect is a no-op
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const world = (victims) => ({
   particles: sink, decals: sink, camera: sink, sound: noop, slowmo: noop, hitstop: noop, shake: noop, events: sink, time: 0,
   characters: () => victims, lineOfSight: () => true, props: [], windows: [], doors: [], corpses: [], debris: [], items: [],

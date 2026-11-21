@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { ctx, quiet } from './helpers.mjs';
 
 // no DOM under Node: what the cars paint on themselves goes nowhere
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Pursuit, dueEvents, lanesOf, slotOf, pickSlots, lockOf, inBand, reaches } = await load('game/systems/Pursuit.js');
@@ -25,7 +25,6 @@ const { angDiff } = await load('engine/math.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 const SIZE = { car: [140, 58], car2: [134, 56], van: [160, 64], pursuer: [140, 58], convertible: [172, 64] };
 const LANES = level2a.chase.lanes, [NORTH, SOUTH] = LANES.map((r) => r * TILE);
 

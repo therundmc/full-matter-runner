@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { behind, unspotted, newTakedown, advance, lockedFor } = await load('game/systems/Takedown.js');
 const { TAKEDOWN, BODY_SCALE } = await load('game/Config.js');
@@ -126,8 +127,6 @@ test('takedown: struck down from behind he kneels, arms hanging, then lies on hi
 });
 
 // ---- the move itself, played by the player on a world that only knows what it needs ----
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 function scene(type, mag) {
   const heard = [], sounds = [];
   const w = {

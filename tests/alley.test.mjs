@@ -6,9 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { ctx, quiet } from './helpers.mjs';
 
 // no DOM under Node: what the cars paint on themselves goes nowhere
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Drive, smashable, smashSpeed, bursts, smashCost } = await load('game/systems/Drive.js');
@@ -30,7 +30,6 @@ const { default: level2a } = await load('game/data/levels/level2a.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 const SIZE = { pursuer: [140, 58], convertible: [172, 64], car: [140, 58], car2: [134, 56] };
 const C = level2a.chase, B = C.bends[0], K = CHASE.bend.smash;
 

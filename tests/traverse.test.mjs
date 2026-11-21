@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop } from './helpers.mjs';
 
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { PROPS } = await load('game/data/props.js');
@@ -16,7 +17,6 @@ const { default: level } = await load('game/data/levels/level1.js');
 
 const { Bodies } = Matter;
 const px = (t) => t * TILE;
-const noop = () => {};
 
 // level 1's walls and furniture, a world that records what is thrown into it
 function world() {
