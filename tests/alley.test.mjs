@@ -11,7 +11,8 @@ import { ctx, quiet } from './helpers.mjs';
 // no DOM under Node: what the cars paint on themselves goes nowhere
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Drive, smashable, smashSpeed, bursts, smashCost } = await load('game/systems/Drive.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { smashable, smashSpeed, bursts, smashCost } = await load('game/systems/drive/rules.js');
 const { default: Pursuit } = await load('game/systems/Pursuit.js');
 const { default: CarFx } = await load('game/systems/CarFx.js');
 const { default: ChaseCam } = await load('game/systems/ChaseCam.js');

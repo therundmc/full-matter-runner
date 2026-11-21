@@ -6,7 +6,8 @@ import { ctx, quiet } from './helpers.mjs';
 // no DOM under Node: what the van paints on itself goes nowhere
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Drive, speedStep, steerStep, steerOf, headingOf, yawStep, springStep, bodyLean, kmh, nosedIn, seatOf } = await load('game/systems/Drive.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { speedStep, steerStep, steerOf, headingOf, yawStep, springStep, bodyLean, kmh, nosedIn, seatOf } = await load('game/systems/drive/rules.js');
 const { CHASE } = await load('game/data/chase.js');
 const { VEHICLES, default: Vehicle } = await load('game/entities/Vehicle.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
@@ -510,7 +511,7 @@ test('drive: stalled, the wheel he holds is his: the car never fights it, and ge
 });
 
 // ---- a parked car he hits is shoved aside, never a wall (the user: "elle doit se mettre sur le cote")
-const { squareOf, asideKeep, asideThrow, gripOf, slideStep, skidOf } = await load('game/systems/Drive.js');
+const { squareOf, asideKeep, asideThrow, gripOf, slideStep, skidOf } = await load('game/systems/drive/rules.js');
 const { blocksAll: blocksBoth } = await load('game/systems/Route.js'); // (two lanes: all of them)
 
 test('aside: how square a hit is, what it costs him and how the car is thrown (pure)', () => {

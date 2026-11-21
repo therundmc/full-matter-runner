@@ -24,7 +24,7 @@ const { sprite, sw } = await load('engine/Assets.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { CHASE } = await load('game/data/chase.js');
 const { TILE, PLAYER, BODY_SCALE, CAT } = await load('game/Config.js');
-const { seatOf } = await load('game/systems/Drive.js');
+const { seatOf } = await load('game/systems/drive/rules.js');
 const { angDiff } = await load('engine/math.js');
 
 const { Bodies } = Matter;

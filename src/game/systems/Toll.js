@@ -79,11 +79,11 @@ export function woodFor(T, x, y, his = -1, hisY = y, others = []) {
 
 // the steel lane for the one sent the wrong way: one beside the lane he is heading for (`his`, an index), the one on
 // its own side of him (hisY) and across nobody's way (`others`) if it can; else the steel one nearest his
-export function steelFor(T, x, y, his, hisY = y, others = []) {
+export function steelFor(T, x, y, his, hisY = y, others = [], K = CHASE.toll.pick) {
   let best = -1, bd = Infinity;
   T.gates.forEach((g, i) => {
     if (g !== 'steel') return;
-    const d = Math.abs(i - his) * 1000 + (crosses(y, i, { y: hisY, k: his }) ? 500 : 0) + others.filter((o) => crosses(y, i, o)).length * 300
+    const d = Math.abs(i - his) * K.lane + (crosses(y, i, { y: hisY, k: his }) ? K.his : 0) + others.filter((o) => crosses(y, i, o)).length * K.other
       + Math.abs(laneY(T, i, x) - y);
     if (d < bd) { bd = d; best = i; }
   });
@@ -122,9 +122,9 @@ export default class Toll {
   }
 
   // nothing else is told while a plaza is (Pursuit.busy: no shot, no ram, no brake), a breath before it too
-  busy(x, v) { return !!this.near(x, v, this.C.tell + 0.5); }
+  busy(x, v) { return !!this.near(x, v, this.C.tell + this.C.breath); }
 
-  // A wreck of theirs at (x, y) coming at a plaza (Pursuit.exit; C.wreck): { stop }: the x it is braked to a stand
+  // A wreck of theirs at (x, y) coming at a plaza (pursuit/wreck.js exit; C.wreck): { stop }: the x it is braked to a stand
   // before, `short` px short of the islands' noses (from `from` px out); nearer than `room` px to that, and to `past`
   // px beyond the gates, { lane, run }: its lane's line across, kept, and the least speed it runs on through at;
   // else null
@@ -152,7 +152,7 @@ export default class Toll {
     return { k, y: laneY(P, k, x + reach(this.C.lead, this.world.drive?.v ?? 0)) };
   }
 
-  // A pursuer's line across the road while it goes through a plaza (Pursuit.want): its gate chosen `decide` s out
+  // A pursuer's line across the road while it goes through a plaza (pursuit/steering.js want): its gate chosen `decide` s out
   // (car.toll: { P, k }), chosen again as he changes his mind until it is in the fan, then kept to the gates and
   // `past` px beyond: a wooden lane, the one he is not heading for if there are two, never across his way nor the
   // others' (woodFor); one with `gate0` 'steel' the steel one beside his (steelFor). The line `lead` s ahead of it;
@@ -169,14 +169,14 @@ export default class Toll {
     return laneY(P, car.toll.k, x + reach(C.lead, car.s));
   }
 
-  // the px along the road a car going through holds its middle at (Pursuit.want), or null (its slot's): one sent the
+  // the px along the road a car going through holds its middle at (pursuit/steering.js want), or null (its slot's): one sent the
   // wrong way `wrong` px off his (a car's length behind him: it hits the boom a moment after he is through), one
   // following him down his own lane `follow` px off it (behind him, never side by side in it); either keeps its slot
   // while still ahead of him in his lane (it would brake onto his nose)
   holdX(car, tg) {
     const T = car.toll;
     if (!T || !tg?.car) return null;
-    const inHis = Math.abs(car.v.y - tg.y) < (car.v.h + tg.car.h) / 2 + 8;
+    const inHis = Math.abs(car.v.y - tg.y) < (car.v.h + tg.car.h) / 2 + this.C.margin;
     if (inHis && car.v.x > tg.x) return null;
     if (car.gate0 === 'steel') return tg.x + this.C.wrong;
     return T.k === T.his ? tg.x + this.C.follow : null;
@@ -226,14 +226,14 @@ export default class Toll {
   step(dt) {
     const C = this.C, d = this.car(), w = this.world;
     for (const P of this.plazas) {
-      const on = !!d && !w.exited && d.van.x < P.x + C.past && d.van.x >= P.x - reach(C.tell, d.v, C.least);
+      const on = !!d && !w.exited && d.car.x < P.x + C.past && d.car.x >= P.x - reach(C.tell, d.v, C.least);
       P.k = on ? Math.min(1, P.k + dt / C.fade) : Math.max(0, P.k - dt / C.fade);
       P.props.forEach((p, k) => {
         if (!p || P.gates[k] !== 'wood' || this.seen.has(p) || !(p.dying || p.dead)) return;
         this.seen.add(p);
-        const cars = [d?.van, ...(w.pursuit?.cars || []).map((c) => c.v)].filter(Boolean);
+        const cars = [d?.car, ...(w.pursuit?.cars || []).map((c) => c.v)].filter(Boolean);
         const by = cars.reduce((a, c) => (!a || Math.hypot(c.x - p.x, c.y - p.y) < Math.hypot(a.x - p.x, a.y - p.y) ? c : a), null);
-        const his = !!by && by === d?.van && Math.hypot(by.x - p.x, by.y - p.y) < by.w;
+        const his = !!by && by === d?.car && Math.hypot(by.x - p.x, by.y - p.y) < by.w;
         w.events.emit('tollGate', { kind: 'wood', car: by, his, x: p.x, y: p.y, lane: k });
       });
     }

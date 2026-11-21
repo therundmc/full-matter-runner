@@ -6,8 +6,12 @@ import { ctx, quiet } from './helpers.mjs';
 // no DOM under Node: what the cars paint on themselves goes nowhere
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Pursuit, dueEvents, lanesOf, slotOf, pickSlots, lockOf, inBand, reaches } = await load('game/systems/Pursuit.js');
-const { default: Drive, seatOf } = await load('game/systems/Drive.js');
+const { default: Pursuit } = await load('game/systems/Pursuit.js');
+const { lanesOf, slotOf, pickSlots } = await load('game/systems/pursuit/slots.js');
+const { dueEvents } = await load('game/systems/pursuit/events.js');
+const { lockOf, inBand, reaches } = await load('game/systems/pursuit/gunman.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { seatOf } = await load('game/systems/drive/rules.js');
 const { arcOf, inArc, inCone } = await load('game/systems/CarGun.js');
 const { CHASE } = await load('game/data/chase.js');
 const { SEAT } = await load('game/data/feel.js');
@@ -828,7 +832,8 @@ test('pursuit: what stands in a car\'s way is looked up once (the cars and what 
 }));
 
 // ---- they take turns attacking, each attack told; smooth at the wheel
-const { nextAttack, attackPhase, easeLine } = await load('game/systems/Pursuit.js');
+const { nextAttack, attackPhase } = await load('game/systems/pursuit/attacks.js');
+const { easeLine } = await load('game/systems/pursuit/steering.js');
 
 test('attacks: a rhythm, one kind after the other, the kind due skipped only when nobody can make it (pure)', () => {
   const all = { shot: true, ram: true, brake: true }, R = CHASE.pursuit.attack.round;

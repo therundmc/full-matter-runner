@@ -45,7 +45,7 @@ export function drawChaseFigures(ctx, w, vis) {
   }
   const gun = w.drive?.on && !w.drive.dead ? w.drive.gun : null;
   // (an open car draws him, his arm out; a closed one's hand is in its frame as it is drawn too)
-  if (gun?.aimed?.ok && !gun.van.rider) gun.van.carried(ctx, () => drawHand(ctx, gun, w.player));
+  if (gun?.aimed?.ok && !gun.car.rider) gun.car.carried(ctx, () => drawHand(ctx, gun, w.player));
 }
 
 // the gunman: his shoulder in the window, his head out, the arm and the pistol toward where he aims; shot, his arm
@@ -168,8 +168,8 @@ function drawToll(ctx, S, t, pop = 0) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const { P, k, d } of S.told()) {
-    const x0 = d?.van ? d.van.x + C.from : P.x - 600, mx = mouthX(P) - C.sign;
-    const near = d?.van ? clamp((mx - C.sign - d.van.x - d.van.w / 2) / (2 * C.sign), 0, 1) : 1;
+    const x0 = d?.car ? d.car.x + C.from : P.x - 600, mx = mouthX(P) - C.sign;
+    const near = d?.car ? clamp((mx - C.sign - d.car.x - d.car.w / 2) / (2 * C.sign), 0, 1) : 1;
     P.gates.forEach((g, i) => {
       const gate = P.props[i], open = g === 'wood' && gate && !gate.dead && !gate.dying;
       if (open) {

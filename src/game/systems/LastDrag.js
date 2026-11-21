@@ -44,10 +44,10 @@ export function buttStep(b, dt, B = CHASE.intro.butt) {
 }
 
 export default class LastDrag {
-  // van: his car; seat: his seat in it (sprite px)
-  constructor(world, van, seat, cfg = CHASE.intro) {
+  // car: his car; seat: his seat in it (sprite px)
+  constructor(world, car, seat, cfg = CHASE.intro) {
     this.world = world;
-    this.van = van;
+    this.car = car;
     this.seat = seat;
     this.I = cfg;
     this.t = 0;
@@ -65,7 +65,7 @@ export default class LastDrag {
 
   // a point [ahead, across] px from his seat, in the world
   local(ahead, across) {
-    const v = this.van, a = v.body.angle, c = Math.cos(a), s = Math.sin(a), o = v.toWorld(this.seat[0], this.seat[1]);
+    const v = this.car, a = v.body.angle, c = Math.cos(a), s = Math.sin(a), o = v.toWorld(this.seat[0], this.seat[1]);
     return { x: o.x + ahead * c - across * s, y: o.y + ahead * s + across * c };
   }
 
@@ -82,7 +82,7 @@ export default class LastDrag {
   }
 
   step(dt) {
-    const I = this.I, w = this.world, rider = this.van.rider;
+    const I = this.I, w = this.world, rider = this.car.rider;
     this.t += dt;
     const ph = dragPhases(this.t, I, this.ph), t = this.t;
     if (this.on) {
@@ -122,7 +122,7 @@ export default class LastDrag {
 
   // the butt leaves his fingers: out to his left and a little ahead, turning
   flick() {
-    const B = this.I.butt, T = this.I.tip, at = this.local(T.out[0], T.out[1]), a = this.van.body.angle, c = Math.cos(a), s = Math.sin(a);
+    const B = this.I.butt, T = this.I.tip, at = this.local(T.out[0], T.out[1]), a = this.car.body.angle, c = Math.cos(a), s = Math.sin(a);
     this.butt = { x: at.x, y: at.y, z: B.z, vx: B.fwd * c + B.out * s, vy: B.fwd * s - B.out * c, vz: B.up, a: a - Math.PI / 2, spin: B.spin, n: 0, rest: false, glow: B.glow };
     this.once('cigFlick', at.x, at.y, 0.6);
   }
@@ -160,7 +160,7 @@ export default class LastDrag {
   // the beat is over: the hand is his (Drive: the engine, then the gun)
   end() {
     this.on = false;
-    const rider = this.van.rider;
+    const rider = this.car.rider;
     if (rider?.riding) rider.riding.drag = null;
     if (!this.butt && !this.smoke.length) this.gone = true;
   }

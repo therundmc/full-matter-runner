@@ -248,7 +248,7 @@ export default class CarFx {
   contacts(dt) {
     const w = this.world, S = this.C.scrape;
     for (const pair of w.physics?.activePairs?.() || []) {
-      if (pair.isSensor && !pair.flank) continue; // (a car scraped along in a bend: Drive.flankOn, never resolved)
+      if (pair.isSensor && !pair.flank) continue; // (a car scraped along in a bend: drive/contacts.js flankOn, never resolved)
       const A = pair.bodyA.parent || pair.bodyA, B = pair.bodyB.parent || pair.bodyB;
       const ea = A.entity, eb = B.entity, ca = !!ea?.isVehicle, cb = !!eb?.isVehicle;
       if (!ca && !cb) continue;
@@ -268,8 +268,8 @@ export default class CarFx {
     }
     const d = w.drive;
     if (d?.on && !d.dead && d.grind && d.v > S.from) {
-      const vel = Body.getVelocity(d.van.body);
-      this.rub('fronts', d.v, showerRate(d.v, S), dt, d.grind.x + rand(-0.4, 0.4) * d.van.w, d.grind.y, vel, ZERO, [d.van]);
+      const vel = Body.getVelocity(d.car.body);
+      this.rub('fronts', d.v, showerRate(d.v, S), dt, d.grind.x + rand(-0.4, 0.4) * d.car.w, d.grind.y, vel, ZERO, [d.car]);
     }
     for (const [key, r] of this.rubs) if (r.seen !== this.n) this.rubs.delete(key);
   }
@@ -294,7 +294,7 @@ export default class CarFx {
       }
     }
     // (his own car's grind is the drive's: systems/Drive.js scrape)
-    const his = w.drive?.on ? w.drive.van : null;
+    const his = w.drive?.on ? w.drive.car : null;
     if ((r.soundT -= dt) <= 0 && !(his && cars.includes(his))) {
       r.soundT = S.sound.every;
       w.sound?.('carGrind', x, y, Math.max(0.25, full) * S.sound.vol); // placeholder (assets/sound/PLACEHOLDERS.md)
@@ -340,7 +340,7 @@ export default class CarFx {
 
   // a hard knock on the car he drives: steam out of its grille; the crash that kills him: all of it
   ride({ beat }) {
-    const w = this.world, v = w.drive?.van, K = this.C.knock[beat];
+    const w = this.world, v = w.drive?.car, K = this.C.knock[beat];
     if (!K || !v || !w.smoke) return;
     const nose = v.toWorld(v.w - 6, v.h / 2);
     if (beat !== 'crash') { w.smoke.burst(K[0], nose.x, nose.y, K[1]); return; }

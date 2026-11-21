@@ -69,11 +69,11 @@ export default class Checkpoints {
     if (this.card && (this.card.t += dt) >= CHASE.checkpoint.hold) this.card = null;
     const w = this.world, d = w.drive;
     if (!d?.on || d.dead || !w.player?.alive || w.exited) return;
-    while (this.next < this.list.length && d.van.x >= this.list[this.next].at * TILE) this.reach(this.next++);
+    while (this.next < this.list.length && d.car.x >= this.list[this.next].at * TILE) this.reach(this.next++);
   }
 
   reach(i) {
-    const w = this.world, cp = this.list[i], v = w.drive.van;
+    const w = this.world, cp = this.list[i], v = w.drive.car;
     const guards = (w.totalEnemies || 0) - (w.pursuit?.aboard() ?? 0);
     if (w.game) w.game.chaseAt = { name: w.level.name, i, time: w.runTime, score: w.scoring?.snapshot(), guards };
     if (cp.at * TILE <= this.x0) return;

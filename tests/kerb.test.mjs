@@ -9,7 +9,8 @@ import { ctx, quiet } from './helpers.mjs';
 // no DOM under Node: what the cars paint on themselves goes nowhere
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Drive, frontsAt } = await load('game/systems/Drive.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { frontsAt } = await load('game/systems/drive/fronts.js');
 const { CHASE } = await load('game/data/chase.js');
 const { VEHICLES, default: Vehicle } = await load('game/entities/Vehicle.js');
 const { default: Prop } = await load('game/entities/Prop.js');

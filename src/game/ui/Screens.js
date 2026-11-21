@@ -316,7 +316,7 @@ export function drawOutro(ctx, W, H, out) {
   ctx.fillRect(0, H - bar, W, bar);
 }
 
-// The card that closes a chase not finished yet (Game state 'continued'; view: systems/Drive.js finishView): the
+// The card that closes a chase not finished yet (Game state 'continued'; view: ui/Continued.js finishView): the
 // picture gone black, TO BE CONTINUED stamped a little crooked like the level's card, what comes next under it
 export function drawContinued(ctx, W, H, view, next, t) {
   const s = H / 720;

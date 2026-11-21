@@ -56,7 +56,7 @@ export default class Lorries {
   // what he drives (the chase's car, the lab's van), else null
   car() {
     const d = this.world.drive;
-    return d?.on && !d.dead ? d.van : null;
+    return d?.on && !d.dead ? d.car : null;
   }
 
   step(dt) {
@@ -94,7 +94,7 @@ export default class Lorries {
       } else if (L.state === 'out' && L.lab) {
         // the lab: it stays out a while, then goes back in once he is clear of its way
         L.stay += dt;
-        const clear = !car || Math.hypot(car.x - L.p.x, car.y - L.p.y) > L.p.def.w * 0.75;
+        const clear = !car || Math.hypot(car.x - L.p.x, car.y - L.p.y) > L.p.def.w * C.lab.clear;
         if (L.stay > C.lab.stay && clear) L.state = 'home';
       } else if (L.state === 'home') {
         this.move(L, Math.max(0, L.done - C.speed * dt));

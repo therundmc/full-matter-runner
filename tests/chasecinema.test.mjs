@@ -11,7 +11,8 @@ globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContex
 const { default: Direction, whole } = await load('game/systems/Direction.js');
 const { SHOTS } = await load('game/data/staging.js');
 const { default: Camera, fitView } = await load('engine/Camera.js');
-const { default: Drive, seatOf } = await load('game/systems/Drive.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { seatOf } = await load('game/systems/drive/rules.js');
 const { default: LastDrag, dragPhases, buttStep } = await load('game/systems/LastDrag.js');
 const { default: ChaseCam, killBeat, lorryCourse, lorryBox, beatScale } = await load('game/systems/ChaseCam.js');
 const { CHASE } = await load('game/data/chase.js');
@@ -235,7 +236,7 @@ function scene({ lorry = true } = {}) {
   const L = { p: { def: { w: 276, h: 76 } }, x0: 3000, y0: 214, dx: 0, dy: 1, dist: 160, state: 'wait', gap: { x: 3000, y: 586 } };
   const w = {
     events, player: { alive: true }, exited: false, particles: quiet, camera: { push() {} }, stops: [],
-    drive: { on: true, dead: false, grabbing: false, van, v: CHASE.cruise },
+    drive: { on: true, dead: false, grabbing: false, car: van, v: CHASE.cruise },
     lorries: lorry ? { list: [L] } : null,
     shake() {}, sound() {}, hitstop(s) { w.stops.push(s); },
   };

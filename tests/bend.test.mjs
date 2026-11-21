@@ -11,7 +11,8 @@ globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContex
 
 const { legsOf, legAt, routeOf, along, bendStep, enterBend, blocksAll, bandOf, nearestLane } = await load('game/systems/Route.js');
 const { default: Drive } = await load('game/systems/Drive.js');
-const { default: Pursuit, lanesOf } = await load('game/systems/Pursuit.js');
+const { default: Pursuit } = await load('game/systems/Pursuit.js');
+const { lanesOf } = await load('game/systems/pursuit/slots.js');
 const { CHASE } = await load('game/data/chase.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { VEHICLES, default: Vehicle } = await load('game/entities/Vehicle.js');
