@@ -40,7 +40,8 @@
   //   trunk             open the first closed trunk (skipped when already armed); a pick `optional` is skipped
   //                     when there is no such weapon
   //   wait: s           stand there s seconds (in a traffic lane: a held-up driver leans on his horn)
-  //   smash: type       go to `stand`, then strike or shoot the prop by `near` until it is gone (`enough`: s of it)
+  //   smash: type       go to `stand` (else beside it), then strike or shoot the prop of that type by `near` (within
+  //                     1.5 tiles), else the one nearest to him, until it is gone (`enough`: s of it); none: the plan fails
   //   use: kind         walk to the device spot of that kind (systems/Uses.js; by `near`) and press E there
   // then the bot plays freely, in the plan's `style` ('throw': blades are thrown at guards in range).
   // ok(w, p): whether the plan still makes sense now. Routes through the map are level 1's; a level with no entry
@@ -89,9 +90,10 @@
       // the lab's stations that need a hand: its jukebox, its fire alarm, its kegs, its trapdoors, its fuse box
       jukebox: { steps: [{ use: 'jukebox' }], ok: usable('jukebox') },
       alarm: { steps: [{ use: 'fire_alarm' }], ok: usable('fire_alarm') },
-      kegs: { steps: [{ smash: 'keg', near: [44.4, 12.4], enough: 3 }], ok: (w) => w.props.some((q) => q.type === 'keg' && !q.dead) },
-      passage: { steps: [{ use: 'trapdoor', near: [45.4, 5.0] }, { wait: 2.5 }], ok: usable('trapdoor') },
-      fuse: { steps: [{ smash: 'fuse_box', near: [35.5, 7.08], stand: [35.5, 7.7] }], ok: (w) => w.power.on },
+      // (no `near`: the nearest of each, wherever the lab's builder put it)
+      kegs: { steps: [{ smash: 'keg', enough: 3 }], ok: (w) => w.props.some((q) => q.type === 'keg' && !q.dead) },
+      passage: { steps: [{ use: 'trapdoor' }, { wait: 2.5 }], ok: usable('trapdoor') },
+      fuse: { steps: [{ smash: 'fuse_box' }], ok: (w) => w.power.on },
     },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
@@ -100,12 +102,6 @@
     tutorial: {
       free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true },
       bed: { steps: [{ go: [8.5, 2.55] }, { to: [10.4, 2.6] }, { to: [11.2, 3.0] }, { to: [13.6, 3.1] }, { to: [13.6, 4.6] }, { cross: [13.6, 6.5] }], rescue: true },
-    },
-    street: {
-      free: { steps: [] },
-      throw: THROW,
-      road: { steps: [{ go: [20.5, 11.2] }, { wait: 15 }], ok: () => opts.god },
-      road2: { steps: [{ go: [24.5, 14.2] }, { wait: 15 }], ok: () => opts.god },
     },
     // level 2A, at the wheel (systems/Drive.js): no steps, the drive itself (playChase): lanes changed on a slow random
     // cycle, now and then up onto a sidewalk against the building fronts, the shove on a pursuer alongside, the Uzi at
@@ -131,7 +127,7 @@
   let game, findPath, Audio, killStyle, rnd, opts;
   // the game's data the checks read (moves' lengths, sizes), filled by init; fallbacks for an old checkout
   const D = { lockTime: () => 6, lockedFor: () => 5, TRAVERSE: { kick: { dur: 1 } }, GESTURE: { trunk: { dur: 2 } }, rollDur: 0.6,
-    BODY_SCALE: 1.3, VIEW: 290, sounds: null };
+    BODY_SCALE: 1.3, VIEW: 290, kmh: 6.75, sounds: null };
   const S = {
     clock: 0, steps: 0, session: 0, world: null, sess: null, deck: [],
     findings: new Map(), dirty: new Set(), freshKinds: [],
@@ -601,9 +597,11 @@
       const at = st.car.toWorld(-14, st.car.h / 2);
       return go({ type: 'trunk', x: at.x, y: at.y, car: st.car });
     }
-    // smash
-    st.prop = st.prop || w.props.find((q) => !q.dead && q.type === st.smash && Math.hypot(q.x - st.near[0] * TILE, q.y - st.near[1] * TILE) < 1.5 * TILE);
-    if (!st.prop) return nextStep(w, p);
+    // smash: the one by `near`, else the nearest of that type; none is a failure (a plan that did nothing is not done)
+    const left = w.props.filter((q) => !q.dead && q.type === st.smash), dist = (q, x, y) => Math.hypot(q.x - x, q.y - y);
+    st.prop = st.prop || (st.near && left.find((q) => dist(q, st.near[0] * TILE, st.near[1] * TILE) < 1.5 * TILE))
+      || left.sort((a, b) => dist(a, p.x, p.y) - dist(b, p.x, p.y))[0];
+    if (!st.prop) return endPlan(false, `no ${st.smash} to smash`);
     const at = st.stand ? { x: st.stand[0] * TILE, y: st.stand[1] * TILE } : standBy(w, p, st.prop);
     if (!at) return endPlan(false, 'nowhere to stand');
     st.x = at.x; st.y = at.y;
@@ -1861,7 +1859,7 @@
       press(inp, 'Backspace');
       return;
     }
-    // a level with no way out (lab, street): a minute of roaming once it is cleared, then another go
+    // a level with no way out (the lab): a minute of roaming once it is cleared, then another go
     if (w.cleared && !w.level.exit && S.clock - B.clearT > 60) {
       S.stats.restartsAfterClear = (S.stats.restartsAfterClear || 0) + 1;
       act('cleared, no exit: restart');
@@ -2111,7 +2109,7 @@
     S.stats.drive.stalls++;
     const then = B.stall.then, held = then.find((c) => !c.sensor);
     report('stalled', 'error', `against ${held?.what || 'nothing'}`, posOf(d.van.x, d.van.y), {
-      kmh: d.kmh, cruise: Math.round(d.cruise * 6.75), held: r1(w.time - B.stall.t), angle: Math.round(b.angle * 1000) / 1000,
+      kmh: d.kmh, cruise: Math.round(d.cruise * D.kmh), held: r1(w.time - B.stall.t), angle: Math.round(b.angle * 1000) / 1000,
       bounds: [Math.round(b.bounds.min.x), Math.round(b.bounds.min.y), Math.round(b.bounds.max.x), Math.round(b.bounds.max.y)],
       then, now: touchingOf(w, b),
     });
@@ -2183,14 +2181,15 @@
     try { Audio = (await import('/src/audio/Audio.js')).default; } catch { Audio = null; }
     // the data the checks read; an old checkout (--root) may lack some: the fallbacks in D stay
     const load = async (path) => { try { return await import(path); } catch { return {}; } };
-    const [fin, td, feel, cfg, cam, foley] = await Promise.all(['/src/game/data/finishers.js', '/src/game/systems/Takedown.js',
-      '/src/game/data/feel.js', '/src/game/Config.js', '/src/engine/Camera.js', '/src/audio/Foley.js'].map(load));
+    const [fin, td, feel, cfg, cam, foley, chase] = await Promise.all(['/src/game/data/finishers.js', '/src/game/systems/Takedown.js',
+      '/src/game/data/feel.js', '/src/game/Config.js', '/src/engine/Camera.js', '/src/audio/Foley.js', '/src/game/data/chase.js'].map(load));
     if (fin.lockTime) D.lockTime = fin.lockTime;
     if (td.lockedFor) D.lockedFor = td.lockedFor;
     if (feel.TRAVERSE?.kick) D.TRAVERSE = feel.TRAVERSE;
     if (feel.GESTURE?.trunk) D.GESTURE = feel.GESTURE;
     if (cfg.PLAYER?.roll?.dur) D.rollDur = cfg.PLAYER.roll.dur;
     if (cam.VIEW) D.VIEW = cam.VIEW;
+    if (chase.CHASE?.kmh) D.kmh = chase.CHASE.kmh;
     try {
       // what the mixer can play: Audio.js's tables read from its source, Foley.js's recipes, the mixer's own methods
       D.sounds = K.soundNames(await (await fetch('/src/audio/Audio.js')).text());

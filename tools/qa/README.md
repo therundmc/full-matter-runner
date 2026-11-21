@@ -12,7 +12,7 @@ npm run qa -- [--minutes 10] [--seed 1] [--level level1] [--god] [--realtime] [-
 |---|---|
 | `--minutes` | game time to cover (default 10). Fast mode does ten game minutes in well under a minute. |
 | `--seed` | seeds the bot's decisions and the game's `Math.random` (see "Replaying a seed"). |
-| `--level` | level id (`level1`, `tutorial`, `lab`, `street`, `level2a`), as `?level=` in the URL. |
+| `--level` | level id (`level1`, `tutorial`, `lab`, `level2a`), as `?level=` in the URL. |
 | `--god` | the player is invulnerable (`player.invulnerable`) after each restart: long sessions deep into the level. |
 | `--realtime` | the game's own `requestAnimationFrame` loop runs and the bot only sets the inputs before each frame: slower (real time), but exercises the real loop, frame timing and audio. Default is **fast**: the bot calls `game.update(1/60)` itself, 300 steps per page evaluation, and lets one real frame render between batches (render errors still show up). |
 | `--plans` | only these plans are drawn (names from `PLANS` or `CHAOS` in `bot.js`, e.g. `--plans roofShop,fuse`): to work on one route, or to replay the plan a finding came under (its `replayPlan`). |
@@ -62,8 +62,8 @@ player, and reads `window.game` to decide:
 
   A `use: kind` step walks to the device spot of that kind (systems/Uses.js) and presses E there.
 
-  `lab` and `street` have `free` and `throw` (and `road` in `--god` on the street); the lab also `jukebox`, `alarm`,
-  `kegs`, `passage` and `fuse`. `level2a` (the car chase) has one plan, `chase`: see "At the wheel" below. A plan
+  The lab has `free`, `throw`, `jukebox`, `alarm`, `kegs`, `passage` and `fuse` (each on the nearest such thing; a
+  smash step that finds nothing to smash fails the plan rather than counting it done). `level2a` (the car chase) has one plan, `chase`: see "At the wheel" below. A plan
   that breaks (no path,
   timeout, the weapon gone) is a `plan-failed` warning; a plan left on the roof is followed by a way down (`offRoof`);
 - keeps off what burns: its paths cost a long detour through a tile with fire in it, or with petrol the fire is
@@ -81,7 +81,7 @@ player, and reads `window.game` to decide:
   trunk, throws its weapon sometimes, reloads when it can. On a plan it only fights a guard who is on to it;
 - handles the intro, gets up at the start (the player starts seated), restarts after death (R) and after the
   results screen (R), starts over when a session goes nowhere (5 game minutes, no kill for a minute), and a minute
-  after clearing a level that has no exit (lab, street).
+  after clearing a level that has no exit (the lab).
 
 ## At the wheel (level 2A)
 
