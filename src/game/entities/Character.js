@@ -26,6 +26,7 @@ import { advanceGait } from './Gait.js';
 import { updateFacing } from './Facing.js';
 import { doorAhead, doorHandSide, talkGesture } from './Gesture.js';
 import { PLANTED } from './Ragdoll.js';
+import { mountOf } from '../data/mounts.js';
 
 const { Bodies, Body } = Matter;
 
@@ -617,7 +618,7 @@ export default class Character {
       landBlow(w, c, at.x, at.y, ba, d, { lethal: !c.alive, byPlayer: this.isPlayer, heavy: hard });
     }
     for (const p of w.props) {
-      if (p.dead || p.def.high) continue; // a light fitting is out of reach (def `high`)
+      if (p.dead || !mountOf(p.def).blows) continue; // out of reach: up on a ceiling, overhead (data/mounts.js)
       let hx = x + Math.cos(a) * d.range * 0.8, hy = y + Math.sin(a) * d.range * 0.8;
       if (p.isVehicle) {
         // a long body: what counts is the panel in front of the blow, not how far its centre is

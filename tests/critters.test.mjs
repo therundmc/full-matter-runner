@@ -253,7 +253,7 @@ test('critters: moths turn round the lamps out of doors, at each bulb of a turne
   const { world, critters } = stub({});
   const street = prop('streetlight', 4, 4), strings = prop('string_lights', 10, 10), lamp = prop('wall_lamp', 14, 10), sofa = prop('sofa', 16, 10);
   Body.setAngle(strings.body, Math.PI / 2);
-  strings.def = { height: 0.05 };
+  strings.def = { mount: 'ceiling', height: 0.05 }; // (drawn with its parallax: data/mounts.js parallaxOf)
   world.props.push(street, strings, lamp, sofa);
   const lamps = critters.lamps();
   assert.equal(lamps.length, 4, 'the streetlight, the string lights\' two bulbs, the wall lamp; no sofa');

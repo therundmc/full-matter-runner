@@ -227,7 +227,7 @@ test('flat wear: its marks are known kinds, planned the same every time, painted
 // the box (tiles) of a prop of the level that has a body on the floor: null for what hangs
 function box([type, c, r, deg]) {
   const d = PROPS[type];
-  if (d.hung || d.high) return null;
+  if (d.hung) return null;
   let w = d.r ? d.r * 2 : d.w, h = d.r ? d.r * 2 : d.h;
   if (Math.round(deg) % 180 === 90) [w, h] = [h, w];
   else if (Math.round(deg) % 90) w = h = Math.max(w, h);
