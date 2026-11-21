@@ -45,6 +45,7 @@ import { MUZZLE_IN, onSprite } from '../entities/CharacterAnim.js';
 import { sprite, sw } from '../../engine/Assets.js';
 import { seatOf, slideStep, smashSpeed, bursts } from './Drive.js';
 import { routeOf, legAt, bandOf, bendStep, enterBend, nearestLane, project } from './Route.js';
+import { dice } from './Rng.js';
 
 const { Body, Sleeping, Query } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
@@ -89,7 +90,7 @@ export function slotOf(slot, px, lanes, rank = 0, C = CHASE.pursuit) {
 
 // The slots n cars hold, rearmost first: [[slot, rank], ...]. Up to three: n of abreast / lead / ahead (roll 0..1
 // picks which: the picture changes when it is drawn again); more: those three and `far`, one behind the other
-export function pickSlots(n, roll = Math.random(), C = CHASE.pursuit) {
+export function pickSlots(n, roll, C = CHASE.pursuit) {
   const near = Object.keys(C.slots).filter((k) => k !== 'far').sort((a, b) => C.slots[a][0] - C.slots[b][0]);
   if (n >= near.length) return [...near.map((k) => [k, 0]), ...Array.from({ length: n - near.length }, (_, i) => ['far', i])];
   const ways = near.flatMap((a, i) => (n === 1 ? [[a]] : near.slice(i + 1).map((b) => [a, b])));
@@ -421,10 +422,11 @@ export default class Pursuit {
     const crew = chasing.map((c) => c.n).join();
     if ((this.shuffleT -= dt) > 0 && crew === this.crew) return;
     this.crew = crew;
-    this.shuffleT = rand(...C.shuffle);
+    const D = dice(this.world); // (gameplay rolls: systems/Rng.js)
+    this.shuffleT = D.rand(...C.shuffle);
     // (alone, a car takes the slot its style fights from: the rammer abreast, the blocker ahead in his lane)
     const lone = chasing.length === 1 ? C.attack.lone[chasing[0].style] : null;
-    const slots = lone ? [[lone, 0]] : pickSlots(chasing.length, Math.random(), C);
+    const slots = lone ? [[lone, 0]] : pickSlots(chasing.length, D.next(), C);
     chasing.sort((a, b) => a.v.x - b.v.x).forEach((car, i) => {
       const [slot, rank] = slots[i];
       if (car.slot !== slot) car.settled = 0;
@@ -745,9 +747,9 @@ export default class Pursuit {
     pair.isSensor = true;
     if (o.frozen) wake(o);
     if (o.isSleeping) Sleeping.set(o, false);
-    const a = Math.atan2(vel.y, vel.x) + rand(-0.6, 0.6), sp = Math.hypot(vel.x, vel.y) * smashSpeed(kgOf(o));
+    const D = dice(w), a = Math.atan2(vel.y, vel.x) + D.rand(-0.6, 0.6), sp = Math.hypot(vel.x, vel.y) * smashSpeed(kgOf(o));
     Body.setVelocity(o, { x: Math.cos(a) * sp, y: Math.sin(a) * sp });
-    Body.setAngularVelocity(o, rand(-K.spin, K.spin));
+    Body.setAngularVelocity(o, D.rand(-K.spin, K.spin));
     o.flyUntil = w.time + 0.4;
     if (bursts(e.def)) e.break(a, CHASE.hit.power);
     return true;
@@ -817,7 +819,7 @@ export default class Pursuit {
     v.steer = 0; v.bob = 0;
     if (!v.exploded) {
       v.hp = Math.min(v.hp, v.m.hp * C.smoke);
-      if (chance(C.fire)) v.ignite();
+      if (dice(w).chance(C.fire)) v.ignite();
       w.sound('pursuerWreck', v.x, v.y, 1);
       w.particles.sparks(v.x, v.y, b.angle + Math.PI, 1.2, 16, 300);
       w.particles.glass(v.x, v.y, b.angle + Math.PI, 1, 10, 160);
@@ -842,7 +844,8 @@ export default class Pursuit {
     const v = car.v, b = v.body, w = this.world, vel = Body.getVelocity(b), a = Math.atan2(vel.y, vel.x);
     car.gone = true;
     Body.setVelocity(b, { x: vel.x * 0.35, y: vel.y * 0.35 });
-    Body.setAngularVelocity(b, (chance(0.5) ? 1 : -1) * rand(0.04, 0.07));
+    const D = dice(w);
+    Body.setAngularVelocity(b, (D.chance(0.5) ? 1 : -1) * D.rand(0.04, 0.07));
     for (let i = 0; i < 3; i++) v.shed(v.x, v.y, a + rand(-1.2, 1.2), rand(120, 240), true);
     w.particles.sparks(v.x, v.y, a, 1.4, 24, 340);
     w.sound('carHit', v.x, v.y, 1);
@@ -1134,7 +1137,7 @@ export default class Pursuit {
   endTell() {
     if (this.tell) this.tell.car.telling = false;
     this.tell = null;
-    this.cool = rand(...this.G.cool);
+    this.cool = dice(this.world).rand(...this.G.cool);
   }
 
   // the shot: his seat in the bracket and reached -> dead; else the round lands where it was told (a hole in his car
@@ -1318,7 +1321,7 @@ export default class Pursuit {
     A.car.ram = 0;
     A.car.settled = 0;
     this.attack = null;
-    this.cool = rand(...this.C.attack.cool);
+    this.cool = dice(this.world).rand(...this.C.attack.cool);
   }
 
   // its clock, and how it is told: winding up a ram, its lamps flash (off `flash` s in every two) and its body leans

@@ -14,7 +14,8 @@
 //   laundry  his load out of the machine, shaken out, folded and laid on the pile, now and then a look at his watch
 //          (laundryAt)
 import { TILE } from '../Config.js';
-import { clamp, angDiff, lerp, rand, frac, bump, smooth, hash } from '../../engine/math.js';
+import { clamp, angDiff, lerp, frac, bump, smooth, hash } from '../../engine/math.js';
+import { dice } from '../systems/Rng.js';
 
 const CYCLE = 5;     // s between two pool strokes
 const STRIKE = 0.8;  // share of the cycle at which the cue hits the ball
@@ -171,10 +172,11 @@ const poolClock = (k, seed) => CYCLE * (k - frac(seed));
 // The life at a post, played from its script: acts picked at random by weight (never twice in a row unless alone),
 // each a run of phases of random length. Time only: Enemy.work takes him to each phase's spot and steps it there.
 export class Routine {
-  // slot: which of the men sharing the post he is (weights may differ per man)
-  constructor(script, slot = 0) {
+  // slot: which of the men sharing the post he is (weights may differ per man); roll: the gameplay dice (Rng.dice)
+  constructor(script, slot = 0, roll = dice(null)) {
     this.script = script;
     this.slot = slot;
+    this.roll = roll;
     this.act = null; this.name = ''; this.last = '';
     this.i = 0; this.t = 0; this.dur = 1;
     this.cued = null; this.cueT = 0;
@@ -193,7 +195,7 @@ export class Routine {
   pick(ok = () => true) {
     const names = Object.keys(this.script.acts).filter((n) => this.weight(n) > 0 && ok(n));
     const pool = names.length > 1 ? names.filter((n) => n !== this.last) : names;
-    let r = Math.random() * pool.reduce((s, n) => s + this.weight(n), 0);
+    let r = this.roll.next() * pool.reduce((s, n) => s + this.weight(n), 0);
     for (const n of pool) if ((r -= this.weight(n)) <= 0) return n;
     return pool[pool.length - 1] ?? null;
   }
@@ -204,17 +206,17 @@ export class Routine {
     this.name = this.last = name || '';
     this.i = 0;
     if (this.act) this.enter();
-    if (late) this.t = rand(0, this.dur);
+    if (late) this.t = this.roll.rand(0, this.dur);
   }
 
-  enter() { this.t = 0; this.dur = rand(...this.phase.dur); }
+  enter() { this.t = 0; this.dur = this.roll.rand(...this.phase.dur); }
 
   // start act `name` at its phase i, somewhere into it (how a level may open on him: a script's `open`)
   beginAt(name, i) {
     this.begin(name);
     this.i = Math.min(i, this.act.phases.length - 1);
     this.enter();
-    this.t = rand(0, this.dur);
+    this.t = this.roll.rand(0, this.dur);
   }
 
   // on to the next phase: 'phase' (also the first of the act that follows on, `next`), or 'act' once the act is over

@@ -13,7 +13,7 @@
 // 'propHit'. Emits: 'alertPhase' { phase, prev }; Enemy emits 'challenge' { guard, act, stage } at each stage of a word.
 import { AI, PALETTE, TILE } from '../Config.js';
 import { opening } from './Conduct.js';
-import { chance, rand } from '../../engine/math.js';
+import { dice } from '../systems/Rng.js';
 import { BARKS, BARK_TONE, URGENT } from '../data/barks.js';
 import { lineFor, freeName, placeOf } from './Barks.js';
 import { searchPoints } from './Tactics.js';
@@ -339,14 +339,14 @@ export default class Director {
       if (e.canSeePoint(victim.x, victim.y, 1, 120)) { inc.seen.add(e); e.witnessKill(victim); }
     }
     // the last man standing may lose his nerve the next time he faces the killer (Enemy.surrender)
-    const left = this.alive, R = AI.surrender, B = AI.barks;
-    if (left.length === 1 && w.totalEnemies >= R.squad) left[0].shaken = chance(left[0].kind === 'brute' ? R.brute : R.odds);
+    const left = this.alive, R = AI.surrender, B = AI.barks, D = dice(w);
+    if (left.length === 1 && w.totalEnemies >= R.squad) left[0].shaken = D.chance(left[0].kind === 'brute' ? R.brute : R.odds);
     // the last two of a real squad feel it: a moment later, they call out for the ones who are gone (Enemy.update)
     if (left.length <= 2 && w.totalEnemies >= R.squad) {
       for (const e of left) {
-        if (e.lonely || !chance(B.lonely)) continue;
+        if (e.lonely || !D.chance(B.lonely)) continue;
         e.lonely = true;
-        e.mourn = { at: w.time + rand(...B.alone), N: victim.nick };
+        e.mourn = { at: w.time + D.rand(...B.alone), N: victim.nick };
       }
     }
   }

@@ -80,6 +80,7 @@ import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorStat
 import { SEAT, TRAVERSE } from '../data/feel.js';
 import Drive, { driveSpot } from '../systems/Drive.js';
 import Checkpoints, { fromCheckpoint } from '../systems/Checkpoints.js';
+import { worldRng } from '../systems/Rng.js';
 import Pursuit from '../systems/Pursuit.js';
 import Signals from '../systems/Signals.js';
 import Lorries from '../systems/Lorries.js';
@@ -98,6 +99,7 @@ export default class World {
     this.camera = game.camera;
     this.level = level;
     this.time = 0;
+    this.rng = worldRng(); // the gameplay dice (systems/Rng.js): first, the guards roll as they are made
     this.timers = [];
     this.events = new EventBus();
     // a round going under a ceiling fitting shakes it a little (it only breaks to a blast)

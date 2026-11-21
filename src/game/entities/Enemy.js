@@ -12,6 +12,7 @@ import { ENEMY, AI, TILE, CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { BARKS, SHOUTED, MUTTERED, BOSS } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
+import { dice } from '../systems/Rng.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, pastDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError } from '../ai/Perception.js';
@@ -139,8 +140,9 @@ export default class Enemy extends Character {
     this.case = null;                // a word he is having with the stranger (ai/Conduct.js, see challenge)
     this.eyes = null;                // something he glances at a moment, carrying on { x, y, until } (see glanceAt)
     this.react = 0; this.tactic = null; this.thinkT = 0; this.cover = null; this.coverT = 0;
-    this.burst = 0; this.volleys = 0; this.burstLeft = 0; this.suppressCD = rand(0, 1.5);
-    this.dodge = 0; this.dodgeCD = 0; this.strafe = 0; this.strafeT = rand(1, 2);
+    const D = dice(world); // (his gameplay rolls: systems/Rng.js)
+    this.burst = 0; this.volleys = 0; this.burstLeft = 0; this.suppressCD = D.rand(0, 1.5);
+    this.dodge = 0; this.dodgeCD = 0; this.strafe = 0; this.strafeT = D.rand(1, 2);
     this.shoutT = 0; this.panicT = 0; this.witnessed = []; this.dizzyT = 0;
     this.kneel = false; this.crouch = 0;
     this.searchPt = null; this.localPts = null; this.checkTarget = null; this.guardPt = null; this.guardT = 0;
@@ -148,7 +150,7 @@ export default class Enemy extends Character {
     this.arms = null;          // his weapon kept somewhere until the fight (see takeArms), or a brawler's fists
     this.scanT = rand(0, 0.3);
     this.icon = ''; this.iconT = 0; this.barkT = 0;
-    this.pace = rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : heavyBuild(kind) ? 0.9 : 1);
+    this.pace = D.rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : heavyBuild(kind) ? 0.9 : 1);
     this.seed = rand(0, 100);
     this.sep = { x: 0, y: 0 };
     this.executing = false;
@@ -329,7 +331,7 @@ export default class Enemy extends Character {
   spot(recent) {
     if (this.state === S.COMBAT || this.state === S.FETCH || this.state === S.FLEE || this.state === S.DIZZY || this.state === S.BACKUP) return;
     this.setState(S.COMBAT);
-    this.react = rand(...(recent ? ENEMY.reacquire : ENEMY.reaction)) * this.slack;
+    this.react = dice(this.world).rand(...(recent ? ENEMY.reacquire : ENEMY.reaction)) * this.slack;
     this.settle = 0;
     this.showIcon('!', 1);
     this.world.sound('shout', this.x, this.y, 1, { pitch: this.voice });
@@ -358,7 +360,7 @@ export default class Enemy extends Character {
     // a bartender at the first shots: down behind his counter for a moment
     if (this.job === 'wipe' && !this.ducked && this.atPost && this.aware < 2 && (type === 'gunshot' || type === 'explosion')) {
       this.ducked = true;
-      this.duckT = rand(...AI.duck);
+      this.duckT = dice(this.world).rand(...AI.duck);
     }
     if (this.aware === 2) {
       if ((type === 'gunshot' || type === 'explosion') && !this.sees) this.lastKnown = { x, y };
@@ -367,7 +369,7 @@ export default class Enemy extends Character {
     // having a word with the stranger: a small noise gets a glance, no more
     if (this.state === S.CHALLENGE && (type === 'footsteps' || !ALARMS.has(type))) { this.glanceAt(x, y, AI.listen.glance); return; }
     const err = hearingError(Math.hypot(x - this.x, y - this.y));
-    const sx = x + rand(-err, err), sy = y + rand(-err, err);
+    const D = dice(this.world), sx = x + D.rand(-err, err), sy = y + D.rand(-err, err);
     if (type === 'footsteps') {
       this.meter = Math.min(0.55, this.meter + ENEMY.hear.footsteps);
       if (this.meter >= ENEMY.suspicious) this.suspect(sx, sy, type);
@@ -398,7 +400,7 @@ export default class Enemy extends Character {
     this.setState(S.SUSPICIOUS);
     this.stim = { x, y, kind };
     this.urgent = urgent;
-    this.susT = urgent ? rand(0.35, 0.55) : rand(0.7, 1.1);
+    this.susT = urgent ? dice(this.world).rand(0.35, 0.55) : dice(this.world).rand(0.7, 1.1);
     this.showIcon('?', 1.5);
     this.say(kind === 'sight' ? 'sight' : kind === 'gunshot' ? 'shots' : 'noise');
   }
@@ -817,7 +819,7 @@ export default class Enemy extends Character {
       }
       if (S.ash) this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
     }
-    this.routine = new Routine(S, this.seat?.slot ?? 0);
+    this.routine = new Routine(S, this.seat?.slot ?? 0, dice(this.world));
     if (!S.walk) this.routine.begin(this.routine.pick(), true);
     if (S.open && chance(S.open.odds)) this.openAt(S.open);
   }
@@ -1569,7 +1571,7 @@ export default class Enemy extends Character {
     this.suppressCD -= dt; this.dodgeCD -= dt; this.stalkCD -= dt; this.standT -= dt;
     if (this.sees) {
       // re-acquiring after losing sight takes a moment, and the aim has to settle again
-      if (this.lostT > 0.4) { this.react = Math.max(this.react, rand(...ENEMY.reacquire)); this.settle *= 0.4; }
+      if (this.lostT > 0.4) { this.react = Math.max(this.react, dice(this.world).rand(...ENEMY.reacquire)); this.settle *= 0.4; }
       this.lostT = 0;
       this.react -= dt;
       if (this.react <= 0) this.settle = Math.min(1, this.settle + dt / ENEMY.aimSettle);
@@ -1581,7 +1583,7 @@ export default class Enemy extends Character {
       this.tauntT = rand(...AI.tauntGap);
       if (this.panicT <= 0) this.say(this.sees ? (this.def.kind === 'gun' ? 'threat' : 'brawl') : this.lostT > 1.2 ? 'flush' : 'hunt');
     }
-    if ((this.thinkT -= dt) <= 0) { this.thinkT = rand(0.3, 0.5); this.plan(p); }
+    if ((this.thinkT -= dt) <= 0) { this.thinkT = dice(this.world).rand(0.3, 0.5); this.plan(p); }
     this.target = this.sees ? p : this.lastKnown;
     switch (this.tactic) {
       case 'rush': this.tRush(dt, p); break;

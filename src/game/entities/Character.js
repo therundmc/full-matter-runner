@@ -1,7 +1,8 @@
 import { TILE, CAT, MASK, ENEMY, BARREL, PLAYER, BODY_SCALE } from '../Config.js';
 import { WEAPONS, WEAR, plantedOf } from '../data/weapons.js';
 import { sprite, spriteOpt, chunk, sw, drawUpright, silhouette } from '../../engine/Assets.js';
-import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
+import { rand, chance, angDiff, local, lerp, clamp } from '../../engine/math.js';
+import { dice } from '../systems/Rng.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
@@ -553,7 +554,8 @@ export default class Character {
     const a = this.angle;
     const enemy = this.team === 'enemy', m = this.stepMuzzle();
     for (let i = 0; i < d.pellets; i++) {
-      const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
+      // (gameplay rolls: systems/Rng.js)
+      const D = dice(w), sp = d.spread * D.spread() + (enemy ? D.rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
       // out of the muzzle, its first step traced from his chest: nothing between the two is missed (a man at point
       // blank, the wall the barrel pokes into)
