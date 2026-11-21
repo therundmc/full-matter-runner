@@ -248,3 +248,25 @@ test('lens: at the wheel the picture is drawn 1:1 and the lens leaves the road a
   u = foot.uniforms(view());
   assert.ok(u.curve === POST.tube.curve && u.scan === POST.tube.scan && u.rush.flat === 0 && u.rush.k === 0 && u.zoom > 0);
 });
+
+test('lens: without WebGL the 2D stand-in shifts the red channel on a hard shake, never at the wheel', async () => {
+  const { default: PostFX } = await load('game/render/PostFX.js');
+  // a 2D context that records what is drawn onto it (a canvas of its own for the shifted copy, the grain's)
+  const ctx2d = () => new Proxy({ draws: [] }, {
+    get: (o, k) => (k in o ? o[k] : k === 'drawImage' ? (...a) => o.draws.push(a) : k === 'getContext' ? () => ctx2d() : k === 'createImageData' ? (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }) : () => ({})),
+    set: (o, k, v) => { o[k] = v; return true; },
+  });
+  globalThis.document = { createElement: () => ctx2d() };
+  try {
+    const shifted = (wheel) => {
+      const ctx = ctx2d();
+      ctx.canvas = { width: 1280, height: 720 };
+      new PostFX().apply(ctx, 1280, 720, 1.2, wheel);
+      return ctx.draws.some((a) => a[1] > 0); // (the shifted copy is drawn ca px to the right)
+    };
+    assert.equal(shifted(false), true, 'on foot: the red channel parts');
+    assert.equal(shifted(true), false, 'at the wheel: nothing moves a px of the picture');
+  } finally {
+    delete globalThis.document;
+  }
+});
