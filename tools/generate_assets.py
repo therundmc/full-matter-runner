@@ -20,6 +20,20 @@ from pngout import prune, save_png
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
+
+# STOCK: props painted and listed in engine/Assets.js that no level places yet, kept for the levels to come (the
+# user's call, 2026-11-21). tests/sprites.test.mjs checks every prop sprite is placed by a level, spawned by the code
+# or named here: a new orphan is caught, and a stock sprite a level starts to use leaves this list.
+STOCK = (
+    'carwash_sign', 'carwash_board', 'wash_bucket', 'hose_reel', 'soap_puddle',                  # a car wash
+    'tyre_stack', 'tyre_pile', 'tyre_loose', 'tyre_rack', 'tyre_sign',                           # a tyre yard
+    'carport', 'tv_antenna', 'driveway', 'lawn_dry_a',                                           # the suburb
+    'awning_pink', 'awning_mint', 'awning_wine', 'deco_office_teal', 'dumpster_aqua',
+    'stucco_trim_mint', 'stucco_trim_peach', 'neon_sign_mirage',
+    'sawhorse', 'sign_stop', 'sign_detour_left', 'detour_arrow_paint_left',                      # road works
+    'parking_bay', 'plaza_line', 'plaza_stripes', 'road_arrow_turn', 'road_only', 'gore_hatch', 'expansion_joint',
+    'velvet_rope', 'entry_carpet', 'bed', 'dj_booth',                                            # a club, a flat
+)
 RNG = random.Random(1337)
 
 # --------------------------------------------------------------------------
