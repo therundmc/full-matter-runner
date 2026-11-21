@@ -209,12 +209,12 @@ camp under the freeway's bridge has the same cart and cardboard). THE LORRY'S DO
 it (a fruit market, a car wash, a tyre yard) the FRUIT MARKET: lit stalls and bright fruit read at night and from
 the wheel, its signs are the street's Spanglish, and all of it is torn or flung (the tyre yard is black rubber on a
 dark lot, round things by a road again; the car wash has too little to send flying: both sets are kept as STOCK in
-tools/generate_assets.py); laid on the ground set back from the kerb that a cafe terrace held in the first plan.
+tools/sprites/suburb.py); laid on the ground set back from the kerb that a cafe terrace held in the first plan.
 NO KEGS (the user: "enleve les futs de biere qui trainent au milieu de la route"): the dark stretch's sidewalk had
 two (62 kg, loose: hit on the kerb they were flung into the lanes ahead and lay there), and every crash cushion was
 three or six sand barrels, round drums in the middle of the plaza's road before each island: the kegs are gone, the
 loose drum by leg 1's dock too, and the cushions are repainted as what they are (a steel-framed attenuator: yellow
-cartridges between fender rails, a chevron nose; tools/generate_assets.py p_crash_cushion).
+cartridges between fender rails, a chevron nose; tools/sprites/ramp_toll.py p_crash_cushion).
 
 Street furniture follows a street's rules (the builder asserts them): lamps every 24 m on alternate sides; meters
 only at a bay; hydrants and red kerbs at corners; loose things (bins, boards, boxes) against the walls, never by the
@@ -253,14 +253,14 @@ rail and, north, the approach's line.
 | 498-523 | THE ON-RAMP | the bank, delineators, WRONG WAY (read upright, as every sign), a freeway lamp (col 500), the WAVE 98 FM billboard (cols 507-515), litter, a narrow crash cushion at the bank's nose (col 522, `crash_cushion_narrow`) | the shoulder with its rumble strip and the white edge line, the guardrail along the top of the bank (its end toward the traffic at col 498, its beam in line with the rail's, on into the toll's), delineators, TOLL 1/2 MILE (col 502.5, before the gantry's 1/4), WRONG WAY, SPEED LIMIT 55 (the green signs lit from below), a freeway lamp (col 515), royal palms beyond the rail lit from their feet (pink and cyan in turn: 507.5, 525) | Dashes 3 m every 9 m with a cat's eye in each gap, yellow ones beside the left edge (which runs onto the gore's line); asphalt (no joints), oil down the lanes clear of the paint. The edge line and the rumble strip on the toll's rows (48, 48.33). |
 | 524-559 | THE MERGE | the freeway's lanes come in alongside over 24 m (their paint slanted), the gore painted out between (a long white triangle, `gore_taper`), then four lanes side by side (rows 39.25, 41.75, ours 44.25, 46.75); on the freeway's lanes (his to take across the gore: THE MERGE's own leg) a mattress lost off a truck, the rubber of whoever braked for it, glass | the shoulder, the guardrail, a freeway lamp (col 545); AN OLD CRASH: tyre marks swerving into the rail, its length dented (col 530), glass, shards and a hubcap on the shoulder; a call box (538.5); royal palms lit from their feet (541.5, 556), hibiscus on the bank | The merge arrow in our left lane (col 536); past the gore's tip a solid white line 6 m, then the lanes' dashes on into the toll's. The gore channelized: orange CHANNELIZER posts 3 m apart just inside each of its edge lines (7 along the ramp's, 5 along the freeway's, which stops where the gore is too narrow for two), the only props on it (`check_posts`): driven through, each torn off at no cost, its tube snapping off its base and flying. The sign gantry over the gore's nose (col 526.5: TOLL PLAZA 1/4 MILE over the middle of the freeway's lanes, ALL LANES TOLL over ours, lit from below; it fades over him; at the gore's tip, where the two roads meet, its far panel stood over the freeway's left edge), more sodium (the merge was the dark end). The toll from col 560. |
 
-New sprites for it (tools/generate_assets.py "the freeway over the side street", FWY_PROPS: listed in engine/Assets.js
-and levelkit): `overpass` (the deck, 18 x 8 m, hung), `overpass_shadow` and `gore_taper` (floor paint). Not done: no
+New sprites for it (tools/sprites/ramp_toll.py, its SPRITES: the game's list and levelkit's sizes are generated
+from them): `overpass` (the deck, 18 x 8 m, hung), `overpass_shadow` and `gore_taper` (floor paint). Not done: no
 ambient traffic on the freeway (systems/Traffic.js lanes run the whole map's width, not a leg's: a lane would drive
 through the blocks), so the freeway is dressing; the flagman (no civilian stands at a post outdoors).
 
 Sunset Bay in 1985 (2026-11-20, the user: "les assets vraiment style Miami annees 80, les lumieres"): leg 1 dressed
-with a set of GENERIC Miami props (tools/generate_assets.py "Miami, 1985": MIAMI_PROPS / MIAMI_PAINT / MIAMI_NEON,
-FINE but the wall neon; listed in engine/Assets.js, levelkit SIZES / FLOOR / ON_WALL, data/props.js, data/destruction.js),
+with a set of GENERIC Miami props (tools/sprites/miami.py, FINE but the wall neon; its SPRITES, levelkit ON_WALL,
+data/props.js, data/destruction.js),
 made to be laid along the street too: `royal_palm`, `royal_palm_b` (the pale trunk the pole, the crown hung high),
 `hibiscus_hedge`, `hibiscus_hedge_pink`, `deco_canopy_pink / _mint / _peach / _lavender` (a stucco eyebrow over a
 door, its neon lip lit), `awning_pink / _mint / _peach / _lavender`, `neon_sign_motel`, `neon_sign_vacancy`,
@@ -489,9 +489,9 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the camera's zoom followed the speed (345 to 392 px of view: 3.03 picture px a world px at 60 km/h, never whole)
   and the picture swayed: every sprite resampled unevenly, differently every frame. Now ONE view height at the wheel
   (CHASE.camera.view 360, level `chase.view`), the scene at the usual whole zoom on a larger canvas brought down by
-  the lens (Game.fit / setView; eased in and out of the car in the lab), no sway, the car snapped dead straight when
-  it is, its body offsets in half px. SPEED: data/post.js `speed.drive` (render/Lens.js, PostGL.js: the outer band
-  only), Drive `wind` / dust / wake (CHASE.fx), the camera's lead growing past cruise and its rumble
+  the lens (render/FrameRenderer fit / setView; eased in and out of the car in the lab), no sway, the car snapped dead
+  straight when it is, its body offsets in half px. SPEED: data/post.js `speed.drive` (render/Lens.js, PostGL.js: the
+  outer band only), Drive `wind` / dust / wake (CHASE.fx), the camera's lead growing past cruise and its rumble
   (CHASE.camera), dashed lines on the road (tools/build_level2a.py). DRIVING (data/chase.js): `over` 4 (75 km/h in
   0.55 s from cruise, was 0.25 s), the nose's spring (`yaw`), the slide (`slide`: 0.16 rad flat out), the body
   (`body`: squat / dive / roll / lift), the shove 8 px/step given back at 26 a second with a camera push, roll, bounce
@@ -1011,7 +1011,7 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   so the cafe terrace it laid only to keep one random stream aligned, then took away, is gone with its sprites
   (`parasol`, `planter`, `neon_sign_cafe`), and the bank's narrow crash cushion is laid at once (`crash_cushion_hit`
   deleted). level2a.js unchanged but for the cushion's place in the list. The unplaced sets (the car wash, the tyre
-  yard, the suburb's) are STOCK in tools/generate_assets.py, checked by tests/sprites.test.mjs.
+  yard, the suburb's) are STOCK in tools/sprites/suburb.py, checked by tests/sprites.test.mjs.
 - 2026-11-21: CLEANUP (branch cleanup/systems). systems/Route.js `checkRoute` (tools/build_level2a.py, tests/route.test.mjs);
   a pursuer joining from behind is never placed back off the start of the leg past the bend; a checkpoint counts only
   the men its retry brings back (Pursuit.aboard); a toll crash is decided in Pursuit.wreck before 'pursuerWreck' (one

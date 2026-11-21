@@ -180,14 +180,14 @@ export const CHASE = {
   // car's friction against what it leans on. Its sparks are a shower for as long as it rubs (systems/CarFx.js,
   // data/carfx.js `scrape`)
   scrape: { every: 0.12, vol: 0.6, friction: 0.08, from: 1.5 },
-  // the camera (Game.fit / updateCamera, Drive.frame). At the wheel the picture is drawn 1:1: the scene's canvas is
-  // the window, at the whole zoom nearest to `view` world px of height (a level's `chase.view` overrides it; 3 at
-  // 1080: 360 px; 4 at 1440: 360; 3 at 900: 300), and the lens scales nothing: a picture brought down by the lens,
-  // a zoom that followed the speed, a camera that trailed the car each resampled every sprite every frame, the car
-  // first. The camera is locked on the car along the road: it sits `at` of the view's width from the left, whatever
-  // it does; across, the view stays on the street's middle (the level's `chase.mid`)
-  // Slowed by what it hit (by more than `from` of its cruise speed: a slide's scrub does not move it), the car
-  // comes forward on the picture, up to `surge` of the view's width at a standstill,
+  // the camera (render/FrameRenderer fit, flow/CameraDirector update, Drive.frame). At the wheel the picture is drawn
+  // 1:1: the scene's canvas is the window, at the whole zoom nearest to `view` world px of height (a level's
+  // `chase.view` overrides it; 3 at 1080: 360 px; 4 at 1440: 360; 3 at 900: 300), and the lens scales nothing: a
+  // picture brought down by the lens, a zoom that followed the speed, a camera that trailed the car each resampled
+  // every sprite every frame, the car first. The camera is locked on the car along the road: it sits `at` of the
+  // view's width from the left, whatever it does; across, the view stays on the street's middle (the level's
+  // `chase.mid`). Slowed by what it hit (by more than `from` of its cruise speed: a slide's scrub does not move it),
+  // the car comes forward on the picture, up to `surge` of the view's width at a standstill,
   // and falls back to `at` as it picks its speed up again (eased at `ease` 1/s, in whole px: at speed more of the
   // road ahead is seen, a hit is felt as the picture catching up with the car)
   camera: { view: 360, at: 0.33, surge: 0.07, from: 0.2, ease: 3.5,

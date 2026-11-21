@@ -90,8 +90,8 @@ export function grabStep(d, dt) {
   if (g.t >= G.dur + G.out) d.grab = null;
 }
 
-// the camera's shot (Game.stagedShot; SHOTS in data/staging.js): pushed in on him while he takes the gun, then
-// back out
+// the camera's shot (flow/CameraDirector stagedShot; SHOTS in data/staging.js): pushed in on him while he takes the
+// gun, then back out
 // (it looks at his seat in the car AS DRAWN, between its last two steps: his own body is out of the world while
 // he rides and is not drawn in between, so the view pulled onto it ran up to a step ahead of the car, by another
 // share of it every frame: the car shook in the close-up, 56 px of the picture at 1080, and read as blurred)

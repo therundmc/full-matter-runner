@@ -311,9 +311,9 @@ class Post {
   // on show / off show (the debug key that compares the picture with and without the lens)
   show(on) { if (this.ok) this.canvas.style.display = this.overlay.style.display = on ? '' : 'none'; }
 
-  // follow the game's canvas (called by Game.resize)
-  // outW, outH: the window, in device px. The scene may be larger (Game.resize): we bring it down. The HUD's canvas
-  // keeps the scene's size, so everything drawn on it is laid out as on the scene, and the page scales it.
+  // follow the game's canvas (called by render/FrameRenderer resize)
+  // outW, outH: the window, in device px. The scene may be larger (FrameRenderer resize): we bring it down. The HUD's
+  // canvas keeps the scene's size, so everything drawn on it is laid out as on the scene, and the page scales it.
   resize(outW = this.scene.width, outH = this.scene.height) {
     const gl = this.gl, W = this.scene.width, H = this.scene.height;
     this.canvas.width = outW; this.canvas.height = outH;

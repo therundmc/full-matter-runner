@@ -4,7 +4,7 @@
 
 export const DOORS = {
   // the kinds of door, one per place (level option `kind`, levelkit door(); a locked door with none is
-  // `reinforced`, a free leaf takes the kind of its sprite): its sprite (painted in tools/generate_assets.py; caps:
+  // `reinforced`, a free leaf takes the kind of its sprite): its sprite (painted in tools/sprites/doors.py; caps:
   // world px kept at its hinge and latch ends, the middle tiled to the leaf's length), its mass, the hinge's dry
   // friction (a torque that brakes it to a stop and that a push must beat to get it going) and its drag (share of its
   // speed lost a second): it swings on a touch after a push and slows to a stop, it never flaps on by itself.

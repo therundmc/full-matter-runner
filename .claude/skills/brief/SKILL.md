@@ -37,14 +37,15 @@ TESTS TO ADD
 
 LAB STATION (any new gameplay / AI / physics / animation feature)
 - tools/build_lab.py: a station to try it at once (dummies, props, weapons), its stencil numbered in reading order
-  (LAB_LABELS in tools/generate_assets.py, then regenerate and run the builder).
+  (LAB_LABELS in tools/sprites/lab_labels.py, then regenerate the sprites and run the builder).
 
 REPO RULES
 - No commit, no push, no server left running, never `git add`.
 - ASCII only in source, comments and docs.
 - `npm test` must be green at the end (paste its summary lines).
-- Generated files only through their tools: levels via tools/build_*.py, sprites via tools/generate_assets.py,
-  the foley bank via tools/build_sounds.mjs. Never edit their output.
+- Generated files only through their tools: levels via tools/build_*.py, sprites via tools/generate_assets.py
+  (a new sprite is one SPRITES line in its kit under tools/sprites/: src/engine/spritelist.js and
+  tools/sprite_tables.py are generated), the foley bank via tools/build_sounds.mjs. Never edit their output.
 - engine/ never imports game/; logic modules stay DOM-free; reactions go through world.events.
 - Follow the surrounding style: short useful comments, no unused exports / imports.
 

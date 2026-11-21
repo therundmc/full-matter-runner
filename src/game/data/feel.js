@@ -289,7 +289,7 @@ export const TAIL = { nape: 4.5, side: 0.5, moving: 0.4, follow: 7, beat: 6, wav
 // The skirt of a long coat flying behind a man (entities/Character.js KINDS `coat`, entities/Skirt.js, drawn by
 // CharacterAnim drawSkirt: the runner's duster). hinge: where a half hangs from, torso-local pose px [behind the
 // middle of his shoulders, out to its side]; root: sprite px from the sprite's edge to that hinge
-// (tools/generate_assets.py TAIL_ROOT); moving, full: px/step from which it starts to fly and at which it is fully
+// (tools/sprites/characters.py TAIL_ROOT); moving, full: px/step from which it starts to fly and at which it is fully
 // out; hem: the share of its length that shows when he stands; trail: rad it is drawn off straight behind him toward
 // where he comes from (a side-step); swing: rad it may swing off straight behind (a turn); freq, damp: its spring
 // (rad/s, damping ratio: under 1, it swings back past the middle once); draw: 1/s its length and its vent follow his

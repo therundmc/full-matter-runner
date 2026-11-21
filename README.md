@@ -97,7 +97,8 @@ A level module has three layers (levelkit writes them):
   - Ammo boxes: `n` / `z` 9mm, `g` 12 gauge, `v` / `w` 7.62, `q` rockets (`AMMO_CHARS`).
   - Small props: `x` barrel, `c` crate, `t` trash can.
 - **props**: `[type, x, y, rotationDeg]` in tile units, where a tile's centre is `n + 0.5`; vehicles go in this
-  list too. A new prop's sprite must be listed in `src/engine/Assets.js` (unlisted, it is drawn as a bin).
+  list too. A new prop's sprite is one `SPRITES` line in its kit under `tools/sprites/` (the game's
+  `src/engine/spritelist.js` is generated from them; a sprite in no list is drawn as a bin).
 
 Then `exit`, `facing` overrides for guards (`"col,row": degrees`), `premises: [[col0, row0, col1, row1], ...]` (the
 guarded tiles: anywhere else the guards ignore an unarmed player until he gives himself away; without it the whole

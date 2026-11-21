@@ -32,7 +32,7 @@ export const MASK = {
 // How much bigger than the 1 m = 32 px world people are drawn, with what they hold (the user: seen from above they
 // were too small, next to a body on the floor above all). A standing pose is scaled as a whole about the feet
 // (CharacterAnim bodyFrame), weapons follow in the hand and on the floor, and the bodies on the floor are painted
-// at that size (tools/generate_assets.py). Pose numbers, grips and reaches stay in unscaled px.
+// at that size (tools/sprites/characters.py). Pose numbers, grips and reaches stay in unscaled px.
 export const BODY_SCALE = 1.3;
 
 export const PLAYER = {

@@ -32,7 +32,7 @@ import { mountOf } from '../data/mounts.js';
 const { Bodies, Body } = Matter;
 
 // How each kind's limbs are painted (render/LimbArt.js): sleeve, skin, the cuff showing at the wrist, gloves,
-// trousers, shoes (the same colours as their sprites, tools/generate_assets.py CHARS)
+// trousers, shoes (the same colours as their sprites, tools/sprites/characters.py CHARS)
 export const KINDS = {
   // the sleeves of his ink-blue duster over the grey knit, a Mediterranean tan, jeans, brown boots; `coat`: the two
   // halves of its skirt (sprites `<coat>_l` / `_r`), flown behind him by entities/Skirt.js

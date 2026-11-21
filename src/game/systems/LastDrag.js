@@ -172,6 +172,6 @@ export default class LastDrag {
     this.end();
   }
 
-  // the camera's shot (Game.stagedShot; SHOTS `drag`)
+  // the camera's shot (flow/CameraDirector stagedShot; SHOTS `drag`)
   shot() { return this.on ? { name: this.butt ? 'butt' : 'drag', at: this.at } : null; }
 }

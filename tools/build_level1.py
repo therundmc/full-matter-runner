@@ -264,7 +264,7 @@ lv.prop('shopping_cart', drawn(22.3), 36.45, 90)        # the tramp's, down the 
 
 lv.area('road: parked along the bar side')
 # The street as a street is made, with level 2A's kit (floor paint: no body, baked once into the floor layer under
-# everything that stands; ROAD_PAINT in tools/generate_assets.py). North to south (rows): the bar's sidewalk 21-22,
+# everything that stands; its sprites in tools/sprites/road.py). North to south (rows): the bar's sidewalk 21-22,
 # its kerb, the parking row 23-24, their lane 25 to 27.5 (westbound), ours down to 30, the kerb, the sidewalk 30-31.
 # West to east along the parking row (LEVEL columns, after the cuts: `drawn` gives the drawing's):
 #

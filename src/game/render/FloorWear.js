@@ -15,7 +15,7 @@ const DRINK = hexRgb('#4a3010'), GLITTER = ['#f4e4b0', '#e8eef8', '#ffc8e8', '#c
 const GUM = hexRgb('#2a262c'), LEAF = hexRgb('#3c5430'), TIP = hexRgb('#6c8a46'), BACKING = hexRgb('#c8bca0');
 const PATCHED = hexRgb('#4a4c56'), CEMENT = hexRgb('#55525a'), WORN = hexRgb('#8a8078'), WOOD_DARK = hexRgb('#3a2418');
 // the boards of the wood floor, world px from the top of a tile (kept in step with FL_WOOD_ROWS in
-// tools/generate_assets.py: 5, 6, 5, 5, 6, 5); the seam is the last pixel row of each board
+// tools/sprites/tiles.py: 5, 6, 5, 5, 6, 5); the seam is the last pixel row of each board
 const BOARDS = [0, 5, 11, 16, 21, 27, 32];
 const DAMP = hexRgb('#3a4a3a'), RUST = hexRgb('#7a4a26'), STEEL = hexRgb('#6a707a'), STEEL_L = hexRgb('#9aa0aa');
 const LINT = hexRgb('#b4bccc');

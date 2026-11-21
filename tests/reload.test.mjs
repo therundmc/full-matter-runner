@@ -10,7 +10,7 @@ import { load } from './setup.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 
-// an RGBA png (as tools/generate_assets.py writes them): { w, h, alpha(x, y) }
+// an RGBA png (as tools/pngout.py writes them): { w, h, alpha(x, y) }
 function png(name) {
   const b = readFileSync(new URL(`assets/sprites/${name}.png`, ROOT));
   const w = b.readUInt32BE(16), h = b.readUInt32BE(20), parts = [];

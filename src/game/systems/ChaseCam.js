@@ -274,7 +274,8 @@ export default class ChaseCam {
     this.scale = 1;
   }
 
-  // the camera's shot (Game.stagedShot): while the beat holds, not on its way out (the cut back comes as time does)
+  // the camera's shot (flow/CameraDirector stagedShot): while the beat holds, not on its way out (the cut back comes
+  // as time does)
   shot() {
     const b = this.beat;
     if (b?.kind === 'choose' && b.left < 0) return this.chooseShot(b);

@@ -659,7 +659,7 @@ export function recipeFor(type, def) {
   };
 }
 
-// what a car loses (entities/Vehicle.js shed): its real pieces (props/car_bumper..., painted in tools/generate_assets.py)
+// what a car loses (entities/Vehicle.js shed): its real pieces (props/car_bumper..., tools/sprites/street2a.py)
 // thrown with the paint flakes: `blast` of them when it blows up, `crunch` odds a rammed blow tears one off, `most`
 // torn off by blows before it has nothing left to lose; `black`: the models with plastic bumpers
 export const CAR_PARTS = {

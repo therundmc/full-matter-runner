@@ -15,7 +15,8 @@ import { rand, chance } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 
 const { Body } = Matter;
-const BASKET = [-34, 8];  // px from a booth's middle to its exact-change basket (tools/generate_assets.py p_toll_booth)
+// px from a booth's middle to its exact-change basket (tools/sprites/ramp_toll.py p_toll_booth_of)
+const BASKET = [-34, 8];
 const KERBED = new Set(['toll_island', 'toll_booth']);
 
 // the booth over plaza lane `y` (world px) nearest x: the booth stands on the island above its lane (the builder's

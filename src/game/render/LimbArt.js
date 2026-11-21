@@ -11,14 +11,14 @@ const D = 2;             // buffer pixels per pose px
 const HALF = 30;         // the buffer covers +-HALF pose px round the body's centre
 const N = HALF * 2 * D;
 const OL = 0.5;          // outline width (pose px): one buffer pixel
-const OUTLINE = [20, 12, 28];      // the sprites' outline colour (tools/generate_assets.py OUTLINE)
+const OUTLINE = [20, 12, 28];      // the sprites' outline colour (tools/sprites/core.py OUTLINE)
 const DARK_T = [28, 10, 48], LIGHT_T = [255, 248, 226]; // shadows cold purple, highlights warm white (as the sprites)
 // light in the torso's frame (x forward, y right): from behind and to the left, as baked into the sprites
 const LIGHT = (() => { const l = [-0.5, -0.65, 0.75], n = Math.hypot(...l); return l.map((v) => v / n); })();
 
 // ---------------- colours ----------------
 const mix = (c, t, k) => c.map((v, i) => Math.round(v + (t[i] - v) * k));
-// 4-step ramp [shadow, dark, base, light], as generate_assets.py ramp()
+// 4-step ramp [shadow, dark, base, light], as tools/sprites/core.py ramp()
 const rampOf = (hex, d2 = 0.48, d1 = 0.24, l1 = 0.32) => {
   const c = hexRgb(hex);
   return [mix(c, DARK_T, d2), mix(c, DARK_T, d1), c, mix(c, LIGHT_T, l1)];

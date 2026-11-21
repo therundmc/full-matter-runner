@@ -2,7 +2,8 @@
 // dancer, a boa's feathers, a champagne flute knocked over, corks, a garter, an ashtray put down by a sofa, a sock
 // lost in the laundromat, a card and a chip under the poker table. Laid by the level (`litter`: [kind, col, row, deg,
 // look], tools/levelkit.py `litter`); the bills knocked off the furniture
-// land among them (systems/Clutter.js). Sprites clutter/<sprite>, painted fine by tools/generate_assets.py.
+// land among them (systems/Clutter.js). Sprites clutter/<sprite>, painted fine by tools/sprites/clutter.py and
+// interiors.py.
 //
 // LITTER[kind]:
 //   sprites  the looks it may lie with (the level's `look` picks one: a bill flat, crumpled or folded)

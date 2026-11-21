@@ -67,11 +67,11 @@ export default class Camera {
     this.shakeScale = 1;       // the player's screen shake setting, 0..1: scales every shake and recoil kick
   }
 
-  // zoom: the whole zoom to draw at, when the caller knows it (Game.resize: a view of another height than VIEW)
+  // zoom: the whole zoom to draw at, when the caller knows it (the game's resize: a view of another height than VIEW)
   resize(w, h, zoom = 0) {
     this.w = w; this.h = h;
-    // a whole zoom keeps pixel art crisp: the nearest to VIEW world px of vertical view (Game.resize sizes the canvas
-    // so that it is exactly that when the lens is there to bring the picture down to the window)
+    // a whole zoom keeps pixel art crisp: the nearest to VIEW world px of vertical view (the game's resize sizes the
+    // canvas so that it is exactly that when the lens is there to bring the picture down to the window)
     this.zoom = zoom > 0 ? Math.round(zoom) : Math.max(1, Math.round(h / VIEW));
   }
 

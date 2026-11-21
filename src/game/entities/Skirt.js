@@ -1,5 +1,5 @@
 // The skirt of a long coat flying behind a man (the runner's duster: Character KINDS `coat`, its two halves painted by
-// tools/generate_assets.py player_tail, drawn under his shoulders by CharacterAnim). Plain numbers, no canvas: the
+// tools/sprites/characters.py player_tail, drawn under his shoulders by CharacterAnim). Plain numbers, no canvas: the
 // skirt is one sheet that lags his turns on a damped spring (it swings to the outside of a turn and trails where he
 // comes from when he side-steps), drawn out and its vent opened by his speed, each half kicked out in turn by his
 // stride; standing still it hangs as a short hem. Cosmetic only: it has no body and touches no hit circle.

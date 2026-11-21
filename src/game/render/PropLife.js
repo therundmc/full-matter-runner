@@ -12,9 +12,10 @@ import { PIECES } from './PastimeArt.js';
 const RIM = '#0a2a18', WHITE = '#f4f2ea';
 const DEVICES = new Set(['fire_alarm']);
 
-// The arcade's attract mode (data in the sprite's own px, tools/generate_assets.py p_arcade: the screen, its two rows
-// of invaders, the ship): at time t (s) the invaders' step sideways in px (0, 1, 2, 1...), how far up its way the
-// ship's shot is (0..1, null between two shots) and whether the score is lit. `seed` shifts one cabinet from another.
+// The arcade's attract mode (data in the sprite's own px, tools/sprites/furniture.py p_arcade: the screen, its two
+// rows of invaders, the ship): at time t (s) the invaders' step sideways in px (0, 1, 2, 1...), how far up its way
+// the ship's shot is (0..1, null between two shots) and whether the score is lit. `seed` shifts one cabinet
+// from another.
 export const ATTRACT = { step: 0.55, shot: 1.7, flight: 0.45, score: 0.8 };
 export function attractFrame(t, seed = 0) {
   const u = t + hash(seed) * 10, s = Math.floor(u / ATTRACT.step) % 4, into = u % ATTRACT.shot;
@@ -82,7 +83,7 @@ export function drawPropLife(ctx, world, t, vis) {
   }
 }
 
-// ---- level 1's interiors: machines left running, in their sprite's own px from its middle (tools/generate_assets.py
+// ---- level 1's interiors: machines left running, in their sprite's own px from its middle (tools/sprites/interiors.py
 // p_dryer, p_tv_stack, p_vcr_shelf, p_wall_clock). Where each thing is at time t, as numbers (tested), then drawn.
 
 // a dryer's load: three pieces going round behind the glass of its door, seen from above as they come up its front
@@ -152,7 +153,7 @@ function drip(ctx, [x, y], age) {
   ctx.globalAlpha = 1;
 }
 
-// the till's display (clutter sprite 13 x 10 px, tools/generate_assets.py c_till: its glow 5 px long at the back): the
+// the till's display (clutter sprite 13 x 10 px, tools/sprites/clutter.py c_till: its glow 5 px long at the back): the
 // gaps between its four digits, the last one out when it drops
 function till(ctx, i, dim) {
   ctx.save();

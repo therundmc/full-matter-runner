@@ -9,7 +9,7 @@ import { clamp } from '../../engine/math.js';
 
 // the zoom nearest to `to` that keeps base x zoom whole (and at least 1); base 0: as written. step 2: an EVEN number
 // of px a world px (a shot's `even`: a close-up, where the sprites painted at twice the world's density, FINE in
-// tools/generate_assets.py, must get whole px a texel: at 5 px a world px theirs are 2.5, drawn 2 and 3 in turn)
+// tools/sprites/core.py, must get whole px a texel: at 5 px a world px theirs are 2.5, drawn 2 and 3 in turn)
 export const whole = (to, base, step = 1) => (base > 0 ? Math.max(step, Math.round((base * to) / step) * step) / base : to);
 
 export default class Direction {

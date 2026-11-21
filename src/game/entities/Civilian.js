@@ -17,7 +17,7 @@ import { dice } from '../systems/Rng.js';
 
 const { Body, Bounds } = Matter;
 
-// arm (sleeve) and hand colours of each civilian sprite (tools/generate_assets.py, CIVILIANS)
+// arm (sleeve) and hand colours of each civilian sprite (tools/sprites/characters.py CIVILIANS)
 export const CIVILIAN_LOOKS = {
   civ1: { arm: '#d9a441', skin: '#eab08a', pants: '#4f6a98', shoe: '#e8e4da' },
   civ2: { arm: '#f0a08a', skin: '#d99a76', pants: '#3a2c4a', shoe: '#7a1f2a' },

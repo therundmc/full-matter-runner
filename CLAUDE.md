@@ -1,11 +1,13 @@
 # Project instructions - FULL MATTER RUNNER
 
+`(user)` marks a decision of the user's: never change it without asking him.
+
 ## Working mode: the strongest model thinks, a cheaper one types (user's rule, to keep costs down)
 - The main session (the most capable model) does the analysis: reading the code, reproducing and diagnosing bugs,
   measuring (headless browser), designing the change, writing the brief, then reviewing the diff, checking it in the
   game and committing.
 - The implementation is delegated to a subagent (Agent tool, `model: 'opus'`): Opus 5.5 at the minimum, never
-  Sonnet or Haiku (the user's call: those limits run out first). Never the strongest model to type.
+  Sonnet or Haiku (user: those limits run out first). Never the strongest model to type.
 - A brief is self-contained (the subagent starts cold): files and functions to touch, exact behaviour and numbers,
   tests to add, and the repo rules: no commit, no push, no server, ASCII-only source, `npm test` green, generated
   levels and sprites only through their tools. The subagent reports deviations; the main session decides.
@@ -14,7 +16,7 @@
 
 ## Git
 - Commit messages: one single sentence, no body/bullet list (attribution trailer allowed).
-- `main` is the up-to-date, current version of the game (the old prototype is gone). Fetch and pull `main` before starting.
+- `main` is the up-to-date, current version of the game. Fetch and pull `main` before starting.
 - Never work directly on `main`: each task gets its own clean, short-lived branch cut from `main`
   (`feature/<topic>`, `fix/<topic>`), merged back into `main` when done. Do not push unless asked.
 - Never `git add -A` blindly: `.claude/worktrees/` holds agent worktrees (ignored in .gitignore).
@@ -28,7 +30,7 @@
 - Real scale: engine/physics/Units.js, 1 m = 32 px (a car is about 4.4 x 1.8 m); tight rooms, vehicles at real size.
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
-- Gamepad (data/controls.js `PAD_BINDINGS`): the fire is on the bumpers (the user's pick): RB attacks / shoots / takes
+- Gamepad (data/controls.js `PAD_BINDINGS`): the fire is on the bumpers (user): RB attacks / shoots / takes
   down (RT too, an alias), LB throws (hold to aim) / picks up, LT looks further, A acts, X uses, Y reloads, START pauses. Rumble:
   systems/Rumble.js from the world's events, effects in data/rumble.js (`RUMBLE`: per gun family, blow, kill,
   finisher, death, blast, door, the car's `ride` beats; `mix`: the strongest per motor, never a drone), in play only
@@ -37,12 +39,12 @@
 ## Art
 - KEEP THE PIXEL ART: more detail, more real, never another style (no smooth shaded repaint). Strictly top-down.
 - Detail comes from density: characters and weapons are painted at TWICE the pixel density (`FINE` in
-  tools/generate_assets.py), plain pixel art, drawn at half size (`density` / `img.k` in engine/Assets.js; `sw` / `sh`
+  tools/sprites/core.py), plain pixel art, drawn at half size (`density` / `img.k` in engine/Assets.js; `sw` / `sh`
   give a sprite's size in world px; drawSprite and the decal bake honour `img.k`, a raw drawImage must scale by it).
-  Furniture and vehicles follow (`FINE_PROPS`, kept in step in both files), floors too; neon signs stay at 1x.
-  Level 1's detail pass is done (2026-11-18: furniture wear, floor wear in FloorWear.js, live props in PropLife.js,
-  car interiors, car debris); every new level gets the same care.
-- The hero (the user's pick, 2026-11-18, "B v2"): brown hair to his collar, a Mediterranean tan (not brown or dark),
+  Furniture and vehicles follow (flag `fine` in their kit's SPRITES), floors too; neon signs stay at 1x.
+  Every level gets level 1's detail pass: furniture wear, floor wear (FloorWear.js), live props (PropLife.js), car
+  interiors and debris.
+- The hero (user): brown hair to his collar, a Mediterranean tan (not brown or dark),
   a dark cap with a low crown and a short flat brim (its front edge petrol: it shows where he faces), a petrol gaiter
   up over his nose inside a funnel collar closed round his neck, a long ink-blue duster (`#3a4460`) with a tab on each
   shoulder, grey knit, jeans, boots, a leather satchel across him; the lining, the buttons and the cap's button a dark
@@ -68,9 +70,9 @@
   and locked on the car (Camera `pixel`, Drive.frame: no tilt, turn, lag or zoom that follows the speed), a driven
   car drawn at a whole px on one of 64 angles (Vehicle.pose, `CHASE.pixel`), the lens flat (Lens `flat`); speed is
   sold by the lens's drive-only edge streaks (data/post.js `POST.speed.drive`, nothing near the middle nor round
-  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car: that was its blur. At the wheel
-  the lens moves NO px of the picture (no trails, stretch, fringe: Lens `driveLens`; cars at the edges came out
-  deformed): its streaks are added over it, its band only dimmed.
+  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car (it blurs). At the wheel the lens
+  moves NO px of the picture (no trails, stretch, fringe: Lens `driveLens`): its streaks are added over it, its
+  band only dimmed.
 - Rooms are tight: level 1 loses whole tiles (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`); the builder keeps its drawing's coordinates, the kit moves them: keep things off the cut lines.
   Coordinates in tests and QA plans are the level's AFTER the cuts. A doorway needs room on one side; wall pieces
@@ -88,53 +90,51 @@
 - Recorded today: gunshots in assets/sound/shots; the foley bank assets/sound/foley.wav + src/audio/bank.js, built by
   `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json (never edit bank.js by hand).
 - Keep Music.js's public API (setTrack, start, stop, setIntensity, setCombat, setCombo, setJukebox): recorded music
-  must bring layers / stems per intensity (calm, tension, fight, kill chain) behind it (setJukebox: a no-op today,
-  the synthesized jukebox band is gone).
+  must bring layers / stems per intensity (calm, tension, fight, kill chain) behind it (setJukebox: a no-op today).
 - Every pack goes in assets/sound/CREDITS.md with its licence. Paid packs' source files are not redistributable:
   keep them out of the repo (an ignored folder) when the licence says so.
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
-- A hard game (the user's rule): no checkpoints, except the tutorial's rooms and 2A's two. Dying restarts the
-  level from its beginning, never mid-level, but in the tutorial (at its last room reached, `Game.tutorialAt`) and in
-  2A, the chase (the user's call: at the last of its parts reached, the level's `chase.checkpoints`, systems/
-  Checkpoints.js, `Game.chaseAt`: THE STREET (the start) and THE ON-RAMP (col 462, out of the detour); the
-  clock and the score as they were there; `Game.retry` after a death, RESTART / Backspace from the beginning). A long level is cut in STAGES played
-  in a row instead (data/campaign.js: the player's levels 00 tutorial, 01 CUEBALL, 02 and 03 JITTERS, 04 05 LUCKY,
+- A hard game (user): no checkpoints but the tutorial's rooms and 2A's two. RETRY (`Game.retry`, after a death)
+  starts the level again from its beginning, but in the tutorial (at its last room reached, `Game.tutorialAt`) and
+  in 2A (at the last of its parts reached: the level's `chase.checkpoints`, systems/Checkpoints.js, `Game.chaseAt`:
+  THE STREET, the start, and THE ON-RAMP, col 462; the clock and the score as they were there). RESTART (pause,
+  results, Backspace: `Game.restart`) is always the level from its very beginning, the tutorial too (user). A long
+  level is cut in STAGES played in a row instead (data/campaign.js: the player's levels 00 tutorial, 01 CUEBALL, 02 and 03 JITTERS, 04 05 LUCKY,
   06 07 THE BOSS, each a list of the engine's levels): LEVEL 2 is level2a (the car chase, ending on the crash into
   the gas station) then level2b (the gas station fight, restarted from the crash); for the player it is one level,
   02, never "2A / 2B"; the FLAMINGO MOTEL (JITTERS) is level 3.
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
-  2A is built by tools/build_level2a.py (level `chase` block: `van` the car's start (the level data's old name: the
-  chase's code calls THE BOSS's convertible `car`), cruise, lanes, end col, events by col); the drive is systems/Drive.js
-  (its parts in systems/drive/: rules, opening, camera, contacts, fronts, looks) with its numbers in data/chase.js (CHASE); the first time only it opens on him finishing his
-  cigarette in the standing car and flicking it out (level `chase.intro`, systems/LastDrag.js, CHASE.intro; SPACE / pad A
-  held skips it), then his gun, the boss's Uzi taken off the
-  passenger seat in a short beat (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
-  in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer, x0, x1)`), never a canvas.
+  2A is built by tools/build_level2a.py (level `chase` block: `van` the car's start, cruise, lanes, end col, events
+  by col; the code calls THE BOSS's convertible `drive.car`); the drive is systems/Drive.js (its parts in
+  systems/drive/: rules, opening, camera, contacts, fronts, looks) with its numbers in data/chase.js (CHASE); the
+  first time only it opens on him finishing his cigarette in the standing car and flicking it out (level
+  `chase.intro`, systems/LastDrag.js, CHASE.intro; SPACE / pad A held skips it), then his gun, the boss's Uzi taken
+  off the passenger seat in a short beat (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than
+  CHUNKS.whole tiles is drawn in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer,
+  x0, x1)`), never a canvas.
   2A's toll (docs/LEVEL2.md segment 2): systems/Toll.js + CHASE.toll, the level's `chase.toll` (gates lane by lane:
   `gate_arm_wood` torn at its `cost`, `gate_steel` lasting); a lane's signal (lane_signal_go / _stop) always
   matches its gate, and at least one wooden lane is not his (tests/toll.test.mjs).
   2A's street is built section by section (the table in docs/LEVEL2.md: parking north / on our side / none, two
   junctions under traffic lights, the bridge, the works, the bus stop): NOTHING stands in its two lanes (builder
-  `check_lanes`); its kerbs, markings and covers are floor paint (level `floor`, ROAD_PAINT in generate_assets.py),
-  laid from the tiles (`lay_kerbs`); lamps that take turns are systems/Signals.js + data/signals.js (prop `signal`,
-  `lamps`, option `phase`). A NEW PROP'S SPRITE MUST BE LISTED in engine/Assets.js (and FINE_PROPS): unlisted, it
-  is drawn as a bin (tests/road.test.mjs checks 2A's and the lab's).
+  `check_lanes`); its kerbs, markings and covers are floor paint (level `floor`, tools/sprites/road.py), laid from
+  the tiles (`lay_kerbs`); lamps that take turns are systems/Signals.js + data/signals.js (prop `signal`, `lamps`,
+  option `phase`). A new prop's sprite: see Sprites under Architecture (tests/road.test.mjs checks 2A's and the lab's).
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
 - Throwing (data/feel.js `THROW`): right click / LB held winds the throw up (the arm drawn back, a dotted mark on the
   floor, AimArt `drawThrow`; LOCK pulls it onto its man), let go it flies, a tap is the quick throw; a full one plants
   a blade, and kills with anything else, a club breaking on him (WeaponItem.shatter, fx/Breakage.js), a gun staying
-  whole (the user's call); a hit that floors
-  or kills has its beat (systems/ThrowBeat.js: hit-stop, slow motion, camera punch-in).
+  whole (user); a hit that floors or kills has its beat (systems/ThrowBeat.js: hit-stop, slow motion, camera punch-in).
 - Melee weapons are data (`swing`, `heft`, `material`, `thrust`, `snaps`, `finisher`, `wear`, `breaks`): never test
   `=== WEAPONS.bat`. They wear out in BLOWS (`wear`, data/weapons.js `WEAR`: a man 1, a thing 0.25, a whiff 0) and
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
   guard up close with free hands snatches his gun (`SNATCH` in data/feel.js).
-- Human shield (the user's design: systems/Shield.js rules, `SHIELD` in data/feel.js, Player.startShield /
+- Human shield (user's design: systems/Shield.js rules, `SHIELD` in data/feel.js, Player.startShield /
   updateShield in entities/player/Shield.js): E / pad X behind a STANDING guard only (never one down) with empty hands or a one-handed weapon
   (`oneHanded`) takes him in a choke hold (CharacterAnim `drawPair`, entities/anim/Shield.js: the two painted as one pair in layers, the arm
   round his neck, numbers `SHIELD.pose`; he is carried at the pair's speed so his legs walk it: never put there with
@@ -159,9 +159,8 @@
   ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
 - Kill cam (systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, its lens `POST.killcam`): a zoom punch-in, slow motion that drops and snaps back, hit-stops on his violent kills, finishers, long chains and their end; a plain kill gets nothing; never at the wheel or in a staged shot; `?killcam=off` to compare; lab station 28.
 - At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
-- Lived-in rooms (level 1's interiors, 2026-11-19; the same care on every new level): each room is full of ITS things
-  (tools/generate_assets.py "the rooms of level 1": INTERIOR_PROPS, listed in engine/Assets.js INTERIOR_PROPS and
-  levelkit SIZES / ON_WALL), all against a wall or in a corner, never on a way the guards use, a doorway, a
+- Lived-in rooms (level 1's interiors; the same care on every new level): each room is full of ITS things
+  (tools/sprites/interiors.py; levelkit ON_WALL), all against a wall or in a corner, never on a way the guards use, a doorway, a
   window's foot or the getaway's lane. Their floors' grime is laid mark by mark by the builder, each where it has a
   reason to be (`lv.grime_at`, `lv.grime_to` for a trail; FloorWear kinds `mould`, `dust`, `drips`, `rust`,
   `prints`, `runoff` beside the older ones and the flat's `grease`, `damp`, `leak`...), appended after the older marks (the rect ones share one random stream).
@@ -188,7 +187,7 @@
   E at its tail); the player starts on the ground and gets up (level `intro`), the first time with a bottle of rum,
   the camera pushed in on him (systems/Opening.js, SHOTS `swig*`).
 - Four ways in on foot (front door, gate, the gap, the liquor store: in by its door and up its own `ladder` to the
-  roof, the only way up (no ladder on the street: the user's call); down by a `parapet`: ONE WAY, prop `down`, nobody
+  roof, the only way up (no ladder on the street: user); down by a `parapet`: ONE WAY, prop `down`, nobody
   gets up over it from the ground, him or a guard, Cover.findVault) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
 - Guards have the house's keys (`World.pathForGuard`, `Door.unlatch`): never lock a door without checking they still
   get out (the QA robot reports `guard-stuck`).
@@ -200,7 +199,7 @@
   `gun`, drawn by the car: not pickable in level 1, it is level 2A's gun). It cannot be destroyed (`armoured`). The car is 5.4 m
   in a 4 m lot: its row and the first bend are the only ones that clear the walls (tests/getaway.test.mjs drives the
   whole body down the route): check it in the browser after touching the route; the lab's station 20 replays it. It is skipped
-  only by HOLDING SPACE / pad A, like a comic page (a stray key or click as he reaches the car skipped it).
+  only by HOLDING SPACE / pad A, like a comic page.
 - The street is laid with 2A's kit (floor paint in level columns through the builder's `drawn()`: bays, LOADING, hatched
   keep-clear, the zebra crossing from the bar's door): nothing with a body in the two lanes, on the patrol's beat (row
   22, cols 16-26) or where the getaway comes out (tests/street1.test.mjs); two flocks of pigeons, no more.
@@ -221,7 +220,7 @@
   at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
-  match, `OPENING`), hints that are a key and its action on its object, never advice (the user's call: no GET BEHIND HIM /
+  match, `OPENING`), hints that are a key and its action on its object, never advice (user: no GET BEHIND HIM /
   GET OUT; where to go is said by the rooms, the fire, the camera, the way out marked on the floor), and lessons
   (`BEAT`, `LESSONS` by hint id, `pace`): a lesson is a SLOW MOTION that starts exactly when its action is due (its
   trigger, Tutorial.js `DUE`: closing on the table within a metre for VAULT, behind the man in reach for the
@@ -230,11 +229,11 @@
   hand always his, once a lesson (`Game.taught`), the camera's shots (`SHOTS`, systems/Direction.js,
   `Camera.scale`), the gas bottle going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
-  while). Petrol lies ONLY where they poured it (the user's call): the living room's lane, the hall, a last splash
+  while). Petrol lies ONLY where they poured it (user): the living room's lane, the hall, a last splash
   under the front door, the can dropped where the pouring began; none in the bedroom, the kitchen or down the
   corridor: beyond its trails the fire spreads on what burns. From the back hall on THE FIRE FOLLOWS HIM (level
   `tutorial.chase`: path, zones, start; `FIRE.chase`: it runs when far behind, paces, then creeps: always in the
-  picture behind him, on him only if he stops for good; no `hold` there any more) as far as the fire door and the
+  picture behind him, on him only if he stops for good; no `hold` there) as far as the fire door and the
   GAS BOTTLE standing by it (prop `propane`, lab station 35: kept for the end, `prop.staged`: no round or fire sets
   it off before), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
@@ -252,14 +251,14 @@
   `windowBlast`, SHOTS `leap*`): time all but stopped and a whole-zoom punch-in while he is in the air, the window
   going up behind him (glass and fire thrown after him), his roll held, then snapped back before the black; the view
   stays inside the map (he lands off-centre, never the void), no HUD, hint or exit mark during it; no street lamp in the alley he lands in.
-  The flat's dressing (2026-11-19: FLAT_PROPS / FLAT_PAINT / FLAT_CLUTTER in generate_assets.py, the wear kinds `damp`,
+  The flat's dressing (tools/sprites/flat.py, the wear kinds `damp`,
   `flakes`, `grease`, `leak`, `threadbare`, lab station 34): what lies on a floor is PAINT (no body), a piece with a
   body goes in a corner, never in the lane, a doorway, a spawn or the robot's way (tests/flat.test.mjs holds them);
-  a paint that burns is listed in FIRE.paint (the mattress as the bed was); a spill never across a petrol trail.
+  a paint that burns is listed in FIRE.paint (the mattress); a spill never across a petrol trail.
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending; a page is skipped by holding
   SPACE / pad A, never a stray key or click: Hold.js, `SKIP`), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
-- Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
+- Title (user: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist` (flow/States.js): the targets' cards, the X
   drawn by a marker once; the board pinned by hand and read as the story goes: his flat at the left, the four cards
@@ -280,7 +279,7 @@
   ink with his sign: `TARGETS`, the run's time and kills). The chosen item is on a pink tab out of the screen's edge
   (the title's slab): it slides in when the choice moves (`Pick`, `PICK`), a confirm presses it bone for a beat
   before its action (ESC / R stay instant). Its OPTIONS are the title's screen, untouched.
-- Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
+- Comic art direction (user): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
   signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as
   spikes; repetition tells the story; caricature over realism. The boss's three men are caricatures with a name and
@@ -289,11 +288,11 @@
 - The QA robot plays the tutorial with `npm run qa -- --level tutorial` (add `--god` to reach the window).
 
 ## Run / test
-- EVERY NEW FEATURE GETS A STATION IN THE LAB (the user's rule): tools/build_lab.py (`?level=lab`), its floor stencil
-  numbered in reading order (LAB_LABELS in tools/generate_assets.py), passive dummies / props / weapons set up so the
+- EVERY NEW FEATURE GETS A STATION IN THE LAB (user): tools/build_lab.py (`?level=lab`), its floor stencil
+  numbered in reading order (LAB_LABELS in tools/sprites/lab_labels.py), passive dummies / props / weapons set up so the
   user can try it at once. A brief for a new gameplay, AI, physics or animation feature always asks for its station.
 - index.html starts the game through a service worker (sw.js) that fetches every file fresh (mixed cached modules
-  gave "does not provide an export named ..."). If it comes back: Ctrl+Shift+R once.
+  break the imports). If it comes back: Ctrl+Shift+R once.
 - `npm run play` (tools/play.mjs, port 8100): serves the LAST COMMIT. This is what the user plays while agents edit
   the working tree: tell him to use it, and commit finished work so he sees it.
 - `npm start` (tools/serve.mjs: first free port from 8000, no browser cache), then the address it prints.
@@ -311,7 +310,7 @@
   debug keys, `window.game` and the URL switches (`?level=`, `?killcam=`, `?interp=`, `?post=`) off unless `?dev=1`
   (`devMode`, `devParam`); the QA robot and tools/shot.mjs need it false. A run where a sandbox cheat was used is never a record.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off (dev only, no option). The aim cue is LOCK (the user's pick; data/aim.js `AIM.lock`, render/AimArt.js, no style to choose; lab station 23 AIM; its mark on the man: the corner ticks, `AIM.lock.corners`; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`), F8 perf overlay (OFF / COMPACT / FULL: frame, CPU per section, GPU, memory by owner, world
+  times), F6 lens on / off (dev only, no option). The aim cue is LOCK (user; data/aim.js `AIM.lock`, render/AimArt.js, no style to choose; lab station 23 AIM; its mark on the man: the corner ticks, `AIM.lock.corners`; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`), F8 perf overlay (OFF / COMPACT / FULL: frame, CPU per section, GPU, memory by owner, world
   counts; systems/Perf.js, ui/PerfOverlay.js, engine/Profiler.js `PROF` guarded by `PROF.on`; `game.perf.snapshot()`).
   `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node
@@ -355,7 +354,11 @@
   `CHASE.pursuit.attack`, `ram`, `block`; an event's `style`: gunner / rammer / blocker). No speedometer on the HUD.
   What is laid on a car but drawn elsewhere (its lamps' light, their glow) is placed from `Vehicle.shell()` (the
   pose it is DRAWN at), never from its body: else the beams trail the sprite.
-- Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
+- Sprites come from `python tools/generate_assets.py` (deterministic, size asserts), painted by the kits of
+  tools/sprites/ (one module a family). A NEW SPRITE IS ONE `SPRITES` LINE in its kit (size, flags `fine` / `req` /
+  `floor` / `hung` / `stock`..., a prop's box: tools/sprites/registry.py); what the game loads (src/engine/spritelist.js)
+  and levelkit's tables (tools/sprite_tables.py) are generated from them, never edited: a sprite in no list is drawn
+  as a bin. Optional sprites via `spriteOpt()`.
 - level1.js, level2a.js, lab.js and tutorial.js are generated: edit `tools/build_level1.py` / `build_level2a.py` /
   `build_lab.py` / `build_tutorial.py`
   (tools/levelkit.py checks spawns, furniture overlaps and rooftop pieces) and run them; never hand-edit the output.
@@ -364,7 +367,7 @@
 ## Skills (.claude/skills/<name>/SKILL.md)
 - `check`: before any commit (tests, ASCII diff, hand-edited generated files, QA when gameplay moved).
 - `qa`: make the robot play a level, read the report, compare it with the previous run of that level.
-- `regen`: after touching tools/generate_assets.py or a level builder (regenerate, test, one screenshot).
+- `regen`: after touching a sprite kit (tools/sprites/) or a level builder (regenerate, test, one screenshot).
 - `brief`: before delegating: write the self-contained brief and pick the subagent's model.
 - `bugfix`: fixing a bug: reproduce, failing test first, fix, then `check`.
 - `audio-import`: bringing a bought sound or music pack in (licence, build, credits, listen).

@@ -184,7 +184,7 @@ export const PROPS = {
     light: { r: 90, color: '#ff3a5a', intensity: 0.6, flicker: 'buzz', y: 3 } },
   // the VIP room's low table: smoked glass in a chrome rim on one foot
   cocktail_table: { static: true, vault: true, material: 'metal', r: 12, hp: 8, chips: '#2a2030', sparks: true, sound: 'metal' },
-  // ---- level 1's interiors (tools/generate_assets.py "the rooms of level 1"): what a shop, a laundromat, a bar's back
+  // ---- level 1's interiors (tools/sprites/interiors.py): what a shop, a laundromat, a bar's back
   // and an office are full of. seep = it drips, fumes or slops over (data/seeps.js, systems/Seeps.js).
   // The liquor store: a gondola of groceries, wine lying in its rack, beer by the case, the lottery's stand
   shop_shelf: { static: true, material: 'metal', w: 40, h: 11, hp: 10, chips: '#c8ccd4', sound: 'metal', blocksPath: true },
@@ -299,7 +299,7 @@ export const PROPS = {
   mailbox: { static: true, material: 'metal', w: 13, h: 13, hp: 6, chips: '#2a6a4a', sound: 'metal' },
   neon_sign_diner: { mount: 'wall', hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#ffa62a', sparks: true, glass: true, sound: 'glass',
     light: { r: 130, color: '#ffb04a', intensity: 0.9, flicker: 'buzz' } },
-  // ---- level 2A's street (tools/build_level2a.py; sprites: "the road of level 2A" in tools/generate_assets.py).
+  // ---- level 2A's street (tools/build_level2a.py; sprites: tools/sprites/road.py).
   // signal = its lamps take turns (data/signals.js, systems/Signals.js): one flag a light of `light`, in order;
   // lamps = each light's slices [x, width] of the emissive map (its pixels), drawn only while it is lit.
   // Traffic lights on a mast arm: the pole (bolted: torn off by a car as a streetlight is) at the sprite's centre, the
@@ -335,7 +335,7 @@ export const PROPS = {
   viaduct: { mount: 'structure', hung: true, lasting: true, overhead: true, static: true, material: 'metal', w: 144, h: 320, hp: 99, chips: '#3c4350', sound: 'metal' },
   gantry_sign: { mount: 'billboard', hung: true, lasting: true, overhead: true, static: true, material: 'metal', w: 306, h: 36, hp: 99, chips: '#1c6a4c', sound: 'metal',
     light: [{ r: 70, color: '#fff0c8', intensity: 0.4, x: -65, y: 22 }, { r: 70, color: '#fff0c8', intensity: 0.4, x: 65, y: 22 }] },
-  // ---- level 2A, part two (docs/LEVEL2.md segment 2; sprites: "level 2A, part two" in tools/generate_assets.py): the
+  // ---- level 2A, part two (docs/LEVEL2.md segment 2; sprites: tools/sprites/ramp_toll.py): the
   // works that close the street and the detour, the side street, the on-ramp, the toll. What a car goes through is
   // light and loose (flung: Drive.fling) or bolted and not `lasting` (torn off at once); what is `lasting` never gives
   // (nose-on into it is the crash; along it the car scrapes).
@@ -415,7 +415,7 @@ export const PROPS = {
   lane_signal_stop: { mount: 'pole', overhead: true, height: 0.02, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#26262e', sparks: true, glass: true, sound: 'metal',
     light: { r: 44, color: '#ff2c2c', intensity: 0.5 } },
   sign_exact_change: { mount: 'pole', overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8b828', sound: 'metal', bends: 6 },
-  // ART DECO 1985 (tools/generate_assets.py DECO_PROPS): generic dressing for any road of Sunset Bay. Fan palms (their
+  // ART DECO 1985 (tools/sprites/deco.py): generic dressing for any road of Sunset Bay. Fan palms (their
   // crown hung over, the trunk the body), hibiscus bushes and art deco planters a car goes through, a lamp post with
   // its frosted globe; a small art deco office and a state trooper's car parked (nothing gives: keep them off a road's
   // drivable width), a motel's billboard high on its legs (out of reach)
@@ -434,7 +434,7 @@ export const PROPS = {
     light: { r: 110, color: '#38f0dc', intensity: 0.55, y: -42, flicker: 'buzz' } },
   billboard_motel: { mount: 'billboard', hung: true, lasting: true, overhead: true, static: true, material: 'wood', w: 376, h: 104, hp: 99, chips: '#ff4aa6', sound: 'wood',
     light: [{ r: 130, color: '#ff8ac8', intensity: 0.45, x: -90, y: -20, flicker: 'buzz' }, { r: 130, color: '#ffe8c8', intensity: 0.45, x: 90, y: -20 }] },
-  // ---- Miami, 1985 (generic dressing; sprites: "Miami, 1985" in tools/generate_assets.py). Royal palms (the pale
+  // ---- Miami, 1985 (generic dressing; sprites: tools/sprites/miami.py). Royal palms (the pale
   // trunk is the pole, the crown hung high), hibiscus hedges, pastel stucco canopies along a front (hung: a neon tube
   // along the lip, its light under it), awnings in pastel cloth, pole signs and wall neon, billboards on their
   // catwalks (hung, lit by their four lamps), a car lot (its light poles, pennants), and the freeway's grime: a burnt
@@ -485,7 +485,7 @@ export const PROPS = {
   chainlink_hole: { static: true, material: 'mesh', w: 128, h: 4, hp: 12, chips: '#9ea4ae', sound: 'metal' },
   guardrail_dented: { static: true, lasting: true, material: 'metal', w: 128, h: 6, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
   call_box: { mount: 'pole', overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8c020', sound: 'metal', bends: 6 },
-  // ---- the suburb going to Miami (generic dressing; sprites: "the suburb going to Miami" in tools/generate_assets.py).
+  // ---- the suburb going to Miami (generic dressing; sprites: tools/sprites/suburb.py).
   // Palms (a sabal's rough trunk and a young royal's are the pole, a leaning coconut palm's trunk is painted), the
   // suburb's furniture (bus benches with an ad, a pay phone, news boxes, mailboxes, a strip's pole sign, a yard's
   // fence, low stucco walls, a carport hung over a drive, an aerial on a roof's edge, plastic flamingos, oleanders),
@@ -555,8 +555,8 @@ export const PROPS = {
   // strung across the street
   string_lights: { mount: 'ceiling', fixture: true, hung: true, overhead: true, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
-  // ---- the flat of the prologue (tools/build_tutorial.py; sprites: "The flat of the prologue" in
-  // tools/generate_assets.py): his few things, light enough to be kicked about, and what is fixed to its walls
+  // ---- the flat of the prologue (tools/build_tutorial.py; sprites:
+  // tools/sprites/flat.py): his few things, light enough to be kicked about, and what is fixed to its walls
   nightstand: { material: 'wood', w: 14, h: 10, hp: 5, kg: 12, mu: 0.5, chips: '#6a4a30', sound: 'wood' },
   chair_jacket: { material: 'wood', w: 14, h: 14, hp: 6, kg: 6, mu: 0.42, chips: '#7a4a2a', sound: 'wood' },
   duffel_bag: { material: 'fabric', w: 20, h: 10, hp: 4, kg: 11, mu: 0.6, chips: '#5a6238', sound: 'wood' },
@@ -576,7 +576,7 @@ export const PROPS = {
   propane: { static: true, material: 'metal', r: 8, hp: 6, chips: '#d0402a', explosive: true, blast: 118, sound: 'metal', blocksPath: true,
     gas: { fuse: [1.4, 2.2] } },
   calendar: { mount: 'wall', static: true, material: 'fabric', w: 7, h: 3, hp: 1, chips: '#ece8dc', sound: 'wood' },
-  // ---- MIAMI, 1986 (tools/generate_assets.py ALLEY_PROPS / ALLEY_NEON): the city's own, generic, first in level 2A's
+  // ---- MIAMI, 1986 (tools/sprites/alley.py): the city's own, generic, first in level 2A's
   // alley. What a car ploughs through: crates and boxes, a fruit cart, a news rack, a scooter, a domino table, a
   // wheeled dumpster (loose, heavy: a bend's smash throws it, CHASE.bend.smash), lit box signs; on a wall face: stucco
   // trims, an AC unit dripping, graffiti in neon paint, two neon signs; overhead: washing on its lines (torn down by a

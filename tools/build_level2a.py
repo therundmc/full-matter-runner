@@ -1055,7 +1055,7 @@ for (kind, c, r, deg) in (('road_crack_a', 506.0, 46.4, 0), ('road_patch_b', 519
     lv.paint(kind, c, r, deg)
 
 # ---------------------------------------------------------------- leg 1 dressed: Sunset Bay, 1985
-# (docs/LEVEL2.md "Segment 1, part two"; sprites "Miami, 1985" in tools/generate_assets.py.) The picture at the wheel
+# (docs/LEVEL2.md "Segment 1, part two"; sprites in tools/sprites/miami.py.) The picture at the wheel
 # runs from the freeway's near lane to the fronts' foot: what tells the place is on the bank and on the sidewalk.
 # NORTH, the freeway's bank: a camp out from under the bridge (a tarp, a mattress, a fire in a drum, a cart), a
 # chain-link fence along the bank's foot with a hole cut in it by the camp, royal palms, the sun-tan billboard on its
@@ -1163,7 +1163,7 @@ for c in (M0 + 1.5 + 3 * k for k in range(7)):
 
 # ---------------------------------------------------------------- THE TOLL (cols 560 on; docs/LEVEL2.md segment 2)
 # The four lanes side by side the merge leaves (the freeway's two, leg 1's two) spread to the plaza's grid
-# under its lit roof (four lanes of 3 m between five islands of 1.5 m: TOLL_LANES in tools/generate_assets.py), each
+# under its lit roof (four lanes of 3 m between five islands of 1.5 m: TOLL_LANES in tools/sprites/ramp_toll.py), each
 # lane shut at the islands' end by a gate: a wooden arm (it flies: a small cost) or a steel boom (nose-on, the crash),
 # told by its lane's signal over the island (a green arrow, a red X), the gates themselves, and by the chase (systems/
 # Toll.js: bone arrows down the wooden lanes, red chevrons at the edge for the steel ones, 1.5 s out). Past the
@@ -1301,7 +1301,7 @@ for (kind, c, r) in (('sign_exact_change', 562.6, 51.0), ('sign_speed_55', 568.6
     lv.prop(kind, c, r)
 
 lv.area('the toll: Sunset Bay, 1985 (palms, hibiscus, the deco office and its trooper, the billboards, the wet)')
-# DECO_PROPS (tools/generate_assets.py; the ramp's MIAMI_PROPS too). What is seen of the plaza is its road (the view
+# tools/sprites/deco.py (the ramp's: miami.py too). What is seen of the plaza is its road (the view
 # is 11 m high): the dressing is on it and at its edges. An art deco planter in flower at the end of each island past
 # the gates (in the plaza's leg: between its lanes' bands), fan palms on the plaza's wide shoulders and along the
 # verges with hibiscus at their feet, deco lamps by the roof, the toll office on the south shoulder before the islands

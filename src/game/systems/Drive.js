@@ -16,7 +16,7 @@
 // The rest is in systems/drive/, each part working on this drive's state:
 //   rules.js     pure: the speeds, the wheel, the nose's spring, the slide and the grip, the springs, a hit's sums
 //   opening.js   the gun he sets off with, the opening on his cigarette (systems/LastDrag.js), the seat's gun's beat
-//   camera.js    the camera at the wheel (frame, lock: Game's), its offsets through a bend and between two legs
+//   camera.js    the camera at the wheel (frame, lock: flow/CameraDirector), its offsets through a bend and two legs
 //   contacts.js  what it runs into (contact, called by the physics; react after it), the crash
 //   fronts.js    the building fronts it is held off, never stalled for good (unstick, boxed)
 //   looks.js     what its speed does around it (smoke, rubber, spray, wind, the grind), the body on its springs
@@ -132,8 +132,8 @@ export default class Drive {
   // 0..1: how much of the HUD shows: none during the opening, faded in over CHASE.intro.hud s as it pulls away
   get hud() { return this.standing ? 0 : clamp(this.hudT / this.C.intro.hud, 0, 1); }
   get kmh() { return kmh(this.v, this.C); }
-  // world px of height the picture shows while he is at the wheel (Game.setView): his leg's (in a bend: the one it
-  // left, the cut to the next leg's comes out of it)
+  // world px of height the picture shows while he is at the wheel (render/FrameRenderer setView): his leg's (in a
+  // bend: the one it left, the cut to the next leg's comes out of it)
   get view() { return this.route.legs[this.bend ? this.bend.b.from : this.legI].view ?? this.C.camera.view; }
   // the leg he is on (systems/Route.js legsOf: lanes, mid, cruise, view, kerbs, across)
   get leg() { return this.route.legs[this.legI]; }
@@ -152,8 +152,8 @@ export default class Drive {
     return row === null ? null : row * TILE;
   }
 
-  // the camera's shot while the opening or the grab plays (Game.stagedShot: drive/opening.js), where the view is drawn
-  // from for a point it looks at, and where it looks (Game.updateCamera: drive/camera.js)
+  // the camera's shot while the opening or the grab plays (flow/CameraDirector stagedShot: drive/opening.js), where
+  // the view is drawn from for a point it looks at, and where it looks (CameraDirector update: drive/camera.js)
   shot() { return shot(this); }
   lock(at, z = 1) { return lock(this, at, z); }
   frame(viewW, z = 1) { return frame(this, viewW, z); }

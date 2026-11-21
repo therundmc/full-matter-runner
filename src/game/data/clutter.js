@@ -1,5 +1,5 @@
 // What stands on the furniture (systems/Clutter.js, drawn by render/ClutterArt.js): glasses, bottles, ashtrays, the
-// till, cards, banknotes... small sprites (clutter/<sprite>, painted fine by tools/generate_assets.py) laid on a prop
+// till, cards, banknotes... small sprites (clutter/<sprite>, painted fine by tools/sprites/clutter.py) laid on a prop
 // by the level (prop option `clutter: '<set>'`). They have no body: nobody bumps into them, they ride on their prop
 // and go flying with it. A round through them, a blow beside them, the prop tipped over or falling apart: they are
 // thrown off (real loose pieces, entities/Debris.js), a glass shot where it stands bursts there.

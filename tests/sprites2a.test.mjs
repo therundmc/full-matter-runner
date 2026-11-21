@@ -1,6 +1,6 @@
-// Level 2A's sprites, second pass (tools/generate_assets.py; docs/LEVEL2.md): a house number a mailbox, the houses'
-// own windows and doors, the stucco wall tops in many draws, royal palms of a believable crown, the rails' ends either
-// side of the road, a one-arm lamp where only the road wants light.
+// Level 2A's sprites, second pass (tools/sprites/suburb.py, ramp_toll.py, palms.py; docs/LEVEL2.md): a house
+// number a mailbox, the houses' own windows and doors, the stucco wall tops in many draws, royal palms of a
+// believable crown, the rails' ends either side of the road, a one-arm lamp where only the road wants light.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';

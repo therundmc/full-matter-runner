@@ -27,7 +27,7 @@
 //   'bend'  steel: it bends into `bends`, a worse one;
 //   'toss'  bent past use: he looks at it a beat and throws it away.
 // parts: the sprites of its two pieces once broken, [far end, the end in the hand], cut from its own drawing
-// (tools/generate_assets.py weapons()).
+// (tools/sprites/weapons.py weapons()).
 // kg: what it weighs on the floor or in flight (WeaponItem).
 // gore: chance multiplier for dismemberment. wound: how the victim bleeds (data/wounds.js). noise: alert radius (0 = silent).
 // pen: penetration energy of one round (systems/Penetration.js: plaster wall ~27, brick ~67, a body 14).

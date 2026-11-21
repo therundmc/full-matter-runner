@@ -725,12 +725,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
     pixel at a time by render/BoardArt.js), its frame never moving; a pole's or a ceiling's thing alone has parallax.
   Only small objects are movable; everything else is `static` (bolted).
   - Sprite space is in world px whatever the sprite's density: the furniture, the street's dressing and the vehicles
-    are painted at twice the world's density (engine/Assets.js `density`, tools/generate_assets.py FINE_PROPS), so
+    are painted at twice the world's density (engine/Assets.js `density`: the `fine` flag of
+    their kit's SPRITES, tools/sprites/registry.py), so
     `Prop.W/H` are `sw/sh(img)`, and a damage canvas (DamageArt `canvas(w, h, k)`) keeps the sprite's pixels, carries
     its `k` and has its context scaled: marks, cuts and pieces are all given in world px; `put()` draws any image at
     its world size. A Vehicle's canvas works the same way (its glass pixels found at the sprite's density).
 - Sprite density: the people, the weapons, the furniture, the street's dressing, the vehicles and the floor tiles are
-  painted at twice the world's pixel density, plain pixel art (`FINE` in tools/generate_assets.py, whose `Cv` is
+  painted at twice the world's pixel density, plain pixel art (`FINE` in tools/sprites/core.py, whose `Cv` is
   addressed in world px and reaches the single pixels of such a canvas); the engine draws them at half size
   (`img.k`). The floor canvas (MapRenderer) is that much larger, its context scaled, and only the part in view is
   drawn. The wall tops, the roofs, the lamps and the neon signs stay at the world's density.
@@ -1268,7 +1269,7 @@ The big brick masses around a level are the neighbouring buildings seen from abo
 ## Doors and windows
 
 `Door` = a leaf of a kind, one per place (data/doors.js `DOORS.kinds`, level option `doors: { 'col,row': { kind } }`,
-levelkit `door()`): its skin (tools/generate_assets.py DOOR_SKINS, at FINE density: the emergency exit's grey steel
+levelkit `door()`): its skin (tools/sprites/doors.py, at FINE density: the emergency exit's grey steel
 and red push bar, the bar's dark wood and porthole, the toilets' swinging louvres, STAFF ONLY, the boss's leather,
 the gaming room's green, a flat's, the corridor's wired glass, a shop's glass), its weight (a flat's 20 kg to the
 fire door's 65), its jambs, its sounds, a closer or not, glass that breaks (`glass`, `broken`), an EXIT sign (`exit`,

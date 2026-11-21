@@ -14,7 +14,7 @@ import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/B
 
 const { Bodies, Body, Sleeping, Query } = Matter;
 
-// Sprite-space layout of each model (real size, facing +x; must match tools/generate_assets.py).
+// Sprite-space layout of each model (real size, facing +x; must match tools/sprites/vehicles.py).
 // Regions: [x0, x1, y0, y1]; hood: [x0, x1]; wheels: tyre centres (they stick out a little past the sides).
 // Sprites: car (sedan) and pursuer 140x58, car2 (coupe) 134x56, van 160x64, convertible 172x64; the hitbox is the
 // sprite minus 2 px all round.

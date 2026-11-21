@@ -2,7 +2,7 @@
 // gesture (a cigar and its ember, a bottle pouring, a glass slid along the counter, a magazine on his knee, a card
 // flying round the table...), drawn over him in his torso's frame (+x ahead, +y his right). The pastimes he shares
 // with the customers are drawn by render/PastimeArt.js. Small objects lying about (the ashtray on the boss's desk)
-// come from tools/generate_assets.py (`items/`), drawn in code when the sprite is missing.
+// come from tools/sprites/items.py (`items/`), drawn in code when the sprite is missing.
 import { PALETTE } from '../Config.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import { lerp, smooth } from '../../engine/math.js';
@@ -302,7 +302,7 @@ export function drawMouth(ctx, A) {
   ctx.restore();
 }
 
-// something lying still in the world at (x, y), angle a: a sprite of tools/generate_assets.py `items/`
+// something lying still in the world at (x, y), angle a: a sprite of tools/sprites/items.py `items/`
 export function drawItem(ctx, name, x, y, a) {
   const img = spriteOpt(`items/${name}`);
   if (!img) return;

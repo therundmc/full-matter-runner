@@ -1,4 +1,4 @@
-// The camera at the wheel (systems/Drive.js d: its state; Game.updateCamera asks frame, the staged shots lock): the
+// The camera at the wheel (systems/Drive.js d: its state; flow/CameraDirector asks frame, the staged shots lock): the
 // picture drawn 1:1 and held on whole px (engine/Camera.js `pixel`), locked on the car along the road a fixed share
 // of the view from the left (CHASE.camera.at, `surge` when slowed), on the street's middle across (the leg's `mid`,
 // `track`: eased between two legs' framings, acrossStep), and through a bend an offset looking ahead along its line

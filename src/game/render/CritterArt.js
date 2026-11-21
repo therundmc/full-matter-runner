@@ -1,6 +1,6 @@
 // Draws the street fauna of systems/Critters.js: rats, the cat and pigeons on the ground (and the dead), flies;
 // pigeons on the wing with their shadow, over the walls; moths round the lamps. The animals are sprites painted at
-// the people's density (tools/generate_assets.py `critters`), a frame for each step of their gaits; the insects are
+// the people's density (tools/sprites/critters.py), a frame for each step of their gaits; the insects are
 // specks drawn from the clock.
 import { CRITTERS as C } from '../Config.js';
 import { sprite, silhouette } from '../../engine/Assets.js';

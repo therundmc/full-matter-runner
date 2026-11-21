@@ -35,11 +35,11 @@ export const BOARD = {
 // (never repainted)
 export const CELL = { PAPER: 0, BARE: 1, GONE: 2, LOCK: 9 };
 
-// How each one is laid out in its sprite (tools/generate_assets.py billboard / billboard_ad / p_gantry_sign /
-// p_sign_gantry): size, the faces (rects [x0, y0, x1, y1]), the lettering (rect), the lamps (rect of its head, the
-// light of the def it feeds: off once all its lamps are out). layers: its `_bare` and `_frame` sprites to tear down
-// to (none: holes only, no stages). look: the hole's core, its ragged lip (the paper's back, or the plate's bared
-// steel), the lens of a lamp shot out.
+// How each one is laid out in its sprite (tools/sprites/billboards.py billboard / billboard_ad, road.py
+// p_gantry_sign, miami.py p_sign_gantry): size, the faces (rects [x0, y0, x1, y1]), the lettering (rect), the lamps
+// (rect of its head, the light of the def it feeds: off once all its lamps are out). layers: its `_bare` and `_frame`
+// sprites to tear down to (none: holes only, no stages). look: the hole's core, its ragged lip (the paper's back, or
+// the plate's bared steel), the lens of a lamp shot out.
 const PAPER = { core: '#140c18', lip: '#ece6d4', lens: '#2a2a32' };
 const PLATE = { core: '#0e1012', lip: '#c8d0cc', lens: '#2a2a32' };
 const LAMPS = (xs, y0, y1, w, lights) => xs.map((x, i) => ({ at: [x - w, y0, x + w, y1], light: lights[i] }));
