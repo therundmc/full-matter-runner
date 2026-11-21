@@ -1,4 +1,4 @@
-// Fittings up on the ceiling (prop def `high`): rounds, blows and what is thrown go under them (a round passing under
+// Fittings up on the ceiling (prop mount 'ceiling', data/mounts.js): rounds, blows and what is thrown go under them (a round passing under
 // shakes them a little), only a blast breaks them; what is on the walls (lamps, neons, the fuse box) breaks as anything.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,6 +16,7 @@ const { default: Player } = await load('game/entities/Player.js');
 const { traceBullet, brushFittings } = await load('game/systems/Ballistics.js');
 const { explode } = await load('game/systems/Explosions.js');
 const { PROPS } = await load('game/data/props.js');
+const { mountName } = await load('game/data/mounts.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 
 const FITTINGS = ['ceiling_lamp', 'pool_lamp', 'mirror_ball', 'ceiling_fan'];
@@ -57,13 +58,13 @@ function fire(w, x0 = 40, y = Y) {
 const struck = (w) => [...new Set(w.hits.map(([t]) => t))];
 const intact = (p) => !p.dead && !p.dying && p.hp === p.def.hp;
 
-test('high: what hangs from the ceiling is flagged, what is on the walls or meant to be shot is not', () => {
+test('high: what hangs from the ceiling is mounted on it, what is on the walls or meant to be shot is not', () => {
   for (const t of [...FITTINGS, 'string_lights']) {
-    assert.ok(PROPS[t].high, t);
+    assert.equal(mountName(PROPS[t]), 'ceiling', t);
   }
   for (const t of ['wall_lamp', 'tube_light', 'neon_tube_pink', 'neon_sign_open', 'neon_sign_bar', 'emergency_light', 'streetlight',
     'fuse_box', 'alarm_box', 'fire_alarm', 'extinguisher', 'pipe_steam', 'pipe_water', 'floor_lamp', 'table_lamp', 'curtain', 'beer_tap']) {
-    assert.ok(!PROPS[t].high, t);
+    assert.notEqual(mountName(PROPS[t]), 'ceiling', t);
   }
 });
 

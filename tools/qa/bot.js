@@ -1314,7 +1314,7 @@
         if (!p.hasGun) { M.over = true; return; }
         if (!M.q || M.q.dead || !w.props.includes(M.q)) {
           if ((M.targets = (M.targets || 0) + 1) > 3) { M.over = true; return; }
-          M.q = nearest(w.props.filter((q) => !q.dead && !q.def.lasting && !q.def.high && dist(q, p) > 50 && dist(q, p) < 230 && w.lineOfSight(p.x, p.y, q.x, q.y)), p);
+          M.q = nearest(w.props.filter((q) => !q.dead && !q.def.lasting && q.def.mount !== 'ceiling' && dist(q, p) > 50 && dist(q, p) < 230 && w.lineOfSight(p.x, p.y, q.x, q.y)), p);
           if (!M.q) { M.over = true; return; }
         }
         aimAt(inp, M.q.x, M.q.y);

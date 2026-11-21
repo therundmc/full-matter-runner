@@ -6,6 +6,7 @@ import { rand, chance, TAU } from '../../engine/math.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence } from './Destruction.js';
 import { occlusion } from './Ballistics.js';
+import { mountOf, SWING } from '../data/mounts.js';
 
 const { Body } = Matter;
 
@@ -71,9 +72,13 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
   }
   for (const p of world.props) {
     if (p.dead) continue;
-    const d = Math.hypot(p.x - x, p.y - y);
+    // by its mount (data/mounts.js): a structure takes nothing, a billboard's face its share (entities/Board.js)
+    const takes = mountOf(p.def).blasts;
+    if (takes === 'none') continue;
+    if (takes === 'face') { p.board.blast(x, y, R, (x1, y1) => occ(x1, y1, p)); continue; }
+    const d = Math.hypot(p.x - x, p.y - y), S = SWING.blast;
     // what hangs from the ceiling swings well beyond the reach of the damage
-    if (p.def.high && d < R * 3.5) p.recoil(Math.atan2(p.y - y, p.x - x), 2.2 * (1 - d / (R * 3.5)));
+    if (takes === 'swing' && d < R * S.far) p.recoil(Math.atan2(p.y - y, p.x - x), S.power * (1 - d / (R * S.far)));
     if (d > R * 2) continue;
     const f = occ(p.x, p.y, p);
     if (f <= 0) continue;

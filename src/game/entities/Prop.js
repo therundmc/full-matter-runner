@@ -17,6 +17,8 @@ import { MATERIALS } from '../data/materials.js';
 import { BLOW } from '../data/physics.js';
 import { ignite } from '../systems/Gas.js';
 import { tipOver } from '../systems/Tipping.js';
+import { mountOf, mountName, parallaxOf, SWING } from '../data/mounts.js';
+import Board from './Board.js';
 
 const { Bodies } = Matter;
 
@@ -26,7 +28,7 @@ const STAGES = [0.7, 0.45, 0.2];
 const ZONE_WEAR = { pellet: 0.6, bullet: 1, rifle: 1.4, graze: 0.4, blunt: 1.7, blast: 2.2, cut: 0.5, punch: 0.3, shrapnel: 0.3 };
 // penetration energy assumed when the caller does not give one
 const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 24, cut: 3, punch: 2, shrapnel: 3 };
-// what reaches a light fitting up high (def `high`)
+// what reaches a fitting up on a ceiling (mount 'ceiling': hits 'blast')
 const BLASTS = new Set(['blast', 'shrapnel']);
 // what holes a gas bottle or a stove (see gasHit)
 const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
@@ -75,6 +77,8 @@ export default class Prop {
     this.spilled = 0;
     this.rack = null;   // the bottles standing in plain sight (rec.rack), see bottles()
     this.doors = null;  // a cabinet's doors once they sprang open (rec.doors): [{ a, v, rest }], see openDoors()
+    // a billboard's face takes the rounds and the blasts itself (entities/Board.js); its frame, nothing
+    this.board = mountName(d) === 'billboard' ? new Board(this) : null;
     world.addBody(this.body);
   }
 
@@ -140,8 +144,9 @@ export default class Prop {
   // kind: see the header. info (bullets): { nx, ny } surface normal, energy left when it arrived,
   // exit: { x, y, energy } if the round went through, ricochet: it glanced off; (blades): swing direction.
   hit(damage, px, py, dirA, power = 0.6, kind = 'bullet', info = {}) {
-    const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
-    if (this.dead || this.dying || (d.high && !BLASTS.has(kind))) return; // up high: only a blast reaches it
+    const d = this.def, w = this.world, rec = this.rec, fx = rec.fx, takes = mountOf(d).hits;
+    // a structure takes nothing, ever (a billboard's face is its Board's); up on a ceiling: only a blast reaches it
+    if (this.dead || this.dying || takes === 'none' || (takes === 'blast' && !BLASTS.has(kind))) return;
     w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind, power });
     // a street bin goes over instead (systems/Tipping.js), sent along by the blow; it then lands on the can lying there
     const fell = d.tips && kind !== 'graze' && tipOver(this, dirA, power * 0.6);
@@ -298,14 +303,12 @@ export default class Prop {
     this.splash('exit', px, py, dirA, energy, {}, 'rifle');
   }
 
-  // little recoil of the struck object (bolted furniture just shudders)
-  // What swings on like a pendulum is only what truly hangs from a ceiling (`high`: lamps, the fan, the mirror ball,
-  // strings of bulbs); a structure that is hung only in the sense it has no body (a bridge, a gantry, a billboard, the
-  // toll's roof: `lasting`) takes a round or a blast without moving at all; anything else gives a stiff shudder.
+  // little recoil of the struck object, by its mount (data/mounts.js SWING): what hangs from a ceiling swings on like
+  // a pendulum, a structure never moves, anything else gives a stiff shudder (bolted harder than loose)
   recoil(dirA, power) {
-    const d = this.def;
-    if (d.hung && d.lasting && !d.high) { this.flash = 0.06; return; }
-    const k = this.kick, amt = clamp(power, 0.3, 2.5) * (d.high ? 60 : d.static || d.hung ? 40 : 20);
+    const d = this.def, S = SWING[mountOf(d).swing];
+    if (!S) return;
+    const k = this.kick, amt = clamp(power, 0.3, 2.5) * (d.static || d.hung ? S.kick : S.loose);
     k.vx += Math.cos(dirA) * amt; k.vy += Math.sin(dirA) * amt;
     k.vr += rand(-1, 1) * 0.6 * clamp(power, 0.3, 2) * (this.def.static ? 0.5 : 1);
     this.flash = 0.06;
@@ -321,8 +324,8 @@ export default class Prop {
   update(dt) {
     const k = this.kick;
     if (k.x || k.y || k.vx || k.vy || k.r || k.vr) {
-      // stiff damped spring back to rest; what hangs from the ceiling (`high`) swings on like a pendulum
-      const hung = this.def.high, ks = hung ? 45 : 700, cs = hung ? 1.1 : 24, kr = hung ? 60 : 500, cr = hung ? 2.5 : 20;
+      // a damped spring back to rest: stiff, or a pendulum for what hangs from a ceiling (data/mounts.js SWING)
+      const { ks, cs, kr, cr } = SWING[mountOf(this.def).swing] || SWING.shudder;
       k.vx += (-ks * k.x - cs * k.vx) * dt; k.vy += (-ks * k.y - cs * k.vy) * dt; k.vr += (-kr * k.r - cr * k.vr) * dt;
       k.x += k.vx * dt; k.y += k.vy * dt; k.r += k.vr * dt;
       if (Math.abs(k.x) + Math.abs(k.y) + Math.abs(k.vx) + Math.abs(k.vy) + Math.abs(k.r) * 50 + Math.abs(k.vr) < 0.02) {
@@ -967,9 +970,10 @@ export default class Prop {
   // canopies and lamp heads: above everyone, see-through when the player is under
   drawOverhead(ctx, player, cam) {
     const o = this.centre(), k = this.kick, d = this.def;
-    // parallax: what sits up high leans away from the centre of the view
-    this.ox = (o.x - cam.x) * (d.height || 0);
-    this.oy = (o.y - cam.y) * (d.height || 0);
+    // parallax: what sits up on a pole or a ceiling leans away from the centre of the view (data/mounts.js)
+    const lift = parallaxOf(d);
+    this.ox = (o.x - cam.x) * lift;
+    this.oy = (o.y - cam.y) * lift;
     const b = this.bend || { x: 0, y: 0 }; // a bent post keeps its lean
     const x = o.x + this.ox + k.x + b.x, y = o.y + this.oy + k.y + b.y, a = this.body.angle + this.sag + k.r + this.spun();
     if (d.pole) {

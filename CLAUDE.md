@@ -50,11 +50,11 @@
   (`player_tail_l` / `_r`, KINDS `coat`) swung by entities/Skirt.js (numbers `COAT` in data/feel.js: it lags his
   turns, opens with his speed, hangs as a short hem at rest), drawn by CharacterAnim `drawSkirt`; on the floor it is
   spread under him (`player_rag_skirt`, Ragdoll `skirt`). Cosmetic only: no body, no hit circle.
-- Parallax (prop `height`, Prop.js): only for things on a pole (palms, lamps, signs: the pole ties top to foot) and
-  hanging lights; a rigid structure fixed to the ground or a wall (bridge, gantry, the toll's roof, billboard, awning,
-  fire escape, washing line) has none, or it slides over its abutments like a lamp on a wire (tests/parallax.test.mjs).
-  Only what hangs from a ceiling (`high`: lamps, the fan, the mirror ball, bulb strings) swings when shot or blown;
-  a hung `lasting` structure never moves (Prop.recoil), anything else only shudders stiffly.
+- A prop's `mount` (data/mounts.js MOUNTS, read there only; every overhead / hung prop names one: floor, wall, inset,
+  pole, ceiling, awning, structure, billboard) gives its parallax (only pole and ceiling: `height`), its swing (ceiling
+  a pendulum, structure none, the rest a stiff shudder) and what rounds, blows and blasts do: a `structure` (bridges,
+  gantries' trusses, the toll's roof) is immune to everything, a `billboard`'s face is shot to shreds in stages
+  (entities/Board.js, data/billboards.js, its `_bare` / `_frame` sprites), its frame never moving (tests/mounts.test.mjs).
 - Walk and hands: entities/Gait.js (cadence and stride grow with speed, planted feet), arms and hands painted in
   render/LimbArt.js; long guns shouldered with `grip`, `fore`, `butt` (data/weapons.js); heads are their own sprite.
 - `BODY_SCALE` = 1.3 (Config): a standing pose is drawn 1.3 x about the feet (CharacterAnim `bodyFrame`; pose numbers

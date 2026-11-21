@@ -994,3 +994,12 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   placeholder): 12 on the gore, on its paint only (`check_posts`, `on_gore`); none at the toll's lane drop (no gore
   there: a permanent lane drop has none). Lab station 37: three on its lane line. Tests: tests/toll.test.mjs (across
   the gore past the rail's end onto the freeway's lanes; the posts torn at no cost).
+- 2026-11-21: MOUNTS AND BILLBOARDS (branch feature/structures). Every overhead or hung prop names how it is held up
+  (`mount`, data/mounts.js: floor, wall, inset, pole, ceiling, awning, structure, billboard) and its parallax, its swing
+  and what rounds, blows and blasts do are read from it in one place. The viaduct, the overpass, the toll's roof, the
+  stucco canopies, the fire escape and the aerial are `structure`: rounds fly under them (they stopped rounds before),
+  blasts and blows do nothing. The billboards are `billboard`: holes where a round's line crosses the face, the lamps
+  shot out one by one, then the paper peels in strips, the lettering is ripped and sheets torn out show the frame, then
+  the face is gone, the frame standing (entities/Board.js, data/billboards.js, `_bare` / `_frame` sprites); the
+  freeway's signs on their trusses take holes and lose their lamps. Lab station 38 BILLBOARD. Tests:
+  tests/mounts.test.mjs, tests/billboard.test.mjs.

@@ -197,6 +197,16 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    lengths, a tenth of the speed lost, a breath of slow motion; nose-on into the boom: the crash. The
                    road ends on a wall past it: E to get out before it. Before the plaza, channelizer posts on the
                    lane line (level 2A's gore): steer through them, each torn off at no cost, its tube flying
+    38 BILLBOARD   two billboards on the grass verge south of 36's lower road (cols 113-144), high on their catwalks
+                   (prop mount 'billboard': data/mounts.js, entities/Board.js, data/billboards.js): a pistol, an Uzi, a
+                   SUPER 90 and a rifle on the sidewalk by the label, a barrel under the motel's catwalk. Every round
+                   through a face punches a hole where its line crosses it and flies on (a billboard never stops a
+                   round nor the aim's line); a lamp on its line is shot out (its light goes, sparks, glass), one by
+                   one; as the face takes more the paper peels and hangs in strips, then the lettering is ripped and
+                   sheets torn out show the frame and the grass under it, then the face is gone, shreds hanging off
+                   the frame, paper flying. The frame, its catwalk and its posts never move. The barrel's blast tears
+                   the motel's face and puts its lamps out. (Drive 36's convertible down the lower road and shoot them
+                   from the car too.)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -751,6 +761,15 @@ routes = {'bend': {
     # 37 TOLL's gates, north lane first (the approach's lanes `from`, the plaza's `lanes`, where they spread: `fan`)
     'toll': {'at': T_GATE, 'lanes': list(T_LANES), 'from': [46.25, 48.75], 'fan': [158, 164], 'nose': T_NOSE, 'gates': ['wood', 'steel']},
 }}
+
+lv.area('38 billboard: two billboards on the lower road\'s verge, to shoot to shreds')
+lv.fill(112, 51, 145, 56, '"')             # the grass verge south of the lower road's sidewalk
+lv.paint('label_billboard', 114.6, 50.5)
+lv.prop('billboard_tan', 120.0, 53.6)      # (hung high on its catwalk: no body, its face over the grass)
+lv.prop('billboard_motel', 137.0, 53.6)
+for (x, kind) in ((112.6, 'pistol'), (113.3, 'uzi'), (114.0, 'shotgun'), (114.7, 'rifle')):
+    lv.drop(kind, x, 50.1, 0)
+lv.prop('barrel', 134.6, 55.6)             # under the motel's catwalk: its blast tears the face
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)
