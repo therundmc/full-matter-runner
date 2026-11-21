@@ -15,6 +15,10 @@ const { saveBest, loadBest } = await load('game/systems/Records.js');
 const { default: Sandbox } = await load('game/debug/Sandbox.js');
 const { default: Menu } = await load('game/ui/Menu.js');
 const { default: Game } = await load('game/Game.js');
+const { default: FrameRenderer } = await load('game/render/FrameRenderer.js');
+const { default: MenuInput } = await load('game/flow/MenuInput.js');
+const { default: SettingsController } = await load('game/flow/SettingsController.js');
+const { default: TimeScale } = await load('game/systems/TimeScale.js');
 
 const memory = (init = {}) => {
   const m = new Map(Object.entries(init));
@@ -46,7 +50,7 @@ test('input: holdMouse keeps a button still down from reading as down until it i
 });
 
 test('game: the canvas is oversized for the lens only while the lens is on', () => {
-  const fit = (ok, lensOn) => Game.prototype.fit.call({ post: ok ? { ok: true } : null, lensOn, wheel: false }, 290, 1080);
+  const fit = (ok, lensOn) => new FrameRenderer({ post: ok ? { ok: true } : null, lensOn, wheel: false }).fit(290, 1080);
   assert.deepEqual(fit(true, true), fitView(290, 1080, true, false));
   assert.deepEqual(fit(true, false), fitView(290, 1080, false, false), 'F6 (the developer\'s): the window\'s size');
   assert.deepEqual(fit(false, true), fitView(290, 1080, false, false), 'no lens to be had');
@@ -122,7 +126,7 @@ test('game: pause and resume go back to the state the pause was opened from, the
   const calls = [];
   const g = {
     state: 'dead', stateT: 1.7, input: { padLost: true, focusLost: true, holdMouse: () => calls.push('hold') },
-    menu: { reset: (id) => calls.push(`menu ${id}`) }, pick: { reset() {} }, skip: { reset() {} }, world: { player: {} },
+    menu: { reset: (id) => calls.push(`menu ${id}`) }, pick: { reset() {} }, skip: { reset() {} }, menuInput: { reset() {} }, world: { player: {} },
   };
   g.setState = Game.prototype.setState;
   Game.prototype.pause.call(g);
@@ -143,7 +147,7 @@ test('game: pause and resume go back to the state the pause was opened from, the
 
 // ---------------------------------------------------------------- Game.advance, state by state, on a fake input
 // A game with only what advance reads before the world's step: the actions it takes are recorded, and reaching the
-// step (padAim, its first call there) ends the frame ('sim').
+// step (CameraDirector.padAim, its first call there) ends the frame ('sim').
 const { default: HoldSkip } = await load('game/ui/cine/Hold.js');
 const { CHASE } = await load('game/data/chase.js');
 const { SKIP } = await load('game/data/staging.js');
@@ -154,9 +158,9 @@ function harness(state, stateT = 0) {
   Object.assign(g, {
     input: new Input(null, { pads: () => [] }), state, stateT, dev: true, skip: new HoldSkip(), paged: false, time: 0,
     levelId: 'tutorial', world: { level: { chase: { next: 'THE GAS STATION' } }, outro: { car: { exploded: false } } }, calls,
+    prefs: { gesture() {} }, cameraDirector: { padAim() { throw SIM; } },
   });
   for (const m of ['restart', 'retry', 'showResults', 'endOutro', 'startLevel', 'completeLevel', 'pause', 'clearScreen']) g[m] = () => calls.push(m);
-  g.padAim = () => { throw SIM; };
   return g;
 }
 // one frame of dt s: keys pressed this frame, keys held, a click; 'sim' when it went on to the world's step
@@ -223,7 +227,8 @@ test('game: the hit list between two levels plays the menu\'s music, calm, not t
 test('game: the pause\'s page reads what it was opened from (RETRY over the death screen)', () => {
   const seen = [];
   const g = Object.assign(Object.create(Game.prototype), {
-    state: 'dead', stateT: 2, input: { padLost: false, focusLost: false, holdMouse() {} }, pick: { reset() {} }, skip: { reset() {} }, world: { player: {} },
+    state: 'dead', stateT: 2, input: { padLost: false, focusLost: false, holdMouse() {} }, pick: { reset() {} }, skip: { reset() {} }, menuInput: { reset() {} },
+    world: { player: {} },
   });
   g.menu = new Menu('main', () => {
     seen.push(g.pausedFrom?.state);
@@ -235,15 +240,17 @@ test('game: the pause\'s page reads what it was opened from (RETRY over the deat
   assert.equal(g.menu.item.label, 'RETRY');
 });
 
-// a game with what updateMenu reads, on a real menu (its actions recorded, not applied)
+// a game with what the menu's input reads, on a real menu (its actions recorded, not applied)
 function menuGame(root, settings = {}) {
-  const g = Object.assign(Object.create(Game.prototype), {
-    input: new Input(null, { pads: () => [] }), state: 'title', time: 0, grab: null, lastMouse: { x: 0, y: 0 }, dwell: null,
-    settings: { master: 1, music: 1, sfx: 1, ambience: 1, shake: 1, rumble: 1, ...settings }, fullChoice: false,
-    pick: { press() {} }, rumble: { sample() {}, tick() {} }, menuRects: [], applied: [],
-  });
+  const g = {
+    input: new Input(null, { pads: () => [] }), state: 'title', time: 0,
+    settings: { master: 1, music: 1, sfx: 1, ambience: 1, shake: 1, rumble: 1, ...settings },
+    pick: { press() {} }, rumble: { sample() {}, tick() {} }, applied: [],
+  };
+  g.prefs = Object.assign(new SettingsController(g), { fullChoice: false });
+  g.menuInput = new MenuInput(g);
+  g.menuInput.apply = (a) => { g.applied.push(a); return false; };
   g.menu = new Menu(root, () => ({ settings: g.settings, progress: { done: [], unlocked: ['tutorial'] }, best: () => null, levels: [] }));
-  g.applyMenu = (a) => { g.applied.push(a); return false; };
   return g;
 }
 
@@ -252,35 +259,36 @@ test('game: a slider let go saves the player\'s fullscreen choice, never the bro
   globalThis.localStorage = memory();
   try {
     const g = menuGame('audio', { master: 0.4, fullscreen: true }); // in fullscreen now, never chosen: the browser's
-    g.grab = 0;
-    g.menuRects = [{ i: 0, page: 'audio', x: 0, y: 0, w: 100, h: 10, track: { x: 0, w: 100 } }];
-    g.updateMenu(g.input); // the button is up: the drag is over
-    assert.equal(g.grab, null);
+    const mi = g.menuInput;
+    mi.grab = 0;
+    mi.rects = [{ i: 0, page: 'audio', x: 0, y: 0, w: 100, h: 10, track: { x: 0, w: 100 } }];
+    mi.update(g.input); // the button is up: the drag is over
+    assert.equal(mi.grab, null);
     const kept = JSON.parse(globalThis.localStorage.getItem('fmr.settings.v1'));
     assert.equal(kept.master, 0.4);
-    assert.equal(kept.fullscreen, false, 'fullChoice, as save() keeps it');
+    assert.equal(kept.fullscreen, false, 'fullChoice, as SettingsController.save keeps it');
   } finally {
     if (was === undefined) delete globalThis.localStorage; else globalThis.localStorage = was;
   }
 });
 
 test('game: a menu rect drawn for a page that has left the top is never taken for an item of the new one', () => {
-  const g = menuGame('main');
-  // drawn for the title's first page (untagged: menuDrawn says which); OPTIONS' own rects keep their page
-  const rects = g.menuDrawn([{ i: 1, x: 0, y: 0, w: 50, h: 20 }, { i: 0, page: 'audio', x: 0, y: 40, w: 50, h: 20 }]);
+  const g = menuGame('main'), mi = g.menuInput;
+  // drawn for the title's first page (untagged: MenuInput.drawn says which); OPTIONS' own rects keep their page
+  const rects = mi.drawn([{ i: 1, x: 0, y: 0, w: 50, h: 20 }, { i: 0, page: 'audio', x: 0, y: 40, w: 50, h: 20 }]);
   assert.deepEqual(rects.map((r) => r.page), ['main', 'audio']);
-  g.menuRects = rects;
+  mi.rects = rects;
   g.menu.open('options'); // the page changed after that draw
   const before = JSON.stringify(g.menu.stack);
   g.input.mouse.x = 10; g.input.mouse.y = 10; g.input.mouse.clicked[0] = true;
-  g.updateMenu(g.input);
+  mi.update(g.input);
   assert.equal(JSON.stringify(g.menu.stack), before, 'OPTIONS\' item 1 not clicked through a rect of the first page');
   assert.deepEqual(g.applied, []);
   // drawn again for OPTIONS, the same spot clicks its item
-  g.menuRects = g.menuDrawn([{ i: 1, x: 0, y: 0, w: 50, h: 20 }]);
+  mi.rects = mi.drawn([{ i: 1, x: 0, y: 0, w: 50, h: 20 }]);
   g.input.consume();
   g.input.mouse.clicked[0] = true;
-  g.updateMenu(g.input);
+  mi.update(g.input);
   assert.equal(g.menu.top.id, 'video', 'VIDEO\'s sheet entered');
 });
 
@@ -295,4 +303,17 @@ test('build: DEV_KEYS holds every function key the game reads, so that a release
   walk(fileURLToPath(new URL('../src', import.meta.url)));
   assert.ok(read.size >= 5, [...read].join(' '));
   for (const k of read) assert.ok(DEV_KEYS.includes(k), `${k} is read but not a developer's key`);
+});
+
+test('game: its clock members are the time scale\'s (World.hitstop, Impact.slowAtLeast, the QA robot, the perf overlay)', () => {
+  const g = Object.create(Game.prototype);
+  g.tempo = new TimeScale();
+  g.slowmo(0.3, 2);
+  assert.deepEqual(g.slow, { scale: 0.3, t: 2 });
+  g.hitstop = Math.max(g.hitstop, 0.1); // World.hitstop
+  assert.equal(g.tempo.hitstop, 0.1);
+  g.tempo.scale = 0.5;
+  assert.equal(g.timeScale, 0.5);
+  g.slow = null;
+  assert.equal(g.tempo.slow, null);
 });

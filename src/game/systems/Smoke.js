@@ -290,7 +290,7 @@ export default class Smoke {
     this.quietT = 0;
   }
 
-  // what heats the air for the lens (Game.lensView): the steam jets
+  // what heats the air for the lens (FrameRenderer.lensView): the steam jets
   heat() { return this.jets.filter((j) => j.S.kind === 'steam').map((j) => ({ x: j.x, y: j.y, kind: 'steam' })); }
 
   // water sprayed at (x, y) (a sprinkler head) brings down what is in the air under it (SMOKE.wash)

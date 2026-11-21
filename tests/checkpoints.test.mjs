@@ -24,7 +24,8 @@ const { default: PhysicsWorld } = await load('engine/physics/PhysicsWorld.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { setMaterial, scaleInertia } = await load('engine/physics/Body.js');
 const { TILE, CAT, MASK } = await load('game/Config.js');
-const { default: Game } = await load('game/Game.js');
+const { default: LevelFlow, introCard } = await load('game/flow/LevelFlow.js');
+const { default: MenuInput } = await load('game/flow/MenuInput.js');
 const { default: level2a } = await load('game/data/levels/level2a.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
 const { default: tutorial } = await load('game/data/levels/tutorial.js');
@@ -264,32 +265,32 @@ test('checkpoints: resumed, the score as it was kept (the chain under way not ke
 // ---------------------------------------------------------------- the game
 test('game: a retry after a death keeps the chase\'s checkpoint; RESTART and a start from the menus forget it; the tutorial\'s room as before', () => {
   const g = { tutorialAt: { name: 'T', stage: 2 }, chaseAt: { name: 'C', i: 2 }, taught: new Set(['x']) };
-  Game.prototype.forget.call(g, true, true);       // R / the pad's A / RETRY, dead
+  new LevelFlow(g).forget(true, true);             // R / the pad's A / RETRY, dead
   assert.deepEqual(g.chaseAt, { name: 'C', i: 2 });
   assert.equal(g.tutorialAt.stage, 2);
-  Game.prototype.forget.call(g, true, false);      // RESTART in the pause, Backspace
+  new LevelFlow(g).forget(true, false);            // RESTART in the pause, Backspace
   assert.equal(g.chaseAt, null, 'from the beginning');
   assert.equal(g.tutorialAt.stage, 2, 'the tutorial still at its last room (unchanged)');
   assert.ok(g.taught.has('x'));
   g.chaseAt = { name: 'C', i: 1 };
-  Game.prototype.forget.call(g, false, false);     // the menus, the LEVELS page, the next level
+  new LevelFlow(g).forget(false, false);           // the menus, the LEVELS page, the next level
   assert.equal(g.chaseAt, null);
   assert.equal(g.tutorialAt, null);
   // which way each goes
-  const calls = [], stub = { levelId: 'level2a', firstLevel: () => 'tutorial', startLevel: (id, o) => calls.push([id, o]) };
-  Game.prototype.retry.call(stub);
-  Game.prototype.restart.call(stub);
+  const calls = [], stub = { levelId: 'level2a', startLevel: (id, o) => calls.push([id, o]) };
+  new LevelFlow(stub).retry();
+  new LevelFlow(stub).restart();
   assert.deepEqual(calls, [['level2a', { retry: true, resume: true }], ['level2a', { retry: true }]]);
   // the menu's RETRY (dead) and RESTART
   const applied = [], g2 = { retry: () => applied.push('retry'), restart: () => applied.push('restart') };
-  Game.prototype.applyMenu.call(g2, { type: 'retry' });
-  Game.prototype.applyMenu.call(g2, { type: 'restart' });
+  new MenuInput(g2).apply({ type: 'retry' });
+  new MenuInput(g2).apply({ type: 'restart' });
   assert.deepEqual(applied, ['retry', 'restart']);
 });
 
 test('game: resumed at a checkpoint, the level\'s card shows the part\'s name', () => {
   const level = { ...level2a, subtitle: 'X' };
-  const card = (from) => Game.prototype.introCard.call({ world: { level, checkpoints: from ? { from } : null }, best: null, levelId: 'level2a', input: {} });
+  const card = (from) => introCard({ world: { level, checkpoints: from ? { from } : null }, best: null, levelId: 'level2a', input: {} });
   assert.equal(card(null).level.name, level2a.name);
   assert.equal(card({ name: 'THE TOLL' }).level.name, 'THE TOLL');
   assert.equal(card({ name: 'THE TOLL' }).level.subtitle, 'X');

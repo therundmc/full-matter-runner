@@ -63,7 +63,7 @@
 - Wounds show on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js). A man knocked down falls
   on his back, head AWAY from the blow (`downAngle`).
 - Camera: `VIEW` = 290 world px high (engine/Camera.js); the scene is drawn at a whole zoom slightly larger than the
-  window and the lens brings it down (Game resize). At the wheel the picture is drawn 1:1 (`fitView` pixel: the
+  window and the lens brings it down (render/FrameRenderer.js resize). At the wheel the picture is drawn 1:1 (`fitView` pixel: the
   canvas is the window, the whole zoom nearest to `CHASE.camera.view` = 360: 3 at 1080), the camera held on whole px
   and locked on the car (Camera `pixel`, Drive.frame: no tilt, turn, lag or zoom that follows the speed), a driven
   car drawn at a whole px on one of 64 angles (Vehicle.pose, `CHASE.pixel`), the lens flat (Lens `flat`); speed is
@@ -212,7 +212,7 @@
 - ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN`: the stages of data/campaign.js in a row, made or not; the made stage
   after a done one is open, an old save too; `levelDone`: a level is done when its last made stage is; best results
   are kept by stage, `levelBest`)
-  and systems/Settings.js in localStorage; `Game.startLevel(id)`, `restart()` (RESTART: the level from its beginning) and `retry()` (RETRY: from its checkpoint or room), `?level=<id>` forces a level.
+  and systems/Settings.js in localStorage; `Game.startLevel(id)`, `restart()` (RESTART: the level from its beginning) and `retry()` (RETRY: from its checkpoint or room), all done by flow/LevelFlow.js, `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
   next night, at the bar. The three men (CUEBALL, LUCKY, JITTERS: tools/comic/STYLE.md) are his targets: CUEBALL is
@@ -260,7 +260,7 @@
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
-  HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
+  HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist` (flow/States.js): the targets' cards, the X
   drawn by a marker once; the board pinned by hand and read as the story goes: his flat at the left, the four cards
   at their own heights and leans (title_art.py `TARGETS`), the string along their tops, never across a face; a note
   a level (Menu.js `levelNotes`, never one for a stage) in a bunch under its target, askew, three at most (`noteAt`,
@@ -319,6 +319,10 @@
 ## Architecture & conventions
 - Read docs/ARCHITECTURE.md first (layers, step order, events, physics model).
 - `engine/` never imports `game/`. Logic modules stay DOM-free (canvas work in game/render or entity draw()).
+- Game.js is the composition root (the loop, the run's state, the verbs window.game exposes). A state's frame, what
+  it draws and its flags (rumble, cursor, HUD, Backspace, page...) go in its entry of flow/States.js, never in a list
+  of states elsewhere; the level flow in flow/LevelFlow.js; the camera's aim in flow/CameraDirector.js; anything that
+  wants the world's clock goes through systems/TimeScale.js (its one rule); Game's numbers in data/game.js.
 - New gameplay reactions: emit/listen on `world.events` instead of wiring direct calls.
 - Gameplay rolls (what decides the game) use the world's seeded dice, `dice(world)` (systems/Rng.js, `world.rng`);
   looks keep Math.random, so a cosmetic change never shifts a QA seed. The AI finds what it uses by a prop's `use`

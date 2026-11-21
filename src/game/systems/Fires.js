@@ -1,6 +1,6 @@
 // Fires: what is seen and heard of something burning at a spot: flames, embers, a flickering light, the crackle, a
 // roar when a lot of it burns, the black smoke (the air's: systems/Smoke.js burns every fire lit(), each at its
-// `soot`), the air shimmering over it (Game.lensView reads near()). Where it burns is systems/FireSpread.js: it lights
+// `soot`), the air shimmering over it (FrameRenderer.lensView reads near()). Where it burns is systems/FireSpread.js: it lights
 // a fire a block of burning floor (add) and puts it out when the block has burned (remove). A level may also name
 // fires burning from the start (`fires`: [col, row]). Water puts them out (douse: the sprinklers).
 // Bounded: the puffs of flame are shared out between the fires in view (FIRE.budget a second), the flashes of light
@@ -50,7 +50,7 @@ export default class Fires {
   lit() { return this.fires; }
 
   // the n of them nearest (x, y), nearest first (equals in the order they burn in): picked in one pass, every frame
-  // (Game.lensView), without sorting them all
+  // (FrameRenderer.lensView), without sorting them all
   near(x, y, n) {
     if (this.fires.length <= n) return this.fires;
     if (n <= 0) return [];

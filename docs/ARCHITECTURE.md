@@ -46,8 +46,29 @@ src/
                           synthwave track, playing score.js), groove/ (the groove tracks' player, instruments and
                           harmony) and tracks/ (one data file per groove track)
   game/
-    Game.js               loop (fixed 60 Hz steps, time scale, hitstop; the world drawn between its last two steps:
-                          engine/Interp.js) and screens state machine
+    Game.js               the composition root: the loop (fixed 60 Hz steps, the world drawn between its last two
+                          steps: engine/Interp.js), the frame's input (advance) handed to the state's own frame, the
+                          run's state (state, stateT, levelId, tutorialAt, chaseAt, taught, results...), the world's
+                          hooks (slowmo, flash, onPlayerDeath, onExit) and the verbs the QA robot and tools/shot.mjs
+                          drive through window.game (startLevel, restart, retry, toTitle, setState, pause, resume,
+                          stagedShot, safeDraw, update, render; timeScale / hitstop / slow read through TimeScale)
+    flow/                 Game's parts (each handed the Game; the run's state stays on it)
+      States.js           the state table: per state (and phase: the tutorial's 'fall' turns 'leap' once black,
+                          `phaseOf`) its frame (update: its keys, then for the world's states the shared worldFrame:
+                          the pad's cursor, the clock, the sound, the fixed steps, the camera, the smoke, the flash),
+                          what it draws (picture in place of the world, over it, its hold ring) and its flags (scene,
+                          rumble, cursor, hud, backspace, page, lessons, auto, realTime): every list of states lives
+                          here (unit-tested: tests/states.test.mjs)
+      LevelFlow.js        starting a level (NEW GAME, CONTINUE, RESTART, RETRY: what a start keeps of the last run,
+                          `forget`), how it ends (death, exit, getaway, the tutorial's window, TO BE CONTINUED), the
+                          results, the hit list between two levels, the title; the level helpers (campaign, firstLevel,
+                          levelLabel, introCard)
+      SettingsController.js  the settings put in force and kept (volumes, QUALITY and AUTO's watch, shake, rumble),
+                          fullscreen as chosen vs as the browser left it; no DOM until `listen`
+      MenuInput.js        the title's and the pause's input (keys, pad, mouse, sliders, OPTIONS' dwell), the menu's
+                          actions, where its items were drawn
+      CameraDirector.js   where the camera looks: the look-ahead, the staged shots (stagedShot), the kill cam's
+                          punch-in, the drive's view, the getaway's pan; the pad's virtual cursor (padAim)
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
     world/
       World.js            one playthrough: entity lists, services, fixed step order, system facades; `dispose`: its
@@ -165,11 +186,16 @@ src/
                           violent kills, finishers and takedowns, the kills of a long chain and its end sorted into
                           beats (one at a time, the stronger wins, a gap per tier; never at a wheel, in a staged shot, on
                           his death; a thrown kill is ThrowBeat's). A beat: `scale` on Camera.scale next to the
-                          director's and `aim` on the view (Game.updateCamera), whipped back to exactly 1; slow motion
+                          director's and `aim` on the view (CameraDirector.aim), whipped back to exactly 1; slow motion
                           through Impact.slowAtLeast with `clock` (down at once, snapped back); hit-stops, each blow of
                           a finisher; a kick, a shake, more blood; the chain's crescendo. Tells 'killcam' { tier, x, y,
                           k, hold } and 'killcamOut' { tier } (render/Lens.js: POST.killcam; systems/Rumble.js)
                           (DOM-free, unit-tested; advanced by Game on the real clock)
+      TimeScale.js        the world's clock, ONE rule a frame: the target is the sandbox's speed (1 in the getaway,
+                          `auto`), lowered by the world's slow motion (World.slowmo; Impact.slowAtLeast keeps the
+                          stronger) then by a tutorial lesson; the scale eases toward it (GAME.ease) but for a lesson's
+                          beat; the kill cam's `clock` drops / snaps it; a chase beat in play has the last word
+                          (min(target, ChaseCam.scale)); the hit-stop holds the steps (DOM-free, unit-tested)
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
       Progress.js         the campaign (data/campaign.js: the player's numbered levels, each one or several stages, the
@@ -232,7 +258,7 @@ src/
                           spray, what is ahead frightened, `canopy` props torn down, dust, the wake, streaks of air
                           (`wind`); the weight of it: the nose on a spring that does not wag (yawStep), the
                           body on its wheels (springs: Vehicle squat / roll / lift); the camera: the wheel's
-                          picture is drawn 1:1 (`view`: Game.fit / setView, engine/Camera.js fitView `pixel`: the
+                          picture is drawn 1:1 (`view`: FrameRenderer.fit / setView, engine/Camera.js fitView `pixel`: the
                           canvas is the window, a whole zoom, the lens scales nothing) and held on whole px
                           (Camera `pixel`), `frame` locks it on the car (a fixed share of the view from the left,
                           the street's middle across), Vehicle.pose draws a driven car at a whole px on one of 64
@@ -310,6 +336,11 @@ src/
                           a chat, a leak...): timing and spots only
       Carry.js            how a guard carries his weapon: put away, in hand and low, raised on a target
     render/
+      FrameRenderer.js    the frame's picture (Game.render): the state's picture or the world (backdrop, the world
+                          drawn between two steps, murk, 2D grade and vignette without the lens, the slow motion's
+                          tint, the replay's capture), the lens' pass (lensView: the situation it is told), then what
+                          stays sharp (flash, HUD, sandbox, the state's `over` and hold ring) and the cursor; the
+                          canvas' size for the view (fit, resize, setView), F6's lens toggle
       MapRenderer.js      floor / blood / flesh / wall layers and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing; every layer a
                           ChunkedLayer (see "Long maps" below), drawn on through `on` / `paint(fn, layer, x0, x1)`;
@@ -355,8 +386,8 @@ src/
                           the faulty tubes picked per level (NEON: one dying, a few stuttering); DOM-free
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       AimArt.js           the aim's cue, LOCK (data/aim.js), over the lighting, told by systems/AimCue.js (the line
-                          of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in Game.padAim); the
-                          mouse keeps a dot (Game.drawCursor). LOCK: corner ticks round the man it takes
+                          of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in CameraDirector.padAim); the
+                          mouse keeps a dot (FrameRenderer.drawCursor). LOCK: corner ticks round the man it takes
                           (AIM.lock.corners) and, only with the AIM MARK option (World.aimMark, Settings `aimMark`,
                           off by default), a chevron of worn stencil paint on the floor along the aim; the vault's
                           mark in the same paint (`drawVaultMark`, AIM.hop); the pixels and their wear come from
@@ -387,7 +418,8 @@ src/
                           (Game state 'hitlist'); Options: OPTIONS and the pages under it, his table from above, a thing's sheet shown as soon as it is chosen (Menu `sheets`), CONTROLS as key caps, for the title and the pause; Beats: their clocks and sounds, unit tested; Paper: the cut-paper sheet
                           and the menu's panel; Draw: the frame),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page, Hold: a page skipped by holding SPACE)
-    data/                 atmosphere (rain, smoke, neon faults: the look of the air), chase (driving: CHASE), liquids (the liquid on the floor:
+    data/                 game (Game's own numbers: the look-ahead's caps, a death's beat, the clock's easing, the
+                          muffle, the flash, the guards on a click, the backdrop and the vignette), atmosphere (rain, smoke, neon faults: the look of the air), chase (driving: CHASE), liquids (the liquid on the floor:
                           solver, floors, kinds and their look), titleart (generated by tools/comic/title.py: where things are in the title's stills), devices (the level's usable things: tuning), controls (gamepad bindings: RB / RT attack, LB throws, LT looks further; the cap of each action per device), rumble (the pad's effects per event and how they mix), weapons, wounds (bleeding per weapon), props, mounts (how a prop is held up and what reaches it), billboards (a billboard's face: stages, layouts), materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), barks (what the guards say), conduct (the odd acts a stranger gets a word
@@ -414,7 +446,7 @@ share `alpha = accumulator / FIXED_DT` of the way from the state before the last
   fn(out) pushing its lists; `World.movesOwn`: particles, bullets, critters, the pool balls in their table's frame,
   a car's billows, the streaks of air past his car, the cigarette's smoke and butt, loose paper, litter). A system
   that moves points by hand registers them there; a point is in one list only;
-- `Game.render` and `Game.updateCamera` call `Interp.apply(alpha)`, which writes the in-between places INTO the
+- `FrameRenderer.render` and `CameraDirector.update` call `Interp.apply(alpha)`, which writes the in-between places INTO the
   bodies (`body.position`, `body.angle`: what every entity's `x` / `y` getters and `draw()` read), and
   `Interp.restore()` puts the real ones back in a `finally`. Nothing steps in between: Matter never sees a drawn
   place, and `game.update()` always returns with the real state (the QA robot reads it);
@@ -842,7 +874,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   a guard gives it some air back); a `flat` tag (multi-kills, a boss) is added outside the multiplier. `tally(level)`
   adds the end bonuses (best chain, variety of methods up to a cap, time under the level's par, stealth lost by ALERT
   phases, accuracy above a floor, mercy for a guard left alive on his knees) and penalties (passers-by), then the grade from the
-  level's thresholds (`LEVEL_SCORING`, or a per-guard scale for test rooms). Game.onExit keeps the best result per
+  level's thresholds (`LEVEL_SCORING`, or a per-guard scale for test rooms). LevelFlow.showResults keeps the best result per
   level (systems/Records.js); a run where the sandbox was opened is not ranked. Scoring tells what it scores by events
   (`scored`, `multiKill`, `chainEnd`), never by world texts (those are the guards' barks): ui/KillFeed.js keeps what
   is shown of it on the real clock (KILLFEED in data/feel.js): the points stamped under the body (WorldRenderer,
@@ -851,7 +883,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   puts up a banner and a moment of slow motion (MOMENTS.multi, never cutting short a stronger one). A melee swing of
   the player's is drawn a little to the guard in front of him (systems/Lunge.js), all the way to the man the LOCK aim holds. Screens.drawResults counts the
   lines up one after the other.
-- Replay (render/Replay.js, `REPLAY` in Config.js): while playing, Game.render hands the finished frame (before the
+- Replay (render/Replay.js, `REPLAY` in Config.js): while playing, FrameRenderer.drawScene hands the finished frame (before the
   vignette and the HUD) to `ReplayRecorder.capture`, which copies it downscaled into a rolling atlas 15 times a
   second of world time. A kill closes a clip 0.75 s later (more kills in the meantime stretch it); the atlas is
   copied in one drawImage into one of at most 6 clip atlases, the weakest clip (`clipScore`: cause weight,
@@ -890,11 +922,11 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 - The QUALITY option (OPTIONS / VIDEO; `data/quality.js`, `systems/Quality.js`): AUTO / LOW / MEDIUM / HIGH. Each
   level is a row of `QUALITY`, put in force by `setQuality` and read by the renderers through `quality()`: the
-  scene's size (`Game.fit` -> engine/Camera.js `fitView` `cap`: a whole zoom always; a scene smaller than the window
+  scene's size (`FrameRenderer.fit` -> engine/Camera.js `fitView` `cap`: a whole zoom always; a scene smaller than the window
   is brought up by the lens with every px kept a sharp square, PostGL `scene()`), the reflections, the bloom's and
   the light map's grain, the smoke's grain, the particle cap, the heat shimmer, the lens' glow and shafts, the
   flashes lit at once, the fires' puffs. Looks only: nothing of the simulation reads it. At the wheel the picture
-  stays 1:1 at every level. AUTO (`QualityWatch`, fed by `Game.watchPace`) starts at HIGH, takes the mean frame
+  stays 1:1 at every level. AUTO (`QualityWatch`, fed by `SettingsController.watchPace`) starts at HIGH, takes the mean frame
   time of 3 s of play (not the 2 s after a level starts or a change, nor a hit-stop, a held beat, a hitch) and goes
   one level down over 18 ms, never back up; where it settled is kept (Settings `autoQuality`) and shown on the row.
 
@@ -919,8 +951,9 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Sprite caches (silhouettes, slices) are WeakMaps so per-instance canvases can be garbage-collected.
 - The replay recorder costs one small canvas-to-canvas copy every fourth frame (no read-back, no allocation while
   playing; not measurable on the frame time) and at most (clips + 1) atlases of 30 frames of 384x216 (about 70 MB).
-- `Game.safeDraw` isolates the world draw: an exception is logged once and the context is restored, so the HUD,
-  cursor and post effects keep rendering.
+- `Game.safeDraw` (FrameRenderer.safeDraw; every draw of the frame goes through Game's, which the QA robot wraps)
+  isolates the world draw: an exception is logged once and the context is restored, so the HUD, cursor and post
+  effects keep rendering.
 
 ## Enemy AI
 
@@ -1261,7 +1294,7 @@ slow-motion stream, the soft edges, the tape bleed and the drive's trails / stre
 the user did not want them.) Every uniform the shaders declare must be set by `render` (tests/lens.test.mjs checks
 it on a fake WebGL context). What must stay sharp (flash, HUD, screens, cursor)
 is drawn on a third canvas above (`#hud`). `render/Lens.js` is the director: DOM-free, unit-tested, it listens to
-`blow`, `shot` and `explosion`, is told the situation once a frame (`Game.lensView`) and returns plain numbers.
+`blow`, `shot` and `explosion`, is told the situation once a frame (`FrameRenderer.lensView`) and returns plain numbers.
 Every look setting is in `data/post.js`. The lens is always on where WebGL is (no option: F6, a developer's key,
 flips it to compare; the QUALITY option leaves its glow and shafts out on LOW). Without WebGL, or with `?post=0`, nothing of this exists and the old 2D
 grading (`render/PostFX.js`) and vignette are used, as before (at the wheel with no shifted red channel and no scan

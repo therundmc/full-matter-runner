@@ -315,13 +315,15 @@ test('controls: no debug key, and every cap the page names is one the game reads
   const caps = (cols) => cols.flatMap((col) => col.flatMap(([, list]) => list.flatMap(([keys]) => keys.split(' ').filter((k) => k !== '/'))));
   const kbm = caps(KBM_CONTROLS), pad = caps(PAD_CONTROLS);
   assert.ok(!kbm.concat(pad).some((k) => /^F\d/.test(k)), 'no F-key');
-  // the keyboard's caps, as the codes the game reads (entities/Player.js, systems/Drive.js, CarGun.js, Game.js)
+  // the keyboard's caps, as the codes the game reads (entities/Player.js, systems/Drive.js, CarGun.js, Game.js and
+  // flow/: States, MenuInput, CameraDirector)
   const read = {
     ZQSD: ['KeyW', 'KeyA', 'KeyS', 'KeyD'], WASD: ['KeyW', 'KeyA', 'KeyS', 'KeyD'], 'Z/W': ['KeyW'], S: ['KeyS'], 'Q/A': ['KeyA'], D: ['KeyD'],
     SHIFT: ['ShiftLeft'], SPACE: ['Space'], E: ['KeyE'], R: ['KeyR'], ESC: ['Escape'], BKSP: ['Backspace'],
     MOUSE: [], LMB: ['Mouse0'], RMB: ['Mouse2'],
   };
-  const src = ['game/entities/Player.js', 'game/systems/Drive.js', 'game/systems/CarGun.js', 'game/Game.js']
+  const src = ['game/entities/Player.js', 'game/systems/Drive.js', 'game/systems/CarGun.js', 'game/Game.js',
+    'game/flow/States.js', 'game/flow/MenuInput.js', 'game/flow/CameraDirector.js']
     .map((f) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8')).join('\n');
   const mouse = (b) => new RegExp(`mouse(Hit|Down)(\\?\\.)?\\(${b}\\)`).test(src);
   const reads = (code) => (code === 'Mouse0' ? mouse(0) : code === 'Mouse2' ? mouse(2) : src.includes(`'${code}'`));

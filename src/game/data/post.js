@@ -76,7 +76,7 @@ export const POST = {
   // feel fast). On foot nothing smears or streams the picture: the user tried those blurs in play and did not like them.
   // The EDGES of the picture go with the speed, the road stays as drawn: no blur anywhere, and nothing at all within
   // band[0] of the middle line (his car, both lanes, who is alongside) nor within car[0] picture heights of his car
-  // wherever it goes (up on a kerb: all of it again from car[1] on). There the scene is drawn 1:1 (Game.fit) and the
+  // wherever it goes (up on a kerb: all of it again from car[1] on). There the scene is drawn 1:1 (FrameRenderer.fit) and the
   // lens samples each of its px as it is: no barrel (`tube.curve`), no scan lines (`tube.scan`: they beat with a car
   // changing lanes under them), no zoom kick, no colour fringe (render/Lens.js `flat`). NOTHING THAT RESAMPLES THE
   // PICTURE (the user, 2026-11-19: "the cars are deformed at the edges of the screen"): what is left only ADDS to the
@@ -140,6 +140,6 @@ export const POST = {
   },
 
   // ---- slow motion: the picture tinted toward `color` (rgb) by `k` x how slow, under a time scale of `below`
-  // (Game.drawScene, with or without the lens)
+  // (FrameRenderer.drawScene, with or without the lens)
   slowTint: { color: [80, 0, 120], k: 0.22, below: 0.95 },
 };
