@@ -14,7 +14,8 @@ src/
                           menu steps with repeat from the d-pad / left stick, hot-plug; rumble() on the pad last touched
                           (vibrationActuator 'dual-rumble', hapticActuators pulse as a fallback; never throws)
     Interp.js             the fixed step's clock (StepClock) and the world drawn between its last two steps (Interp:
-                          capture before a step, apply / restore round a draw); DOM-free, unit-tested
+                          capture before a step, apply / restore round a draw; Movers: the lists of points moved by
+                          hand, registered by whoever moves them); DOM-free, unit-tested
     Profiler.js           where a frame's time goes: sections begin / end, counters, rolling mean / p95 / max over
                           rings of frames (`PROF`, off and free until F8's overlay); DOM-free, unit-tested
     Bytes.js              an estimate of the buffers a thing holds (typed arrays vs canvases) for the perf overlay
@@ -403,7 +404,10 @@ three frames a step: drawn as stepped, what moves would advance on some frames o
 share `alpha = accumulator / FIXED_DT` of the way from the state before the last step to the state after it:
 
 - before each step `Interp.capture` notes where every non-static Matter body is (position, angle) and every
-  body-less mover (`World.movers()`: particles, bullets, critters; x, y, z);
+  body-less mover (x, y, z): the lists registered with the world's `Movers` (engine/Interp.js; `World.moves(fn)`,
+  fn(out) pushing its lists; `World.movesOwn`: particles, bullets, critters, the pool balls in their table's frame,
+  a car's billows, the streaks of air past his car, the cigarette's smoke and butt, loose paper, litter). A system
+  that moves points by hand registers them there; a point is in one list only;
 - `Game.render` and `Game.updateCamera` call `Interp.apply(alpha)`, which writes the in-between places INTO the
   bodies (`body.position`, `body.angle`: what every entity's `x` / `y` getters and `draw()` read), and
   `Interp.restore()` puts the real ones back in a `finally`. Nothing steps in between: Matter never sees a drawn
@@ -411,12 +415,22 @@ share `alpha = accumulator / FIXED_DT` of the way from the state before the last
 - the camera follows the drawn player, so he and the floor move together; at the wheel the in-between places go
   through the same whole-px snap as before (`Vehicle.pose`, `Drive.frame`, Camera `pixel`);
 - a body moved by more than `JUMP` (64 px) in a step, or made during it, is drawn where it is (a respawn, a seat
-  taken: no smear); a hit-stop or a pause leaves the clock alone (the picture stands still); a new level drops
-  what was captured (`Interp.still`): the state as it is.
+  taken: no smear); what is made during a step from something moving can say where it came from (`Interp.born`:
+  CarGun's rounds and cases out of a moving car are drawn from the muzzle and the port, not a step ahead); a
+  hit-stop or a pause leaves the clock alone (the picture stands still); a new level drops what was captured
+  (`Interp.still`): the state as it is;
+- F4's outlines are drawn where the sprites are (`eachDrawnVertex`: Matter's vertices stay where the step put them,
+  carried by what apply moved the body by).
 
 The picture is one step late at most (the price of drawing in between), at every screen rate. What is NOT drawn in
-between: animation poses (gait, facing, swings: they advance per step), smoke, liquids, cloth, pool balls, the
-chase's wind. `?interp=off` (a developer's switch) draws the state as stepped, to compare.
+between: animation poses (gait, facing, swings: they advance per step), a thrown piece's height (Debris `z`), smoke,
+liquids, cloth. `?interp=off` (a developer's switch) draws the state as stepped, to compare.
+
+The one intended exception to "the simulation never sees a drawn place": a car at the wheel keeps the pose it was
+last drawn at (`Vehicle.drawn`: on the picture's px and one of its 64 angles) and its body on its springs (`sag`),
+and CarGun reads them back in the step (`CarGun.eject`, the muzzle it fires from, `Vehicle.carriedAt`) so that a
+round's streak and a spent case leave the gun where it is SEEN. Looks only: what they place meets nothing the step
+decides on (a case meets walls only, a round's hit is traced from his real place).
 
 ## Simulation step (World.step)
 
@@ -643,13 +657,14 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   hands the body back to the physics at once.
 - Blood on the floor (render/BloodArt.js, MapRenderer): a drop lands as a stamp picked by how it hit (flat = tapered
   streak along its travel with satellites, steep = ragged spot, heavy = splat); stamps are per-pixel thickness maps
-  (film to core) coloured through one ramp per age, never circles or gradients. They are baked into `bloodCanvas`,
-  drawn over the floor decals and under `fleshCanvas` (baked bodies and meat), so blood covers rubble and the dead
+  (film to core) coloured through one ramp per age, never circles or gradients. They are baked into the `blood` layer
+  (MapRenderer's chunked layers, render/Chunks.js), drawn over the floor decals and under the `flesh` layer (baked
+  bodies and meat), so blood covers rubble and the dead
   stay readable on it. `decals.update(dt)` dries stains by re-blitting their tacky then dry variant (a few per step,
   queue capped). The pool under a body is liquid on the floor (systems/Liquids.js): fx/Bleeding.js grows its radius,
   Liquids pours what it grew by at the wound and lets it run; it stays where it ran if the body is shoved, stays wet
   after the body is baked, and once it has set (`LIQUIDS.kinds.blood.age` s after it was last fed) render/LiquidArt.js
-  paints it into `bloodCanvas` in its dry colours, for good.
+  paints it into the `blood` layer in its dry colours, for good.
   Blood against a wall (`BLOOD_EDGE`, data/wounds.js): nothing of it lies on the floor within `floor` px of a wall
   or of a window tile (MapRenderer.trim takes off what each stamp, speck, streak, drag or set stain laid there, through
   a mask of fx/Spatter.js `offFloor`; the liquid itself is drawn `LIQUIDS.look.gap` px short of what holds it). What
@@ -1231,12 +1246,17 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 ## The lens (post-processing)
 
 The game draws its scene on the 2D canvas `#game`. When WebGL is there, `render/PostGL.js` takes that canvas as a
-texture every frame and puts it on screen (`#post`) through a few small shader passes: a blurred half-size copy (focus,
-colour bleed), the glow of what is bright and shafts dragged out of the strongest lamps (quarter size), then the final
-pass: zoom kick, tube curvature, torn tape, shock waves, heat shimmer, radial colour fringe, speed smear, soft edges,
-grading per situation, impact frame, scan lines, vignette, grain. What must stay sharp (flash, HUD, screens, cursor)
+texture every frame and puts it on screen (`#post`) through a few small shader passes: a blurred half-size copy (the
+picture behind the results, the glow's source), the glow of what is bright and shafts dragged out of the strongest
+lamps (quarter size), then the final pass: zoom kick, tube curvature, torn tape, shock waves, heat shimmer, radial
+colour fringe, at the wheel the speed's band (dimmed, streaks of air added over it: nothing at the wheel resamples
+the picture, Lens `flat`), grading per situation, impact frame, scan lines, vignette, grain. (The speed smear, the
+slow-motion stream, the soft edges, the tape bleed and the drive's trails / stretch / split were tried and taken out:
+the user did not want them.) Every uniform the shaders declare must be set by `render` (tests/lens.test.mjs checks
+it on a fake WebGL context). What must stay sharp (flash, HUD, screens, cursor)
 is drawn on a third canvas above (`#hud`). `render/Lens.js` is the director: DOM-free, unit-tested, it listens to
 `blow`, `shot` and `explosion`, is told the situation once a frame (`Game.lensView`) and returns plain numbers.
 Every look setting is in `data/post.js`. The lens is always on where WebGL is (no option: F6, a developer's key,
 flips it to compare; the QUALITY option leaves its glow and shafts out on LOW). Without WebGL, or with `?post=0`, nothing of this exists and the old 2D
-grading (`render/PostFX.js`) and vignette are used, as before. The replay recorder captures the bare 2D scene.
+grading (`render/PostFX.js`) and vignette are used, as before (at the wheel with no shifted red channel and no scan
+lines: nothing moves a px there either). The replay recorder captures the bare 2D scene.
