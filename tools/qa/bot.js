@@ -319,7 +319,7 @@
       // what he was locked in when it got him (a ground finisher, a takedown), or free
       bump(S.stats.deathsIn, victim.execution ? 'finisher' : victim.takedown ? 'takedown' : 'free');
       S.sess.died = cause;
-      act(`DIED (${cause})${w.drive?.on ? ` at the wheel, cell ${cellOf(w.drive.van.x, w.drive.van.y)}` : ''}`);
+      act(`DIED (${cause})${w.drive?.on ? ` at the wheel, cell ${cellOf(w.drive.car.x, w.drive.car.y)}` : ''}`);
       return;
     }
     if (victim.isCivilian) { bump(S.stats.civilians, cause || '?'); return; }
@@ -751,7 +751,7 @@
   // aimed at it) on a pursuer alongside, else the Uzi held on the nearest pursuer still driven within its arc
   function playChase(w, p, inp, d) {
     // (the leg of the route he is on: its lanes and kerbs, systems/Route.js; a new leg, a new target)
-    const C = CHASE_BOT, van = d.van, o = d.leg, ch = B.chase ??= { y: van.y, until: 0, kerb: false, leg: d.legI };
+    const C = CHASE_BOT, van = d.car, o = d.leg, ch = B.chase ??= { y: van.y, until: 0, kerb: false, leg: d.legI };
     if (ch.leg !== d.legI) { ch.leg = d.legI; ch.until = 0; }
     S.stats.drive.far = Math.max(S.stats.drive.far || 0, Math.round((d.progress?.s ?? 0) / TILE));
     if (S.clock >= ch.until) {
@@ -2101,14 +2101,14 @@
     // (2A's opening: the car stands on purpose while he finishes his cigarette, Drive `standing`)
     const live = !d.dead && !d.standing && !w.exited && game.state === 'play' && w.player.alive;
     if (!live || d.v >= CHASE_STALL.under * d.cruise) { B.stall = null; return; }
-    const b = d.van.body;
+    const b = d.car.body;
     if (!B.stall) { B.stall = { t: w.time, told: false, then: touchingOf(w, b) }; return; }
     if (B.stall.told) S.stats.drive.stallMost = Math.max(S.stats.drive.stallMost, r1(w.time - B.stall.t));
     if (B.stall.told || w.time - B.stall.t < CHASE_STALL.after) return;
     B.stall.told = true;
     S.stats.drive.stalls++;
     const then = B.stall.then, held = then.find((c) => !c.sensor);
-    report('stalled', 'error', `against ${held?.what || 'nothing'}`, posOf(d.van.x, d.van.y), {
+    report('stalled', 'error', `against ${held?.what || 'nothing'}`, posOf(d.car.x, d.car.y), {
       kmh: d.kmh, cruise: Math.round(d.cruise * D.kmh), held: r1(w.time - B.stall.t), angle: Math.round(b.angle * 1000) / 1000,
       bounds: [Math.round(b.bounds.min.x), Math.round(b.bounds.min.y), Math.round(b.bounds.max.x), Math.round(b.bounds.max.y)],
       then, now: touchingOf(w, b),

@@ -40,9 +40,6 @@ import { clearLanes, contact, flankStep, knock, react } from './drive/contacts.j
 import { offFronts, unstick } from './drive/fronts.js';
 import { fx, scrape, springs } from './drive/looks.js';
 
-// (Game's import, until it takes it from there: the card that closes a chase not finished yet)
-export { finishView } from '../ui/Continued.js';
-
 const { Body, Sleeping } = Matter;
 
 export default class Drive {
@@ -128,9 +125,6 @@ export default class Drive {
     // water standing in the gutter (the level's `chase.water`: [col, row, r px])
     for (const [c, r, rad] of o.water || []) world.liquids?.feed(c * TILE, r * TILE, Math.PI * rad * rad * CHASE.fx.water, 'water', rad);
   }
-
-  // (outside the chase's code his car is still called the van: Game's ride numbers)
-  get van() { return this.car; }
 
   // he is finishing his cigarette or taking the gun off the seat: the controls and the gun are not his yet
   get grabbing() { return !!this.drag?.on || (!!this.grab && this.grab.t < SEAT.grab.dur); }

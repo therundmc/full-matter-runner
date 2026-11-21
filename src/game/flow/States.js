@@ -25,7 +25,7 @@ import { MENU_TRACK } from '../../audio/tracks/index.js';
 import { PROF } from '../../engine/Profiler.js';
 import { nextLevel } from '../systems/Progress.js';
 import { outroOver } from '../systems/Outro.js';
-import { finishView } from '../systems/Drive.js';
+import { finishView } from '../ui/Continued.js';
 import { SMOKE } from '../data/atmosphere.js';
 import { LEAP } from '../data/staging.js';
 import { GAME } from '../data/game.js';

@@ -247,7 +247,7 @@ export default class FrameRenderer {
     // at the wheel: his speed (share of flat out) and the way he goes, for what the speed does to the picture's edges
     const dr = inWorld && w.drive?.on && !g.overview ? w.drive : null, R = V.ride;
     V.drive = dr ? R : null;
-    if (dr) { R.k = dr.v / CHASE.max; R.angle = Math.atan2(dr.u, Math.max(dr.v, 1)) * 0.5; R.x = dr.van.x; R.y = dr.van.y; }
+    if (dr) { R.k = dr.v / CHASE.max; R.angle = Math.atan2(dr.u, Math.max(dr.v, 1)) * 0.5; R.x = dr.car.x; R.y = dr.car.y; }
     // (a close-up at the wheel, the grab, the cigarette: the car fills the picture, its ends would be in the speed's band)
     if (dr) R.close = cam.z > cam.zoom + 1;
     V.rot = cam.rot;
