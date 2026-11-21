@@ -1018,3 +1018,11 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   fire-ball, the boom's, the strong beat); tyre smoke by the step's time; the pursuers' rolls from the world's dice
   (systems/Rng.js); the unused `miss` hook deleted; the cars pruned once far behind. A gate car past the cap of
   CHASE.pursuit.most still joins when no car can drop out for it (kept: tests/toll.test.mjs wants it).
+- 2026-11-21: REFACTOR (branch refactor/chase-split), behaviour unchanged. systems/Drive.js split into systems/drive/
+  (rules, opening, camera, contacts, fronts, looks) and systems/Pursuit.js into systems/pursuit/ (slots, steering,
+  bends, contacts, wreck, gunman, attacks, events), each a set of functions of the drive's / the pursuit's state; what
+  the two did each their own way is systems/chase/shared.js (a driven body's setup, a bend's step, a man run down,
+  rubber, a wreck rocked off a flank, loosen / knock, the tyres' smoke of a slide). His car is `car` in the chase's
+  code (the level's `chase.van` and the `van*` sound names kept); finishView is ui/Continued.js; the literals met named
+  in CHASE. tests/chasetrace.test.mjs replays three seeded 20 s runs (the street, the lorry, the on-ramp and the toll)
+  and checks every step against the recorded trace (CHASE_TRACE_RECORD=1 records it again).

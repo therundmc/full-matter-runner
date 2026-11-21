@@ -241,7 +241,22 @@ src/
                           (World hands `motor` to Audio.motor); `grab`: the gun on the car's passenger seat
                           (Vehicle `gun`, `chase.arms.seat`, the lab's convertible) taken in a short beat as he sets
                           off (the car on its own, nothing told meanwhile, `shot`: SHOTS grab / grabOut; posed by
-                          CharacterAnim grabPose), skipped on a retry (skipGrab)
+                          CharacterAnim grabPose), skipped on a retry (skipGrab). Drive.js holds the state, the step,
+                          the bends, the shove and the coast; its parts work on that state (functions of the drive):
+      drive/rules.js      pure: speedStep, steerOf, steerStep, headingOf, gripOf, slideStep, yawStep, springStep,
+                          bodyLean, skidOf, squareOf / asideKeep / asideThrow, tearPower, smash*, seatOf, doorOf,
+                          nosedIn, onNose (unit-tested; the pursuers use slideStep, seatOf, smashSpeed, bursts too)
+      drive/opening.js    arm, the opening (stand, launch), the grab (take, grabStep), skipGrab, the staged `shot`
+      drive/camera.js     lock, frame, camStep (a bend's offset), normalOff / trackY / acrossStep (a leg's framing),
+                          surgeStep
+      drive/contacts.js   contact (before Matter resolves), react (after it), fling, aside / shovedAside /
+                          clearLanes, a bend's flank (flankOn, flankStep, flanked, smashed), knock, tearHeld, crash
+      drive/fronts.js     frontsAt (pure), fronts, offFronts (`grind`), unstick, boxed, nosedOn, roundOf, wayOut
+      drive/looks.js      fx (tyres, rubber, spray, scare, canopies), air (dust, wake, wind), scrape, springs
+      chase/shared.js     what his car and the pursuers' do the same way: driveBody (a driven body's setup),
+                          roundCorners, otherOf (a contact's other body), loosen / knockLoose, tearOff, sideOf,
+                          rockOff (a wreck off a flank), wheelsOf, runOver (a man run down), layRubber,
+                          slideSmoke, and a scripted bend's step (bendFloor, bendMove, bendWheel)
       CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click; it never runs dry at the
                           wheel (no round counted, no reload); the arc (an open car: inCone,
                           125 degrees either side of the nose, over the windscreen and across the other seat, not
@@ -260,7 +275,19 @@ src/
                           The gunman's told shot (glint, red line into a wedge, a bracket on a lane band locked at its
                           start; his seat in it and reached -> dead), one at a time with a cooldown; events by distance
                           (`chase.events`: the alley car and its red lane, one from behind).
-                          Numbers: CHASE.pursuit / gunman / alley; drawn by render/PursuitArt.js
+                          Numbers: CHASE.pursuit / gunman / alley; drawn by render/PursuitArt.js. Pursuit.js holds the
+                          state, the cars (add, spawn), the step and the after; its parts work on that state (assign,
+                          blockedAt and busy are called through the pursuit: the tests stand in for them):
+      pursuit/slots.js    lanesOf, slotOf, pickSlots (pure), assign, sides, slot, tgFor
+      pursuit/steering.js easeLine (pure), DRIVEN, driveCar, want, blockedAt, catchUp, go, bob
+      pursuit/bends.js    toBend, bendDrive (chase/shared.js bendMove)
+      pursuit/contacts.js contact, tear, smash, stopped, lunged, shoved
+      pursuit/wreck.js    wreck, pileUp, creditCrew / credit, leave / exit / exitFx / roomier, runDown, onPart, lift,
+                          shotUp, glass
+      pursuit/gunman.js   lockOf, inBand, reaches (pure), onRound, gunPoint, pistolOf, muzzle, aimGun, canTell, busy,
+                          the tell (startTell, stepTell, endTell, shoot), killRunner
+      pursuit/attacks.js  nextAttack, attackPhase (pure), ready, canRam, canBlock, startAttack, stepAttack, endAttack
+      pursuit/events.js   dueEvents (pure), alleyCar, trigger, spawnX, dropOut, stepLanes
       Signals.js          lamps that take turns (data/signals.js): traffic lights, the works' arrow board and flashers;
                           a prop's `lamps` flags, read by render/Lighting.js (its lights, its emissive map's slices)
       ChaseCam.js         the chase's own director (CHASE.cinema in data/chase.js), where the kill cam never works: a
@@ -481,13 +508,13 @@ decides on (a case meets walls only, a round's hit is traced from his real place
 | `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident), Rumble (near him) |
 | `pursuerWreck` | `{ car, x, y }` (a pursuer stopped for good: wrecked, its driver shot, a front tyre, blown up; a toll's crash is decided and marked `car.tollCrash` before it is told: Pursuit.wreck calls Toll.crash) | systems/Pursuit.js | ChaseCam (the kill beat), CarFx (its engine's fire-ball, none for a toll crash) |
-| `pursuerCrash` | `{ car, x, y }` (a pursuer on its way out stopped by what lines the road) | systems/Pursuit.js exitFx | CarFx (burning, it goes up there) |
-| `tyres` | `{ car, at: [points], k }` (tyres letting go this step: a burn-out, a shove, hard steering, a wreck sliding) | Drive.fx, Pursuit.exitFx | CarFx (rubber smoke in the air, the billows) |
+| `pursuerCrash` | `{ car, x, y }` (a pursuer on its way out stopped by what lines the road) | systems/pursuit/wreck.js exitFx | CarFx (burning, it goes up there) |
+| `tyres` | `{ car, at: [points], k }` (tyres letting go this step: a burn-out, a shove, hard steering, a wreck sliding) | drive/looks.js fx, pursuit/wreck.js exitFx, chase/shared.js slideSmoke | CarFx (rubber smoke in the air, the billows) |
 | `carStruck` | `{ car, x, y, dirA, tank }` (a round in a body panel) | Vehicle.hit | CarFx (hot sparks, a glint) |
 | `carBlast` | `{ car, x, y, pieces }` (a car blown up: the tyres it threw) | Vehicle.explode | CarFx (they burn as they roll) |
 | `pursuerRam` | `{ car, x, y, side }` (a pursuer's side swipe landing on his car, once a swipe) | systems/Pursuit.js | ChaseCam |
 | `chaseBeat` | `{ kind: 'kill' / 'lorry' / 'rammed' / 'shave', tier, x, y }` | systems/ChaseCam.js | (nobody yet: sounds, the HUD) |
-| `ride` | `{ beat, x, y }` (beat: `shove`, `hit`, `clip`, `torn`, `scrape`, `crash`, `lorry`, `start`, `ram`) | systems/Drive.js (the van's jolts), Lorries (a lorry stops across the street), World's outro (the getaway's engine catches, it rams a car) | Rumble |
+| `ride` | `{ beat, x, y }` (beat: `shove`, `hit`, `clip`, `torn`, `scrape`, `crash`, `lorry`, `start`, `ram`) | systems/Drive.js and drive/ (his car's jolts), Lorries (a lorry stops across the street), World's outro (the getaway's engine catches, it rams a car) | Rumble |
 | `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack combat variant; intensity through Tension), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
 | `powerCut` | `{ x, y }` (the fuse box) | Power (the lights of the house just went out) | Director (an incident at the box: whoever sees it raises the alert) |
 | `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |

@@ -106,8 +106,9 @@
   02, never "2A / 2B"; the FLAMINGO MOTEL (JITTERS) is level 3.
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
-  2A is built by tools/build_level2a.py (level `chase` block: `van` the car's start (the code's name for THE BOSS's convertible), cruise, lanes, end col, events by col); the
-  drive is systems/Drive.js with its numbers in data/chase.js (CHASE); the first time only it opens on him finishing his
+  2A is built by tools/build_level2a.py (level `chase` block: `van` the car's start (the level data's old name: the
+  chase's code calls THE BOSS's convertible `car`), cruise, lanes, end col, events by col); the drive is systems/Drive.js
+  (its parts in systems/drive/: rules, opening, camera, contacts, fronts, looks) with its numbers in data/chase.js (CHASE); the first time only it opens on him finishing his
   cigarette in the standing car and flicking it out (level `chase.intro`, systems/LastDrag.js, CHASE.intro; SPACE / pad A
   held skips it), then his gun, the boss's Uzi taken off the
   passenger seat in a short beat (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
@@ -331,14 +332,17 @@
   engine smoke by damage stage through Smoke.lay plus the billows seen at night (render/CarFxArt.js), sparks for as
   long as metal rubs (Particles.hot), the fire-balls (`boom`); scaled by QUALITY `fx` / `fxLights`; lab station 32.
 - The chase (level 2A, docs/LEVEL2.md): numbers in data/chase.js; events by distance in the level's `chase.events`
-  (systems/Pursuit.js, systems/Lorries.js); what the car hits is torn (a sensor at once), flung by hand (Drive.fling) or
-  the crash (`lasting`): never let a light thing hold it up. Play it by script after touching it (tools/shot.mjs).
+  (systems/Pursuit.js, its parts in systems/pursuit/; systems/Lorries.js); what his car and theirs do the same way is
+  systems/chase/shared.js (driven bodies, a bend's step, running a man down, rubber, a wreck rocked off a flank). What
+  the car hits is torn (a sensor at once), flung by hand (drive/contacts.js fling) or the crash (`lasting`): never let
+  a light thing hold it up. A scripted seeded run is checked step for step (tests/chasetrace.test.mjs): a change of
+  the chase's behaviour records it again (CHASE_TRACE_RECORD=1). Play it by script after touching it (tools/shot.mjs).
   Its road is a route (systems/Route.js, `chase.legs` / `chase.bends`, CHASE.bend): straight legs along +x (lanes per
   leg, two or more) joined by scripted bends (the camera never turned); read the CURRENT leg (Drive.leg), never
   `chase.lanes`; distance along the route (Drive.progress). Lab station 36.
-  A PARKED CAR IS NEVER A WALL NOR A DEATH: he shoves it aside (Drive.aside, `CHASE.aside`: 10 % of his speed on a
+  A PARKED CAR IS NEVER A WALL NOR A DEATH: he shoves it aside (drive/contacts.js aside, `CHASE.aside`: 10 % of his speed on a
   graze, 50 % square on, never stopped) and it never shuts both lanes (clearLanes). His car slides (`CHASE.slide`,
-  Drive slideStep / gripOf). Pursuers attack in turns, each TOLD (Pursuit nextAttack: shot / ram / brake;
+  drive/rules.js slideStep / gripOf). Pursuers attack in turns, each TOLD (pursuit/attacks.js nextAttack: shot / ram / brake;
   `CHASE.pursuit.attack`, `ram`, `block`; an event's `style`: gunner / rammer / blocker). No speedometer on the HUD.
   What is laid on a car but drawn elsewhere (its lamps' light, their glow) is placed from `Vehicle.shell()` (the
   pose it is DRAWN at), never from its body: else the beams trail the sprite.
