@@ -150,4 +150,8 @@ export const AMMO_CHARS = { n: '9mm', z: '9mm', v: '762', w: '762', g: '12g', q:
 // the damage kinds of a round and of what flies like one (a graze is a round too, shrapnel a blast's pieces): what
 // holes a gas bottle, a stove or a steam pipe, goes through a windscreen into a driver, strikes a spark off a valve
 // (entities/Prop.js, systems/Steam.js, GasValve.js, Pursuit.js)
+// a box of rounds on the floor (entities/AmmoItem.js): within `magnet` px of the player (his pool not full) it slides
+// to him at `speed` px/step and `gain` more per px nearer; within `reach` px it is his
+export const AMMO_PICK = { magnet: 48, speed: 1.5, gain: 0.12, reach: 15 };
+
 export const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);

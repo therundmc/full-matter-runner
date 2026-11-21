@@ -1071,9 +1071,10 @@ export default class Drive {
     const w = this.world, C = this.C, v = this.van, e = h.e, a = Math.atan2(h.vy, h.vx);
     e.hit?.(0, h.x, h.y, a + Math.PI / 2, 1, 'blunt');
     e.startAlarm?.();
-    e.shed?.(h.x, h.y, a + rand(-0.6, 0.6), rand(160, 260), false, 'car_mirror');
-    w.particles.sparks(h.x, h.y, a + Math.PI, 1.0, 18, 340);
-    w.particles.glass(h.x, h.y, a, 0.9, 10, 200);
+    const F = C.bend.smash.flank.fx;
+    e.shed?.(h.x, h.y, a + rand(-0.6, 0.6), rand(...F.mirror), false, 'car_mirror');
+    w.particles.sparks(h.x, h.y, a + Math.PI, 1.0, ...F.sparks);
+    w.particles.glass(h.x, h.y, a, 0.9, ...F.glass);
     w.sound('carHit', h.x, h.y, 0.9);
     w.shake(C.hit.shake * 0.8);
     this.bump('hit', 0.6);
@@ -1343,7 +1344,7 @@ export default class Drive {
     const w = this.world, C = this.C, F = C.fx, v = this.van, W = F.wind;
     if (this.v > F.dust.from) {
       for (const r of rear) {
-        if (chance(F.dust.chance)) w.particles.dust(r.x, r.y, 1, 3, '#8a8494', { speed: 16, size: F.dust.puff[0], alpha: F.dust.puff[1], life: F.dust.puff[2], vx: -this.v * 14 });
+        if (chance(F.dust.chance)) w.particles.dust(r.x, r.y, 1, 3, '#8a8494', { speed: 16, size: F.dust.puff[0], alpha: F.dust.puff[1], life: F.dust.puff[2], vx: -this.v * F.dust.back });
       }
     }
     if (this.v > F.wake.from && (this.wakeT -= dt) <= 0) {
@@ -1375,7 +1376,7 @@ export default class Drive {
     if ((this.scrapeT -= dt) > 0) return;
     const g = this.grind;
     // (the sparks are a shower for as long as it rubs: systems/CarFx.js)
-    if (g && this.v >= 1.5) {
+    if (g && this.v >= C.from) {
       w.sound('vanScrape', g.x, g.y, C.vol);
       w.events.emit('ride', { beat: 'scrape', x: g.x, y: g.y });
       this.scrapeT = C.every;
@@ -1386,7 +1387,7 @@ export default class Drive {
       const o = pair.bodyA === b ? pair.bodyB : pair.bodyA;
       if (!(o.isStatic || o.entity?.isVehicle) || o.entity?.def?.hung) continue;
       const c = pair.collision.supports?.[0];
-      if (!c || this.v < 1.5) continue;
+      if (!c || this.v < C.from) continue;
       w.sound('vanScrape', c.x, c.y, C.vol);
       w.events.emit('ride', { beat: 'scrape', x: c.x, y: c.y });
       this.scrapeT = C.every;

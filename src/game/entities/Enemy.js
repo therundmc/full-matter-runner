@@ -148,7 +148,7 @@ export default class Enemy extends Character {
     this.searchPt = null; this.localPts = null; this.checkTarget = null; this.guardPt = null; this.guardT = 0;
     this.fetchTarget = null; this.friend = null;
     this.arms = null;          // his weapon kept somewhere until the fight (see takeArms), or a brawler's fists
-    this.scanT = rand(0, 0.3);
+    this.scanT = rand(0, ENEMY.scanTick);
     this.icon = ''; this.iconT = 0; this.barkT = 0;
     this.pace = D.rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : heavyBuild(kind) ? 0.9 : 1);
     this.seed = rand(0, 100);
@@ -684,7 +684,7 @@ export default class Enemy extends Character {
     this.panicT = Math.max(0, this.panicT - dt);
     this.kneel = false;
     this.perceive(dt);
-    if ((this.scanT -= dt) <= 0) { this.scanT = 0.3; this.scanWorld(); }
+    if ((this.scanT -= dt) <= 0) { this.scanT = ENEMY.scanTick; this.scanWorld(); }
     // one of the last two: a moment after a mate fell, he calls out for the others (Director.onKill)
     if (this.mourn && this.world.time >= this.mourn.at) { const m = this.mourn; this.mourn = null; this.barkT = 0; this.say('alone', m); }
     this.nodT = Math.max(0, this.nodT - dt);
@@ -1978,7 +1978,7 @@ export default class Enemy extends Character {
     this.halt();
     if (!lk) { this.thinkT = 0; return; }
     this.aimAt(lk.x, lk.y, dt);
-    if (this.tryFire(lk, 0.12)) this.burstLeft--;
+    if (this.tryFire(lk, ENEMY.suppressWild)) this.burstLeft--;
     if (this.burstLeft <= 0 || this.t > 2) { this.burstLeft = 0; this.suppressCD = rand(3, 5); this.thinkT = 0; this.setTactic('hold'); }
   }
 
@@ -2489,7 +2489,7 @@ export default class Enemy extends Character {
     this.dropWeapon(along + rand(-0.8, 0.8), this.yields ? 0.5 : rand(...DROP.knock)); // (his gun is to be snatched: it stays by him)
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
-    const sp = opt.speed ?? (cause === 'punch' ? 3 : 4.5);
+    const sp = opt.speed ?? (cause === 'punch' ? ENEMY.knockSpeed.punch : ENEMY.knockSpeed.other);
     this.vel = { x: Math.cos(along) * sp, y: Math.sin(along) * sp };
     Body.setVelocity(this.body, this.vel);
     this.swing = this.tell = 0;

@@ -132,12 +132,12 @@ export const CHASE = {
     // long (longer the faster), going back over the ground at `v` x its speed (so they pass faster than the road),
     // `life` s, `alpha` at most, `band` px off its middle line to either side [from, to] (never over the car
     // itself), from `back` px behind it to `ahead` px ahead. dust: off each rear wheel, `chance` a step: a puff
-    // [px wide, alpha, s]. wake: every `every` s something light is whipped up behind it: a sheet of paper (`paper`:
+    // [px wide, alpha, s], thrown back at `back` x its speed (px/s per px/step). wake: every `every` s something light is whipped up behind it: a sheet of paper (`paper`:
     // the odds; else leaves, `leaves` of them), thrown `v` x its speed along its way
     // (2026-11-19, the user: "on ne sent pas trop la vitesse": more of them, longer, from a lower speed; the lens no
     // longer smears the edges, so the speed is sold here, in the world, by things that go by)
     wind: { from: 5, n: 38, len: [16, 64], v: [0.6, 1.4], life: [0.2, 0.45], alpha: 0.55, band: [38, 210], back: 260, ahead: 620 },
-    dust: { from: 5, chance: 0.5, puff: [4, 0.14, 0.8] },
+    dust: { from: 5, chance: 0.5, puff: [4, 0.14, 0.8], back: 14 },
     wake: { from: 6, every: [0.16, 0.5], paper: 0.45, leaves: 4, v: 0.55 },
   },
   // the card that closes a chase not finished yet (level `chase.next`, Game state 'continued'; Drive.finishView): the
@@ -150,9 +150,10 @@ export const CHASE = {
   // dead at the wheel (a told shot): the car runs on, losing `slow` px/step a second, drifting `drift` of its full
   // sideways speed toward the kerb (Drive.coast)
   coast: { slow: 3.2, drift: 0.22 },
-  // a flank against a wall or a car: the grind heard (and the pad's beat) every so often; the van's friction against
-  // what it leans on. Its sparks are a shower for as long as it rubs (systems/CarFx.js, data/carfx.js `scrape`)
-  scrape: { every: 0.12, vol: 0.6, friction: 0.08 },
+  // a flank against a wall or a car: the grind heard (and the pad's beat) every so often, from `from` px/step; the
+  // van's friction against what it leans on. Its sparks are a shower for as long as it rubs (systems/CarFx.js,
+  // data/carfx.js `scrape`)
+  scrape: { every: 0.12, vol: 0.6, friction: 0.08, from: 1.5 },
   // the camera (Game.fit / updateCamera, Drive.frame). At the wheel the picture is drawn 1:1: the scene's canvas is
   // the window, at the whole zoom nearest to `view` world px of height (a level's `chase.view` overrides it; 3 at
   // 1080: 360 px; 4 at 1440: 360; 3 at 900: 300), and the lens scales nothing: a picture brought down by the lens,
@@ -207,7 +208,9 @@ export const CHASE = {
     apex: { slow: 0.72, in: 0.1, hold: 0.22, out: 0.3 },
     smash: {
       kg: 450, heavy: [0.45, 0.8], spin: 0.5, burst: 6, cost: 0.025, heavyCost: 0.09, floor: 0.6,
-      flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9 },
+      flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9,
+        // its first touch (Drive.flanked): [n, px/s] of sparks and of glass, the mirror torn off at [from, to] px/s
+        fx: { sparks: [18, 340], glass: [10, 200], mirror: [160, 260] } },
       jam: { asked: 2, got: 0.6, t: 0.8 },
       beat: { slow: 0.35, in: 0.05, hold: 0.6, out: 0.18, push: 5, shake: 0.3 },
     },
@@ -458,7 +461,8 @@ export const CHASE = {
     // `wheel`: how much quicker and further the car goes sideways while it lasts (the wheel answers in real time:
     // its rate is not slowed with the world, and the sideways speed is this much the usual): the dodge is easier,
     // that is the point. `shave`: clear of its tail by less than this many px: sparks and a jolt (a near miss)
-    lorry: { lead: 0.8, slow: 0.3, in: 0.08, out: 0.25, cap: 3.2, pad: 6, wheel: 1.45, shave: 14, shot: 'lorryGap' },
+    // (`shaved`: [sparks, px/s, the shake] of it)
+    lorry: { lead: 0.8, slow: 0.3, in: 0.08, out: 0.25, cap: 3.2, pad: 6, wheel: 1.45, shave: 14, shaved: [12, 280, 0.2], shot: 'lorryGap' },
     // a toll's plaza ahead (systems/Toll.js): once a plaza, `lead` s (game time, at his speed) before its gates, as its
     // tells are up, the world slows to `slow` and the view cuts out to frame the gates (SHOTS tollChoose: a whole
     // zoom further out, the view's middle `ahead` of the view's width further on than the drive's and across on the

@@ -248,8 +248,8 @@ export default class ChaseCam {
     L.shaved = true; // (alongside it: this is the one look)
     if (gap < 0 || gap >= C.shave) return;
     const x = clamp(v.x + v.w / 2, box.x0, box.x1), y = under >= 0 ? box.y1 : box.y0;
-    w.particles?.sparks(x, y, Math.PI, 0.9, 12, 280);
-    w.shake?.(0.2);
+    w.particles?.sparks(x, y, Math.PI, 0.9, C.shaved[0], C.shaved[1]);
+    w.shake?.(C.shaved[2]);
     w.sound?.('vanScrape', x, y, 0.7);
     w.events.emit('ride', { beat: 'scrape', x, y });
     w.events.emit('chaseBeat', { kind: 'shave', tier: 'light', x, y });

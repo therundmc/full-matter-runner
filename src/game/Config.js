@@ -105,6 +105,7 @@ export const ENEMY = {
   light: [0.35, 1.1],     // detection multiplier = light[0] + light[1] * brightness (0 dark .. 1 lit)
   meterDecay: [0.16, 0.05], // meter loss per second out of sight (unaware / suspicious)
   visionTick: 0.05,       // line-of-sight check period while unaware (staggered between guards)
+  scanTick: 0.3,          // s between two looks at what is around him (Enemy.scanWorld: weapons, bodies, cover)
   // meter level a noise brings a guard to (footsteps add up instead, capped below alert)
   hear: { gunshot: 0.75, allyFire: 0.6, explosion: 0.75, wall: 0.6, glass: 0.5, door: 0.4, thrown: 0.5, clatter: 0.45, body: 0.45, noise: 0.45, footsteps: 0.18 },
   hearError: 0.12,        // noise localisation error, fraction of the distance
@@ -127,6 +128,8 @@ export const ENEMY = {
   },
   knockTime: 2.8,
   knockBrake: 0.08,       // share of his speed a man knocked down loses each step as he slides on the floor
+  knockSpeed: { punch: 3, other: 4.5 }, // px/step he is thrown at, knocked down by a punch / anything else (none given)
+  suppressWild: 0.12,     // rad of extra spread on a burst at where he was last seen (tSuppress)
   dizzy: [1.0, 1.6],      // stagger after getting up from a knock-down
 };
 

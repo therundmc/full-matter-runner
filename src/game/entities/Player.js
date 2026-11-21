@@ -538,8 +538,8 @@ export default class Player extends Character {
   // of a throw wound up (0: the quick throw)
   throwWeapon(power = false, k = 0) {
     const w = this.world, a = this.angle, blade = this.def.swing === 'blade';
-    const sp = power ? 15 : lerp(THROW.speed[0], THROW.speed[1], k);
-    const spin = blade && !power ? lerp(THROW.spin[0], THROW.spin[1], k) : power ? 0.9 : rand(0.4, 0.7);
+    const sp = power ? THROW.angry.speed : lerp(THROW.speed[0], THROW.speed[1], k);
+    const spin = blade && !power ? lerp(THROW.spin[0], THROW.spin[1], k) : power ? THROW.angry.spin : rand(0.4, 0.7);
     const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * THROW.hand, this.y + Math.sin(a) * THROW.hand,
       a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, spin * (Math.random() < 0.5 ? -1 : 1), this);
     it.wear = this.weapon.wear;

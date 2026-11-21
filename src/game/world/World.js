@@ -77,7 +77,7 @@ import BossStage from '../systems/BossStage.js';
 import ThrowBeat from '../systems/ThrowBeat.js';
 import Ambient from '../systems/Ambient.js';
 import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
-import { SEAT, TRAVERSE } from '../data/feel.js';
+import { SEAT, TRAVERSE, MOMENTS } from '../data/feel.js';
 import Drive, { driveSpot } from '../systems/Drive.js';
 import Checkpoints, { fromCheckpoint } from '../systems/Checkpoints.js';
 import { worldRng } from '../systems/Rng.js';
@@ -420,7 +420,7 @@ export default class World {
   checkCleared() {
     if (this.cleared || this.enemiesLeft > 0) return false;
     this.cleared = true;
-    this.slowmo(0.22, 1.3);
+    this.slowmo(...MOMENTS.clear.slowmo);
     this.after(0.4, () => Audio.play('clear'));
     this.game.onCleared();
     return true;

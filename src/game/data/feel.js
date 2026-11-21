@@ -144,7 +144,8 @@ export const MOMENTS = {
   // every slide of the player's opens a moment of bullet time: [time scale, real seconds]. He aims at full speed in it.
   slideTime: { slowmo: [0.42, 0.55] },
   break: { slowmo: [0.35, 0.3], stop: 0.1, shake: 0.35 },                   // the player's weapon gives out over a man
-  snatch: { slowmo: [0.4, 0.3] },                                           // a dead man's weapon taken into his hand
+  snatch: { slowmo: [0.4, 0.3] },
+  clear: { slowmo: [0.22, 1.3] },                                           // the last guard down: the way out opens                                           // a dead man's weapon taken into his hand
   throw: { slowmo: [0.45, 0.25], shake: 0.15 },                             // the angry throw of an empty gun
   // the last guard in sight goes down after a real fight (others still about the level): a breath of slow motion.
   // radius: px about the player in which no other guard may stand in sight, chain: kills of the chain at least
@@ -188,6 +189,7 @@ export const MOMENTS = {
 //   butt    a gun thrown full into a man: what the blow is (fx/Blows.js)
 export const THROW = {
   tap: 0.12, charge: 0.35, speed: [11, 15], move: 0.6, hand: 12, lock: 260, spin: [0.55, 0.8],
+  angry: { speed: 15, spin: 0.9 }, // the angry throw of an empty gun (Player.throwWeapon power): px/step, rad/step
   pose: { in: 0.12, hand: [-3.5, 8, 2.6], brace: [7.5, -5.5], twist: 0.38, lean: 1.2, shake: 0.05, hz: 31 },
   trail: { gap: 2, alpha: [0.4, 0.24, 0.12], streak: { len: 26, alpha: 0.35 } },
   hit: {

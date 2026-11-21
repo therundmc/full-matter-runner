@@ -1,5 +1,5 @@
 import { CAT, MASK } from '../Config.js';
-import { AMMO } from '../data/weapons.js';
+import { AMMO, AMMO_PICK } from '../data/weapons.js';
 import { spriteOpt, chunk, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 
@@ -42,12 +42,13 @@ export default class AmmoItem {
     const full = p.ammo[this.type] >= this.cal.max;
     const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
     if (full) return;
-    if (d < 48) {
+    const M = AMMO_PICK;
+    if (d < M.magnet) {
       // magnet
-      const a = Math.atan2(dy, dx), v = 1.5 + (48 - d) * 0.12;
+      const a = Math.atan2(dy, dx), v = M.speed + (M.magnet - d) * M.gain;
       Body.setVelocity(this.body, { x: Math.cos(a) * v, y: Math.sin(a) * v });
     }
-    if (d < 15) {
+    if (d < M.reach) {
       p.addAmmo(this.type, this.rounds);
       this.dead = true;
       this.world.removeBody(this.body);
