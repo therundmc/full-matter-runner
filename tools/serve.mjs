@@ -43,7 +43,7 @@ const answers = (port, host) => new Promise((done) => {
 const taken = async (port) => (await Promise.all([answers(port, '127.0.0.1'), answers(port, '::1')])).some(Boolean);
 
 // first free port in [port, port + 20)
-export async function freePort(port = 8000, quiet = false) {
+async function freePort(port = 8000, quiet = false) {
   const last = port + 20;
   while (port < last && await taken(port)) {
     if (!quiet) console.log(`port ${port} is taken (another server is still running there), trying ${port + 1}`);

@@ -279,10 +279,10 @@ test('game: a retry after a death keeps the chase\'s checkpoint; RESTART and a s
   // which way each goes
   const calls = [], stub = { levelId: 'level2a', firstLevel: () => 'tutorial', startLevel: (id, o) => calls.push([id, o]) };
   Game.prototype.retry.call(stub);
-  Game.prototype.newGame.call(stub);
+  Game.prototype.restart.call(stub);
   assert.deepEqual(calls, [['level2a', { retry: true, resume: true }], ['level2a', { retry: true }]]);
   // the menu's RETRY (dead) and RESTART
-  const applied = [], g2 = { retry: () => applied.push('retry'), newGame: () => applied.push('restart') };
+  const applied = [], g2 = { retry: () => applied.push('retry'), restart: () => applied.push('restart') };
   Game.prototype.applyMenu.call(g2, { type: 'retry' });
   Game.prototype.applyMenu.call(g2, { type: 'restart' });
   assert.deepEqual(applied, ['retry', 'restart']);

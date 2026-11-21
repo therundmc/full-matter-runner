@@ -129,8 +129,8 @@ test('lab: an AIM station, men at four distances (one behind a wall\'s end), a t
   assert.ok(lab.passive);
 });
 
-// ---- LOCK's worn marks (systems/AimMark.js)
-const { grit, wear, ringBits, barBits, chevronBits, flecks, ringRadius } = await load('game/systems/AimMark.js');
+// ---- the worn floor marks (systems/AimMark.js)
+const { grit, wear, ringBits, barBits, chevronBits } = await load('game/systems/AimMark.js');
 
 test('worn: the wear is a hash of the mark\'s own bits: the same every frame, another for another man', () => {
   for (let i = 0; i < 200; i++) assert.ok(grit(3, i) >= 0 && grit(3, i) < 1);
@@ -145,37 +145,26 @@ test('worn: the wear is a hash of the mark\'s own bits: the same every frame, an
 });
 
 test('worn: a stencil circle is whole px on its radius, in arcs with bare bridges, and never flickers', () => {
-  const R = AIM.lock.ring, clean = { ...AIM.worn, chip: 0, thin: 0 };
-  for (const i of [0, 1]) {
-    const bits = ringBits(4, R.r[i], R.arcs, R.span[i], R.turn, R.width[i]);
-    assert.deepEqual(bits, ringBits(4, R.r[i], R.arcs, R.span[i], R.turn, R.width[i]), 'the same twice');
+  const turn = Math.PI / 4, clean = { ...AIM.worn, chip: 0, thin: 0 };
+  for (const [r, span] of [[17, 0.5], [14, 1.22]]) {
+    const bits = ringBits(4, r, 4, span, turn, 1);
+    assert.deepEqual(bits, ringBits(4, r, 4, span, turn, 1), 'the same twice');
     assert.ok(bits.length > 8, 'something left of it');
     for (const b of bits) {
       assert.ok(Number.isInteger(b.x) && Number.isInteger(b.y) && b.k > 0 && b.k <= 1);
-      assert.ok(Math.abs(Math.hypot(b.x, b.y) - R.r[i]) <= R.width[i]);
+      assert.ok(Math.abs(Math.hypot(b.x, b.y) - r) <= 1);
       // the bridges are on the axes: nothing within a px or two of them
       assert.ok(Math.min(Math.abs(b.x), Math.abs(b.y)) >= 2, `${b.x},${b.y} is on an arc`);
     }
-    assert.ok(bits.length < ringBits(4, R.r[i], R.arcs, R.span[i], R.turn, R.width[i], clean).length, 'chipped');
+    assert.ok(bits.length < ringBits(4, r, 4, span, turn, 1, clean).length, 'chipped');
   }
-  assert.notDeepEqual(ringBits(4, 14, 4, 1.2, R.turn), ringBits(5, 14, 4, 1.2, R.turn), 'each man his own wear');
-  assert.ok(ringBits(1, R.r[1], R.arcs, R.span[1], R.turn, 1, clean).length > ringBits(1, R.r[0], R.arcs, R.span[0], R.turn, 1, clean).length, 'more of a circle once locked');
-  // one arc turned to an angle stays round that angle (the tick)
-  const at = 2.1, span = AIM.lock.tick.span[0];
+  assert.notDeepEqual(ringBits(4, 14, 4, 1.2, turn), ringBits(5, 14, 4, 1.2, turn), 'each mark its own wear');
+  // one arc turned to an angle stays round that angle (the vault's arcs)
+  const at = 2.1, span = AIM.hop.span[0];
   for (const b of ringBits(7, 46, 1, span, at, 1, clean)) assert.ok(Math.abs(Math.atan2(b.y, b.x) - at) <= span / 2 + 0.03);
 });
 
-test('worn: the circle closes in on the man it locks, in whole px', () => {
-  const R = AIM.lock.ring;
-  assert.equal(ringRadius(false, 5, R), R.r[0]);
-  assert.equal(ringRadius(true, 0, R), R.r[0]);
-  assert.equal(ringRadius(true, R.snap, R), R.r[1]);
-  assert.equal(ringRadius(true, 9, R), R.r[1]);
-  assert.ok(Number.isInteger(ringRadius(true, R.snap / 3, R)));
-  assert.ok(R.r[1] < R.r[0] && R.r[1] >= 13, 'outside his body (10 px drawn 1.3 x)');
-});
-
-test('worn: a chevron keeps its tip, a bar its length, the specks stay outside the mark', () => {
+test('worn: a chevron keeps its tip, a bar its length', () => {
   for (let seed = 1; seed < 30; seed++) {
     const bits = chevronBits(seed, 5);
     assert.ok(bits.some((b) => b.u === 0 && b.v === 0 && b.k === 1), 'the tip');
@@ -185,16 +174,12 @@ test('worn: a chevron keeps its tip, a bar its length, the specks stay outside t
   const bar = barBits(3, AIM.hop.edge);
   assert.deepEqual(bar, barBits(3, AIM.hop.edge));
   assert.ok(bar.length > AIM.hop.edge / 2 && bar.every((b) => Math.abs(b.u) <= AIM.hop.edge / 2));
-  const f = flecks(8, 14);
-  assert.equal(f.length, AIM.worn.flecks);
-  assert.deepEqual(f, flecks(8, 14));
-  for (const q of f) assert.ok(Math.hypot(q.x, q.y) >= 14 + AIM.worn.stray[0] - 1);
 });
 
-test('lock: its mark is one of the marks kept to compare, each with its numbers', () => {
+test('lock: its mark is the corner ticks (the user\'s pick: the others are gone), lighter at rest than on a man', () => {
   const L = AIM.lock;
-  assert.ok(L.marks.includes(L.mark));
-  for (const m of L.marks) assert.ok(L[m] && L[m].alpha.length === 2 && L[m].alpha[0] < L[m].alpha[1], m);
+  assert.ok(!('mark' in L) && !('marks' in L) && !L.ring && !L.tick && !L.point);
+  assert.ok(L.corners.alpha[0] < L.corners.alpha[1] && L.corners.box - L.corners.corner >= 10, 'outside his body');
   assert.ok(L.chevron.alpha[0] < L.chevron.alpha[1] && L.chevron.at > L.chevron.wall, 'the floor chevron is light, brighter on a man');
 });
 

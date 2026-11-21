@@ -349,12 +349,11 @@ src/
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       AimArt.js           the aim's cue, LOCK (data/aim.js), over the lighting, told by systems/AimCue.js (the line
                           of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in Game.padAim); the
-                          mouse keeps a dot (Game.drawCursor). LOCK is worn stencil paint: a chevron
-                          on the floor along the aim only with the AIM MARK option (World.aimMark, Settings
-                          `aimMark`, off by default), a mark round the man it takes (AIM.lock.mark;
-                          `?mark=ring|tick|point|corners` to compare), and the vault's mark in the same paint
-                          (`drawVaultMark`, AIM.hop); the pixels and their wear come from systems/AimMark.js
-                          (pure, deterministic per mark: no flicker)
+                          mouse keeps a dot (Game.drawCursor). LOCK: corner ticks round the man it takes
+                          (AIM.lock.corners) and, only with the AIM MARK option (World.aimMark, Settings `aimMark`,
+                          off by default), a chevron of worn stencil paint on the floor along the aim; the vault's
+                          mark in the same paint (`drawVaultMark`, AIM.hop); the pixels and their wear come from
+                          systems/AimMark.js (pure, deterministic per mark: no flicker)
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
@@ -553,7 +552,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Soundtrack (audio/Music.js): a registry of tracks (audio/tracks/index.js), one a level (level `music`, `trackOf`;
   the default is 'synthwave', the score below), the title screen playing `MENU_TRACK`. Music.js keeps the game's
   state (intensity, fight, chain) and hands it to the player of the track playing; a new track starts on its own
-  downbeat while the old one fades. audition.html (repo root) plays every track live with its levels of intensity;
+  downbeat while the old one fades (setJukebox stays in its API and does nothing: the jukebox has no band). audition.html
+  (repo root) plays every track live with its levels of intensity;
   tools/render_music.mjs renders them offline in headless Edge (WAV extracts in audition/, loudness per part and per
   layer, the kick's timing).
 - Groove tracks (audio/groove/Groove.js, data in audio/tracks/<id>.js, instruments in groove/voices.js, harmony and
@@ -1226,7 +1226,8 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   the CPU per section (engine/Profiler.js `PROF`: `if (PROF.on) PROF.begin('x')` ... `end('x')`, off and free until
   the overlay shows; the sections and their parents are `SECTIONS` in Perf.js), the card (renderer, the lens' GPU
   time where EXT_disjoint_timer_query is exposed, texture uploads), the JS heap and an estimate of the big buffers
-  by owner (each owner's `bytes()`, engine/Bytes.js: typed arrays vs canvases), the world's counts, the quality.
+  by owner (each owner's `bytes()`, engine/Bytes.js: typed arrays vs canvases), the world's counts (the sound voices and
+  the music's one-shots in flight, Music.liveVoices, among them), the quality.
   `game.perf.snapshot()` returns the same as a plain object; `{ ...game.perf }` stays F4's numbers (the QA robot).
 - `window.game` in the console.
 - `npm test` runs the Node unit tests.

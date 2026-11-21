@@ -2250,7 +2250,7 @@
         report('exception', 'error', `update: ${firstLine(e?.message || e)}`, g.world ? posOf(g.world.player.x, g.world.player.y) : null,
           { where: 'game.update', state: g.state, message: String(e?.message || e), stack: String(e?.stack || '').split('\n').slice(0, 8).join('\n') });
         // a world that keeps throwing is no use: start over
-        if (S.findings.get(`exception|update: ${firstLine(e?.message || e)}`).count % 50 === 0) { S.stats.forcedRestarts++; act('forced restart'); try { g.newGame(); } catch { /* reported */ } }
+        if (S.findings.get(`exception|update: ${firstLine(e?.message || e)}`).count % 50 === 0) { S.stats.forcedRestarts++; act('forced restart'); try { g.restart(); } catch { /* reported */ } }
       }
       const ms = performance.now() - t0;
       if (g.world === before && g.state === 'play') {

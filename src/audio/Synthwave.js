@@ -5,15 +5,14 @@
 // / arp / pulse / lead / hook, a 4-note stab, a 5-voice pad: no nodes per note) and on drum and percussion one-shots
 // synthesized once into AudioBuffers.
 // Public API (the same as every player, see audio/Music.js): start(), stop(), setIntensity(0..1), setCombat(on),
-// setCombo(n), setJukebox(0..1). The intensity picks the form on a bar line: the calm (a dark pad and a muted pulse
-// that breathes), tense (a heartbeat, the bass, risers), then the song and its beat (BEAT); the combat form (house,
-// four on the floor, same key and motifs) takes over while the game fights, each kill of a chain bringing a layer and
-// a little volume (the stage, see setCombo), a stinger on the big ones. setJukebox: the bar's jukebox plays its own
-// small band on the same bars and chords.
+// setCombo(n). The intensity picks the form on a bar line: the calm (a dark pad and a muted pulse that breathes),
+// tense (a heartbeat, the bass, risers), then the song and its beat (BEAT); the combat form (house, four on the floor,
+// same key and motifs) takes over while the game fights, each kill of a chain bringing a layer and a little volume
+// (the stage, see setCombo), a stinger on the big ones.
 // The constructor takes an optional (context, destination) so the song can be rendered offline for analysis.
 import Audio from './Audio.js';
 import {
-  PROGRESSIONS, SECTIONS, FORMS, KICK, SNARE, HATS, FILLS, PERC, BASS, PULSE, ARP, STABS, LEADS, JUKE, GRIT, GRIT_RANGE,
+  PROGRESSIONS, SECTIONS, FORMS, KICK, SNARE, HATS, FILLS, PERC, BASS, PULSE, ARP, STABS, LEADS, GRIT, GRIT_RANGE,
   chord, bassMidi, chordTone, voiceLead, arpPool, gritDrive, gritCurve,
 } from './score.js';
 
@@ -42,7 +41,6 @@ const MIX = {
   riser: 0.02, swell: 0.05, shaker: 0.1, rim: 0.1, clank: 0.1,
   bass: 0.3, bassOut: 0.3, sub: 0.1, growl: 0.2, pad: 0.12, arp: 0.11, pulse: 0.17, stab: 0.14, lead: 0.075, hook: 0.05,
   gateSend: 0.7, gateRet: 0.9, verbRet: 0.5, delayRet: 0.32, delayFb: 0.38,
-  juke: 0.2, jukeDrums: 0.6, jukeOut: 0.5,
 };
 const TOM_RATE = { H: 1.35, M: 1, L: 0.74 };
 
@@ -336,32 +334,7 @@ class Session {
     hookOut.connect(this.duck);
     chain(hookOut, gain(0.35), this.delay);
     chain(hookOut, gain(0.3), this.verb);
-
-    // the jukebox: a reedy organ and a round bass through a small boxy speaker, outside the song's level and fades
-    this.juke = gain(0);
-    this.jukeIn = gain(1);
-    chain(this.jukeIn, filt('highpass', 320), filt('lowpass', 2800), this.juke, this.out);
-    this.jukeV = gain(0);
-    this.jukeO = [osc('square', -5), osc('triangle', 5)];
-    const jukeF = filt('lowpass', 1900, 2);
-    for (const o of this.jukeO) o.connect(jukeF);
-    chain(jukeF, this.jukeV, this.jukeIn);
-    this.jukeB = osc('triangle');
-    this.jukeBV = gain(0);
-    chain(this.jukeB, this.jukeBV, this.jukeIn);
   }
-
-  jukeNote(t, m, dur, v) {
-    for (const o of this.jukeO) o.frequency.setValueAtTime(mtof(m), t);
-    env(this.jukeV.gain, t, dur, MIX.juke * v, 0.004, 0.03);
-  }
-
-  jukeBass(t, m, dur) {
-    this.jukeB.frequency.setValueAtTime(mtof(m), t);
-    env(this.jukeBV.gain, t, dur, MIX.juke * 1.5, 0.004, 0.02);
-  }
-
-  setJuke(t, v) { this.juke.gain.setTargetAtTime(v * MIX.jukeOut, t, 0.2); }
 
   // ---- synth voices (automation only, no new nodes)
   bass(t, m, dur, v, cutBase, cutPeak) {
@@ -443,12 +416,12 @@ class Session {
   }
 
   // ---- one-shots (a buffer source + a gain each); offset: start that far into the sample
-  hit(name, t, v, { rate = 1, gate = false, verb = false, to = this.drums, offset = 0 } = {}) {
+  hit(name, t, v, { rate = 1, gate = false, verb = false, offset = 0 } = {}) {
     const src = this.ctx.createBufferSource(), g = this.gainNode(v);
     src.buffer = this.buf[name];
     src.playbackRate.value = rate;
     src.connect(g);
-    g.connect(to);
+    g.connect(this.drums);
     if (gate) g.connect(this.gateIn);
     if (verb) g.connect(this.verb);
     this.live++;
@@ -558,7 +531,6 @@ export default class Synthwave {
     this.level = 0;     // smoothed intensity, moves once per bar
     this.combat = false; // the game is fighting: the combat form plays (see _tick)
     this.combo = 0;     // kills in the player's chain
-    this.jukebox = 0;   // how well the bar's jukebox is heard (see setJukebox)
     this.stage = 0;     // layers it has brought in: up at once, down a step a bar
     this.sting = false; // the bar being planned lands a stinger
     this.passes = {};   // times each section has played: drives the variations
@@ -597,9 +569,6 @@ export default class Synthwave {
   // the chain breaks they go one by one, a bar apart
   setCombo(n) { this.combo = n || 0; }
 
-  // how well the bar's jukebox is heard from where the player stands (0 = not at all): its band plays along
-  setJukebox(v) { this.jukebox = clamp(v || 0, 0, 1); }
-
   _open(ctx) {
     if (this.bufCtx !== ctx) { this.buf = makeBuffers(ctx); this.bufCtx = ctx; }
     this.S = new Session(ctx, this.buf, this.dest || Audio.music);
@@ -617,7 +586,6 @@ export default class Synthwave {
   _tick(until) {
     const now = this.S.ctx.currentTime;
     if (this.nextBar < now) this.nextBar = now + 0.05; // timer was throttled (background tab): resync, don't burst
-    this.S.setJuke(now, this.target > 0 ? this.jukebox : 0);
     // a fight breaks out: announce it over the bars already scheduled, the combat form takes over on the next bar line
     if (this.combat && this.target > 0 && this.form && this.form !== FORMS.menu && this.form !== FORMS.combat && !this.cued) {
       this.cued = true;
@@ -774,19 +742,6 @@ export default class Synthwave {
     else if (game && b === 0) fade = sec.impact ? { open: 0 } : { from: 2400, open: 1 };
     else if (game && last && !sec.riser && !SECTIONS[after].impact) fade = { close: 2400, at: 8, dur: 0.5 };
 
-    // ---- the jukebox's band, on this bar's chords (only planned while it is heard)
-    let juke = null;
-    if (this.jukebox > 0.02 && this.target > 0) {
-      juke = { tune: [], bass: [] };
-      const tune = JUKE.tunes[(pass + b) % JUKE.tunes.length];
-      for (let s = 0; s < 16; s++) {
-        const c = chordAt(s), root = bassMidi(c.bass) + 12;
-        if (tune[s] !== '.') juke.tune.push({ s, m: arpPool(c, 65)[+tune[s]], len: 2, v: s % 8 ? 0.8 : 1 });
-        const tok = JUKE.bass[s];
-        if (tok !== '.') juke.bass.push({ s, m: tok === 'O' ? root + 12 : tok === 'F' ? chordTone(c, root + 7) : root, len: 2 });
-      }
-    }
-
     const bite = part('bite') ?? 1;
     // the grit: the section's, and in a fight the heat on top of it
     const grit = Math.min(GRIT.max, (part('grit') ?? 0) + (fight ? GRIT.heat * heat : 0));
@@ -798,7 +753,7 @@ export default class Synthwave {
       bassCut: [(90 + 260 * e) * bite, (500 + 2200 * e) * bite], arpDecay: sec.arpDecay ?? 0.05 + 0.1 * e,
       arpCut: (1200 + 3200 * e) * bite * (sec.breathe ? 0.45 : 1), pulseCut: 380 + 900 * e,
       stabDecay: 0.07 + 0.06 * e, stabCut: (1800 + 3600 * e) * Math.min(bite, 1.6),
-      juke, roll, fade, glide: this.fresh && !fight ? BAR : 0.3,
+      roll, fade, glide: this.fresh && !fight ? BAR : 0.3,
       crash: (b === 0 && sec.crash) || (fight && st >= STAGES - 1 && b % 4 === 0), impact: b === 0 && sec.impact, down: b === 0 && sec.down,
       riser: sec.riser && b === SECTION_BARS - sec.riser ? sec.riser : 0,
       swell: (game || fight) && last && !this.out && !!(nextSec.crash || nextSec.impact),
@@ -855,12 +810,6 @@ export default class Synthwave {
     if (p.roll) {
       for (let k = 0; k < 16; k++) S.hit('snare', at(8 + k / 2), MIX.snare * (0.25 + 0.75 * (k / 15) ** 1.6), { gate: true, rate: 1 + k * 0.006 });
       S.gateOpen(at(8), at(16));
-    }
-
-    if (p.juke) {
-      for (const n of p.juke.tune) S.jukeNote(at(n.s), n.m, n.len * STEP, n.v);
-      for (const n of p.juke.bass) S.jukeBass(at(n.s), n.m, n.len * STEP);
-      for (const [name, pat] of JUKE.drums) for (const h of hits(pat)) S.hit(name, at(h.s), MIX[name] * h.v * MIX.jukeDrums, { to: S.jukeIn });
     }
 
     if (p.crash) S.hit('crash', t0, MIX.crash, { verb: true });

@@ -3,7 +3,9 @@
 // (level `music`, tracks/index.js trackOf), the title screen plays the menu's (MENU_TRACK).
 // Public API: setTrack(id), start(), stop(), setIntensity(0..1), setCombat(on), setCombo(n), setJukebox(0..1). The
 // game's state (intensity, fight, chain) is kept here and handed to the track playing, so a change of track picks
-// up where the game is. A new track starts on its own downbeat while the old one fades out.
+// up where the game is. A new track starts on its own downbeat while the old one fades out. setJukebox (how well the
+// bar's jukebox is heard) does nothing today: its synthesized band was dropped (the user found it horrible, see
+// systems/Jukebox.js); it is kept for recorded music, which may bring a jukebox stem.
 import Audio from './Audio.js';
 import Synthwave from './Synthwave.js';
 import Groove from './groove/Groove.js';
@@ -17,10 +19,11 @@ class Music {
     this.players = new Map(); // track id -> its player (kept: their instruments are rendered once)
     this.player = null;       // the one playing
     this.playing = false;
-    this.game = { intensity: 0, combat: false, combo: 0, jukebox: 0 };
+    this.game = { intensity: 0, combat: false, combo: 0 };
   }
 
-  get liveVoices() { return this.player ? this.player.liveVoices : 0; } // debug: one-shots in flight
+  // one-shots in flight in the track playing (F8's perf overlay)
+  get liveVoices() { return this.player ? this.player.liveVoices : 0; }
 
   // the track to play (an unknown id plays the default); while playing, it takes over at once
   setTrack(id) {
@@ -38,7 +41,7 @@ class Music {
     const p = this._player(this.track);
     Object.assign(p, { ctx, dest: this.dest || Audio.music });
     const g = this.game;
-    p.setIntensity(g.intensity); p.setCombat(g.combat); p.setCombo(g.combo); p.setJukebox(g.jukebox);
+    p.setIntensity(g.intensity); p.setCombat(g.combat); p.setCombo(g.combo);
     p.start();
     this.player = p;
     this.playing = true;
@@ -49,7 +52,7 @@ class Music {
   setIntensity(v) { this.game.intensity = v; this.player?.setIntensity(v); }
   setCombat(on) { this.game.combat = !!on; this.player?.setCombat(on); }
   setCombo(n) { this.game.combo = n || 0; this.player?.setCombo(n); }
-  setJukebox(v) { this.game.jukebox = v || 0; this.player?.setJukebox(v); }
+  setJukebox() { /* no band of its own (see above) */ }
 
   _halt() {
     this.player.stop();

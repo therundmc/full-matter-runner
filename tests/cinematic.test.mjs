@@ -48,9 +48,9 @@ test('cinematic: each sound once, in the order of the story, the match among the
 
 test('cinematic: every comic still is painted at 3 px per title px of a panel it fills', () => {
   // the panels' sizes in title px: the opening's pages', the leap's card (cine/Leap.js CARD) and the levels' closing
-  // pages (cine/Ending.js), and the full-screen cards (384 x 216)
+  // pages (cine/Ending.js)
   const ends = Object.values(ENDINGS).flatMap((e) => e.page.panels.map((q) => `${q.r.w}x${q.r.h}`));
-  const sizes = new Set([...PAGES.flatMap((p) => p.panels.map((q) => `${q.r.w}x${q.r.h}`)), '336x136', '384x216', ...ends]);
+  const sizes = new Set([...PAGES.flatMap((p) => p.panels.map((q) => `${q.r.w}x${q.r.h}`)), '336x136', ...ends]);
   const stills = OPTIONAL_LIST.filter((n) => n.startsWith('comic/'));
   assert.ok(stills.length >= 12);
   for (const name of stills) {

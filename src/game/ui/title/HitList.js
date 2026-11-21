@@ -24,7 +24,6 @@ const KILLS = TARGETS.map((who) => CAMPAIGN_LEVELS.filter((l) => l.target === wh
 // column and row). A level that is made is a NOTE; one not made yet a smaller SCRAP, taped. Three go under a card
 // (ROWS: an eighth level fits under THE BOSS), the tutorial's under the photo of his flat.
 export const NOTE = [200, 66], SCRAP = [176, 54];
-export const ROWS = 3;
 const PITCH = 66, PHOTO_H = 214;
 const FAN = [
   [[-4, 3]],
@@ -33,6 +32,8 @@ const FAN = [
   [[3, 3], [-7, -1.5], [2, 2]],
   [[0, -2.5], [6, 2.5], [-3, -1.5]],
 ];
+// the notes a card can hold: its column of FAN (each card's the same)
+export const ROWS = FAN[1].length;
 // where the note of column col (0 under the photo, 1..4 under the cards), row (0 the highest) is pinned: [x, y, lean]
 export function noteAt(col, row) {
   const [cx, cy, lean] = col ? B.cards[col - 1] : B.photo, half = (col ? B.card[1] : PHOTO_H) / 2, [dx, deg] = FAN[col][row];

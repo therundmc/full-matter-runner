@@ -137,7 +137,7 @@ function game() {
 
 test('perf: snapshot() is a plain object with every part, and the robot\'s spread stays the F4 numbers', () => {
   const g = game(), prof = new Profiler();
-  const perf = new Perf(g, { prof, voices: () => 3, extra: () => ({ sprites: { cvs: 1000 } }) });
+  const perf = new Perf(g, { prof, voices: () => 3, music: () => 12, extra: () => ({ sprites: { cvs: 1000 } }) });
   perf.setMode('full');
   for (let i = 0; i < 40; i++) {
     prof.begin('sim'); prof.end('sim');
@@ -165,6 +165,7 @@ test('perf: snapshot() is a plain object with every part, and the robot\'s sprea
   assert.equal(s.world.particles, 2);
   assert.equal(s.world.stains, 2);
   assert.equal(s.world.voices, 3);
+  assert.equal(s.world.musicVoices, 12, 'the music\'s one-shots (Music.liveVoices)');
   assert.equal(s.quality.setting, 'auto');
   // the QA robot spreads game.perf: only the F4 numbers come with it
   assert.deepEqual(Object.keys({ ...perf }).sort(), ['fps', 'frame', 'render', 'update', 'worst']);

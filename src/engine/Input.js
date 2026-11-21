@@ -8,6 +8,9 @@
 // are let go (play entered from a menu or a screen with a click: that click is no shot).
 import Gamepad from './Gamepad.js';
 
+// keys whose browser default is never wanted: scrolling, focus, going back, and the F keys the game's developer
+// reads (data/build.js DEV_KEYS: help, find, address bar...); F7 is read by nothing, it is blocked so that the
+// browser's caret browsing does not ask to turn itself on mid-fight
 const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8']);
 // px the mouse must travel to take over from a gamepad, and px a second its travel is forgotten: a mouse on the desk
 // drifts or is brushed (a few px now and then never adds up), a mouse taken up crosses this in a moment
