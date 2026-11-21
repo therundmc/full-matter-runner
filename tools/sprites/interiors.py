@@ -10,15 +10,17 @@ from .core import (
     glass_top, hx, layer, light, line, lt, mix, mottle, on_wall, px_paint, ramp, ring, rot, shade, smudge, stud,
     VNoise, wood_fill
 )
-from .palette import ALU, BRASS, CASH, CHROME, GLASS, RUBBER, WOOD
+from .palette import (
+    ALU, BRASS, CARD, CASH, CHALK, CHROME, DARK_WOOD, ENAMEL, GLASS, GRAPHITE, GUNMETAL, HOT, IRON_GREY, LED_RED,
+    NEON_GREEN, PALE_STEEL, PITCH, PURE_WHITE, PUTTY, RUBBER, SIGNAL_ORANGE, SIGNAL_RED, SILVER_GREY, STEEL_GREY,
+    TYRE_BLACK, WOOD
+)
 from .neon import glow_from
 from .furniture import knob
 
 
 GOODS = ('#c8242c', '#e8c040', '#2a6ad8', '#3a9a4a', '#e87a2a', '#e8e4d8', '#7a3aa0', '#1a8a8a')
-CARD = ramp('#b88a52', 0.45, 0.22, 0.25)
 FORMICA = ramp('#d8d4c8', 0.4, 0.2, 0.25)
-ENAMEL = ramp('#dfe3e8', 0.42, 0.2, 0.4)
 GREY_STEEL = ramp('#8a909c', 0.5, 0.25, 0.4)
 
 
@@ -59,7 +61,7 @@ def packet(cv, x, y, w, h, col):
     col = hx(col) if isinstance(col, str) else col
     frect(cv, x, y, x + w, y + h, col)
     frect(cv, x, y, x + w, y + 0.5, lt(col, 0.35))
-    frect(cv, x + 0.5, y + h * 0.42, x + w - 0.5, y + h * 0.42 + 0.5, hx('#f4f0e2') if sum(col[:3]) < 520 else hx('#3a3440'))
+    frect(cv, x + 0.5, y + h * 0.42, x + w - 0.5, y + h * 0.42 + 0.5, CHALK if sum(col[:3]) < 520 else hx('#3a3440'))
     frect(cv, x + w - 0.5, y + 0.5, x + w, y + h, dk(col, 0.4))
 
 
@@ -148,15 +150,15 @@ def p_lottery_stand():
     frect(cv, 1.5, 1.5, W - 1.5, 3.5, hx('#f0c820'))
     frect(cv, 1.5, 1.5, W - 1.5, 2.0, hx('#fff0a0'))
     for x in (2.5, 4.0, 5.5, 7.0, 8.5, 10.0):
-        frect(cv, x, 2.4, x + 1.0, 3.0, hx('#c8242c'))
+        frect(cv, x, 2.4, x + 1.0, 3.0, SIGNAL_RED)
     cols = ('#e8508a', '#2a9ad8', '#3aa84a', '#e87a2a', '#7a3aa0', '#e8e4d8')
     for k, col in enumerate(cols):
         x, y = 2.0 + (k % 3) * 3.5, 4.4 + (k // 3) * 3.2
         packet(cv, x, y, 3.0, 2.6, col)
-        cv.dot(x + 0.5, y + 0.6, hx('#fff6dc'))
-    frect(cv, 9.2, 3.6, 12.4, 4.6, hx('#f4f0e2'))                      # the ticket half pulled out
+        cv.dot(x + 0.5, y + 0.6, HOT)
+    frect(cv, 9.2, 3.6, 12.4, 4.6, CHALK)                      # the ticket half pulled out
     frect(cv, 9.7, 3.9, 11.9, 4.2, hx('#e8508a'))
-    line(cv, 12.2, 8.0, 12.6, 10.4, hx('#9aa0ac'))                     # the pen's chain
+    line(cv, 12.2, 8.0, 12.6, 10.4, SILVER_GREY)                     # the pen's chain
     frect(cv, 11.6, 10.2, 12.8, 10.8, hx('#2a4a9a'))
     cv.outline()
     return cv
@@ -185,21 +187,21 @@ def p_tv_stack():
             slab(ly, x0, 6.0, x1 - 0.5, 15.0, r, 0.3, 0.5, 0.9, 0.5)
             slab(ly, x0 + 1.5, 3.4, x1 - 2.0, 6.4, ramp('#2e2a34', 0.45, 0.22, 0.4), 0.25, 0.5, 1.0, 1.0)   # the tube's housing
             for x in range(int(x0) + 3, int(x1) - 3):
-                frect(ly, x + 0.25, 4.0, x + 0.75, 5.4, hx('#141218'))   # its vents
-            frect(ly, x0, 15.0, x1 - 0.5, 16.0, hx('#c8ccd6') if k != 1 else hx('#3a3846'))   # the bezel
+                frect(ly, x + 0.25, 4.0, x + 0.75, 5.4, TYRE_BLACK)   # its vents
+            frect(ly, x0, 15.0, x1 - 0.5, 16.0, PALE_STEEL if k != 1 else hx('#3a3846'))   # the bezel
             frect(ly, x0, 15.0, x1 - 0.5, 15.5, hx('#e8ecf4') if k != 1 else hx('#5a5868'))
-            frect(ly, x0 + 1.0, 8.0, x0 + 4.0, 10.0, hx('#f4f0e2'))     # the price card
-            frect(ly, x0 + 1.5, 8.7, x0 + 3.5, 9.2, hx('#c8242c'))
+            frect(ly, x0 + 1.0, 8.0, x0 + 4.0, 10.0, CHALK)     # the price card
+            frect(ly, x0 + 1.5, 8.7, x0 + 3.5, 9.2, SIGNAL_RED)
             stud(ly, x1 - 1.5, 15.5, hx('#e03030'))
     layer(cv, bottom)
 
     def upper(ly):
         slab(ly, 6.0, 5.0, 14.5, 12.0, ramp('#3a3440', 0.45, 0.22, 0.35), 0.3, 0.5, 0.9, 0.5, 0.05)   # a set stood on two others
-        frect(ly, 6.2, 11.6, 14.3, 12.6, hx('#9aa0ac'))
+        frect(ly, 6.2, 11.6, 14.3, 12.6, SILVER_GREY)
         slab(ly, 20.5, 6.5, 26.5, 11.5, ramp('#c8242c', 0.45, 0.22, 0.35), 0.3, 0.5, 0.9, 0.9, -0.08)   # a red portable
-        frect(ly, 20.8, 11.2, 26.2, 12.0, hx('#2a2a30'))
+        frect(ly, 20.8, 11.2, 26.2, 12.0, GRAPHITE)
         line(ly, 23.5, 8.5, 28.5, 4.0, hx('#d8dce6'))                   # its aerial
-        ly.dot(28.5, 4.0, hx('#ffffff'))
+        ly.dot(28.5, 4.0, PURE_WHITE)
     layer(cv, upper)
 
     def glass(x0, x1, y0, y1, k):
@@ -207,7 +209,7 @@ def p_tv_stack():
             col = hx(TV_PIC[(int((x - x0) * 0.7) + k) % len(TV_PIC)])
             if y >= (y0 + y1) / 2:
                 col = mix(col, hx('#3a6a8a'), 0.45)
-            return hx('#ffffff') if abs(x - x0 - 1.5) < 0.5 and y < (y0 + y1) / 2 else col
+            return PURE_WHITE if abs(x - x0 - 1.5) < 0.5 and y < (y0 + y1) / 2 else col
         px_paint(cv, x0, y0, x1, y1, f)
     for k, (x0, x1, _) in enumerate(sets):
         glass(x0 + 1.0, x1 - 2.5, 16.0, 17.0, k * 2)
@@ -230,15 +232,15 @@ def p_vcr_shelf():
         frect(cv, x0 + 0.8, 8.4, x0 + 4.2, 9.4, hx('#0e0c12'))           # the cassette door
         frect(cv, x0 + 0.8, 8.4, x0 + 4.2, 8.9, hx('#3a3846'))
         for x in (x0 + 4.8, x0 + 5.3):
-            cv.dot(x, 9.0, hx('#ff2a3a'))                               # 12:00
+            cv.dot(x, 9.0, LED_RED)                               # 12:00
         for x in (x0 + 1.0, x0 + 2.0, x0 + 3.0):
             cv.dot(x, 9.9, hx('#b8bcc8'))                               # its keys
-        frect(cv, x0 + 5.0, 4.0, x0 + 6.4, 5.6, hx('#f4f0e2'))          # the price tag
-        frect(cv, x0 + 5.3, 4.6, x0 + 6.1, 5.0, hx('#c8242c'))
+        frect(cv, x0 + 5.0, 4.0, x0 + 6.4, 5.6, CHALK)          # the price tag
+        frect(cv, x0 + 5.3, 4.6, x0 + 6.1, 5.0, SIGNAL_RED)
     for k, col in enumerate(('#c8242c', '#1c1c22', '#e8e4d8', '#2a4a9a', '#1c1c22')):   # tapes on end
         packet(cv, 33.0 + k * 1.5, 3.4 + (k % 2) * 0.4, 1.3, 4.6, col)
     slab(cv, 33.0, 8.4, 39.5, 10.8, ramp('#3a3a44', 0.45, 0.22, 0.4), 0.3, 0.5, 0.7, 0.5)   # a camcorder
-    ring(cv, 38.6, 9.6, 0.0, 1.0, lambda dx, dy, d: hx('#7ab0ff') if d < 0.5 else hx('#141218'))
+    ring(cv, 38.6, 9.6, 0.0, 1.0, lambda dx, dy, d: hx('#7ab0ff') if d < 0.5 else TYRE_BLACK)
     cv.outline()
     return cv
 
@@ -249,15 +251,15 @@ def p_tv_box():
     W, H = 22, 18
     cv = Cv(W, H)
     carton(cv, 1, 1, W - 1, H - 1, 4105, tape=False)
-    frect(cv, 2, 2, W - 2, 4.5, hx('#c8242c'))                         # the maker's band
+    frect(cv, 2, 2, W - 2, 4.5, SIGNAL_RED)                         # the maker's band
     frect(cv, 3, 2.9, 12, 3.6, hx('#f4ecd0'))
     for (x0, y0, x1, y1) in ((4.0, 6.5, 13.0, 6.9), (4.0, 12.6, 13.0, 13.0), (4.0, 6.5, 4.4, 13.0), (12.6, 6.5, 13.0, 13.0)):
         frect(cv, x0, y0, x1, y1, hx('#2a4a9a'))                       # the set, in blue line
     frect(cv, 5.5, 8.0, 11.5, 11.5, lambda c: mix(c, hx('#2a4a9a'), 0.35))
     for x in (15.5, 18.0):                                             # the arrows
-        frect(cv, x, 8.0, x + 0.5, 12.5, hx('#3a2414'))
-        cv.dot(x - 0.5, 8.6, hx('#3a2414'))
-        cv.dot(x + 0.5, 8.6, hx('#3a2414'))
+        frect(cv, x, 8.0, x + 0.5, 12.5, DARK_WOOD)
+        cv.dot(x - 0.5, 8.6, DARK_WOOD)
+        cv.dot(x + 0.5, 8.6, DARK_WOOD)
     frect(cv, 1, 14.4, W - 1, 15.0, hx('#f0e8a0'))                     # the strap
     px_paint(cv, W - 5, 1, W - 1, 5, lambda x, y, cur: dk(cur, 0.28) if cur[3] and x - y > W - 7 else None)   # stove in
     cv.outline()
@@ -292,7 +294,7 @@ def p_repair_bench():
         slab(ly, 3.0, 9.0, 13.0, 19.0, ramp('#8a8e98', 0.45, 0.22, 0.4), 0.3, 0.5, 0.8, 0.5)   # the scope
         frect(ly, 4.2, 10.2, 9.2, 15.2, hx('#0c2a1a'))
         for i in range(9):
-            ly.dot(4.6 + i * 0.5, 12.7 + math.sin(i * 1.3) * 1.6, hx('#3aff8a'))
+            ly.dot(4.6 + i * 0.5, 12.7 + math.sin(i * 1.3) * 1.6, NEON_GREEN)
         for (x, y) in ((10.8, 10.8), (10.8, 13.0), (10.8, 15.2)):
             knob(ly, x, y, 0.8, '#1a1820', -0.8)
         slab(ly, 3.0, 2.5, 8.0, 6.5, ramp('#3a6ab8', 0.45, 0.22, 0.4), 0.3, 0.5, 0.6, 0.4)   # the parts tray
@@ -305,7 +307,7 @@ def p_repair_bench():
         for (x0, y0, x1, y1, c) in ((39.0, 17.5, 45.0, 18.6, '#c8242c'), (38.0, 19.6, 44.0, 20.4, '#e8c040')):
             fill_capsule(ly, [(x0, y0), ((x0 + x1) / 2, (y0 + y1) / 2)], 0.5, lambda q, L, s_, i, t, c=c: hx(c))   # screwdrivers
             line(ly, (x0 + x1) / 2, (y0 + y1) / 2, x1, y1, hx('#c8ccd4'))
-        glass_top(ly, 15.5, 4.5, 1.6, hx('#3a2414'))                    # coffee, cold
+        glass_top(ly, 15.5, 4.5, 1.6, DARK_WOOD)                    # coffee, cold
         fill_shape(ly, 9.5, 5.0, 2.6, 2.6, lambda u, v, L: shade(ramp('#3a8a5a', 0.5, 0.25, 0.4), L))   # the lamp's shade
         fill_shape(ly, 9.5, 5.0, 1.0, 1.0, lambda u, v, L: hx('#fff0c0'))
         fill_capsule(ly, [(9.5, 5.0), (4.0, 20.0)], 0.4, lambda q, L, s_, i, t: shade(CHROME, L) if t > 0.25 or i else None)
@@ -324,10 +326,10 @@ def p_dryer():
     pn = ramp('#6a5a4a', 0.45, 0.22, 0.35)
     fill_shape(cv, 12.0, 3.8, 10.4, 2.4, lambda u, v, L: shade(pn, L), kind='rect', bevel=0.9, corner=0.6)
     frect(cv, 1.6, 6.2, 22.4, 6.7, lambda c: dk(ENAMEL[1], 0.2))
-    knob(cv, 5.0, 3.8, 1.6, '#e8ecf2', 0.9, hx('#c8242c'))             # the timer
+    knob(cv, 5.0, 3.8, 1.6, '#e8ecf2', 0.9, SIGNAL_RED)             # the timer
     chrome_bar(cv, 13.0, 2.6, 20.0, 5.0)
     for x in (14.2, 16.2, 18.2):
-        frect(cv, x, 3.4, x + 1.0, 4.2, hx('#2a2a34'))
+        frect(cv, x, 3.4, x + 1.0, 4.2, GUNMETAL)
     cv.dot(10.0, 3.0, hx('#ffb02a'))                                   # running
     for (x0, y0, x1, y1, f) in ((3.5, 8.0, 20.5, 8.5, lambda c: dk(c, 0.25)), (3.5, 8.0, 4.0, 19.0, lambda c: dk(c, 0.2)),
                                 (20.0, 8.5, 20.5, 19.0, lambda c: lt(c, 0.2))):
@@ -371,8 +373,8 @@ def p_folding_table():
         slab(ly, 16.0, 5.0, 25.0, 12.5, r, 0.45, 0.4, 0.8, 1.0, -0.12)
         fill_capsule(ly, [(24.0, 6.0), (27.5, 9.5)], 1.3, lambda q, L, s_, i, t: shade(r, 0.35 + L * 0.5))
         line(ly, 20.0, 5.6, 21.0, 12.0, dk(r[1], 0.15))
-        ly.dot(20.3, 7.0, hx('#9aa0ac'))
-        ly.dot(20.5, 9.0, hx('#9aa0ac'))
+        ly.dot(20.3, 7.0, SILVER_GREY)
+        ly.dot(20.5, 9.0, SILVER_GREY)
         packet(ly, 33.0, 3.5, 4.0, 5.5, '#f26a1a')                      # soap powder
         frect(ly, 33.0, 3.5, 37.0, 5.0, hx('#2a6ad8'))
         slab(ly, 36.0, 12.0, 43.0, 19.0, ramp('#c8242c', 0.4, 0.2, 0.25), 0.4, 0.4, 0.5, 0.3, 0.2)   # the magazine
@@ -403,7 +405,7 @@ def p_soap_vend():
     for k in range(4):
         knob(cv, 4.1 + k * 2.9, 9.2, 0.8, '#c8ccd4', 1.57)
     chrome_bar(cv, 15.8, 3.0, 18.2, 8.0)
-    frect(cv, 16.6, 4.0, 17.4, 6.0, hx('#2a2a34'))
+    frect(cv, 16.6, 4.0, 17.4, 6.0, GUNMETAL)
     frect(cv, 15.6, 8.8, 18.4, 10.2, hx('#f0c820'))                    # 25c
     cv.outline()
     return cv, glow_from(cv, lambda x, y, c: 3 <= y <= 6 and 3 <= x <= 14)
@@ -429,8 +431,8 @@ def p_laundry_cart():
     layer(cv, load)
     chrome_bar(cv, 2.0, 7.8, W - 2.0, 8.8)                             # the rail
     for x in (6.5, 19.0):
-        line(cv, x, 8.3, x - 1.5, 5.0, hx('#c8ccd6'))
-        line(cv, x, 8.3, x + 1.5, 5.0, hx('#c8ccd6'))
+        line(cv, x, 8.3, x - 1.5, 5.0, PALE_STEEL)
+        line(cv, x, 8.3, x + 1.5, 5.0, PALE_STEEL)
     return cv
 
 
@@ -464,12 +466,12 @@ def p_cig_machine():
     for k in range(7):
         knob(cv, 3.6 + k * 2.8, 14.2, 0.8, '#c8ccd4', 1.57)
     chrome_bar(cv, 17.0, 2.5, 21.5, 6.5)
-    frect(cv, 18.8, 3.4, 19.6, 5.4, hx('#2a2a34'))
+    frect(cv, 18.8, 3.4, 19.6, 5.4, GUNMETAL)
     rng = random.Random(4113)
     for _ in range(4):
         cv.dot(rng.uniform(3, 15), rng.uniform(3, 8), hx('#1a100c'))    # burns
     slab(cv, 5.0, 3.0, 8.5, 5.5, ramp('#e8e4d8', 0.4, 0.2, 0.2), 0.5, 0.3, 0.3, 0.2, 0.4)   # an empty pack
-    frect(cv, 5.8, 3.4, 7.6, 4.0, hx('#c8242c'))
+    frect(cv, 5.8, 3.4, 7.6, 4.0, SIGNAL_RED)
     cv.outline()
     return cv, glow_from(cv, lambda x, y, c: 9 <= y <= 12 and 2 <= x <= W - 3)
 
@@ -487,11 +489,11 @@ def p_ice_bin():
     for _ in range(26):
         x, y = rng.uniform(9.2, W - 4.0), rng.uniform(3.2, H - 4.0)
         frect(cv, x, y, x + 1.0, y + 1.0, hx('#dff2ff') if rng.random() < 0.6 else hx('#a8cce0'))
-        cv.dot(x, y, hx('#ffffff'))
+        cv.dot(x, y, PURE_WHITE)
     frect(cv, 3.0, 3.0, 9.0, 3.5, dk(st[1], 0.2))                      # the lid's edge
     fill_capsule(cv, [(11.0, 9.0), (15.5, 5.0)], 0.6, lambda q, L, s_, i, t: shade(CHROME, L))   # the scoop
     slab(cv, 1.5, 9.5, 6.5, 13.5, ramp('#e8e6de', 0.4, 0.2, 0.2), 0.45, 0.4, 0.8, 0.6, 0.15)   # the towel
-    frect(cv, 2.2, 10.6, 6.0, 11.1, hx('#c8242c'))
+    frect(cv, 2.2, 10.6, 6.0, 11.1, SIGNAL_RED)
     cv.outline()
     return cv
 
@@ -594,13 +596,13 @@ def p_water_cooler():
     for x in (c - 2.2, c - 0.2, c + 1.8):
         frect(cv, x, S - 3.0, x + 0.5, S - 2.0, hx('#2a3038'))
     cv.dot(c - 1.5, S - 4.0, hx('#2a6ad8'))
-    cv.dot(c + 1.5, S - 4.0, hx('#c8242c'))
+    cv.dot(c + 1.5, S - 4.0, SIGNAL_RED)
     water = ramp('#8fc8e8', 0.5, 0.25, 0.5)
     fill_shape(cv, c, c - 0.6, 4.6, 4.6, lambda u, v, L: shade(water, 0.2 + L * 0.8))
     ring(cv, c, c - 0.6, 2.6, 3.0, lambda dx, dy, d: lt(water[2], 0.35))   # the water line
-    fill_shape(cv, c - 1.6, c - 2.4, 1.0, 0.7, lambda u, v, L: hx('#ffffff'), ang=-0.6)
+    fill_shape(cv, c - 1.6, c - 2.4, 1.0, 0.7, lambda u, v, L: PURE_WHITE, ang=-0.6)
     fill_shape(cv, c, c - 0.6, 1.2, 1.2, lambda u, v, L: water[1])
-    fill_capsule(cv, [(S - 2.0, 3.0), (S - 2.0, 8.0)], 0.9, lambda q, L, s_, i, t: hx('#f4f0e2') if L > 0.4 else hx('#c8c4b4'))   # cups
+    fill_capsule(cv, [(S - 2.0, 3.0), (S - 2.0, 8.0)], 0.9, lambda q, L, s_, i, t: CHALK if L > 0.4 else hx('#c8c4b4'))   # cups
     cv.outline()
     return cv
 
@@ -626,7 +628,7 @@ def p_filing_cabinet():
         for k, col in enumerate(('#d8c890', '#e8e0c0', '#c8b878')):
             slab(ly, 3.0 + k * 0.6, 4.0 + k * 0.8, 11.0 + k * 0.6, 11.5 + k * 0.8, ramp(col, 0.4, 0.2, 0.2), 0.45, 0.4, 0.4, 0.2, 0.1 - k * 0.12)
         slab(ly, 9.0, 10.5, 15.5, 15.5, ramp('#2a4a9a', 0.45, 0.22, 0.3), 0.35, 0.45, 0.5, 0.3, -0.3)   # a ring binder
-        frect(ly, 10.0, 12.6, 14.0, 13.4, hx('#f4f0e2'))
+        frect(ly, 10.0, 12.6, 14.0, 13.4, CHALK)
     layer(cv, things)
     ring(cv, 5.0, 14.5, 1.2, 1.6, lambda dx, dy, d: lambda_dark(cv, 5.0 + dx, 14.5 + dy) if dx + dy < 1.2 else None)
     return cv
@@ -657,7 +659,7 @@ def p_safe():
         slab(ly, 3.5, 8.0, 12.5, 15.5, ramp('#5a1a1e', 0.45, 0.22, 0.3), 0.35, 0.45, 0.6, 0.4, 0.12)   # the ledger
         frect(ly, 5.0, 10.0, 9.0, 10.6, hx('#d8b048'))
         slab(ly, 14.0, 9.0, 20.5, 13.0, CASH, 0.4, 0.4, 0.5, 0.3, -0.25)   # a strapped bundle
-        fill_shape(ly, 17.25, 11.0, 0.8, 2.0, lambda u, v, L: hx('#f4f0e2'), ang=-0.25, kind='rect', corner=0.1)
+        fill_shape(ly, 17.25, 11.0, 0.8, 2.0, lambda u, v, L: CHALK, ang=-0.25, kind='rect', corner=0.1)
     layer(cv, things)
     return cv
 
@@ -705,7 +707,7 @@ def p_steel_shelf():
     for k, col in enumerate(('#c8242c', '#c8242c', '#e8c040', '#d8dce4')):   # catering tins
         can_top(cv, 5.0 + k * 4.4, 6.0, 2.0, col)
         frect(cv, 4.0 + k * 4.4, 9.2, 6.0 + k * 4.4, 11.6, hx(col))
-        frect(cv, 4.0 + k * 4.4, 10.0, 6.0 + k * 4.4, 10.5, hx('#f4f0e2'))
+        frect(cv, 4.0 + k * 4.4, 10.0, 6.0 + k * 4.4, 10.5, CHALK)
     carton(cv, 22.0, 3.5, 30.0, 11.5, 4125)
     ring(cv, 34.5, 6.5, 1.4, 3.0, lambda dx, dy, d: hx('#e8c070') if int(d * 2.2) % 2 else hx('#b07a2a'))   # the beer line
     for k in range(3):
@@ -743,8 +745,8 @@ def p_security_mirror():
         for (x, c) in ((3.0, '#c8242c'), (4.5, '#e8c040'), (7.0, '#2a6ad8'), (8.5, '#f4f0e2')):
             cv.dot(x, 3.6, hx(c))
             cv.dot(x + 0.5, 3.6, hx(c))
-        cv.dot(3.5, 2.2, hx('#ffffff'))
-        cv.dot(4.0, 2.0, hx('#ffffff'))
+        cv.dot(3.5, 2.2, PURE_WHITE)
+        cv.dot(4.0, 2.0, PURE_WHITE)
     return on_wall(12, 6, paint)
 
 
@@ -759,7 +761,7 @@ def p_cig_rack():
             if k == 6:
                 continue
             packet(cv, 1.6 + k * 2.3, 1.6, 1.9, 2.4, c)
-        frect(cv, 1.5, 4.2, 26.5, 4.8, hx('#f4f0e2'))
+        frect(cv, 1.5, 4.2, 26.5, 4.8, CHALK)
         for k in range(11):
             cv.dot(2.0 + k * 2.3, 4.4, hx('#3a3440'))
     return on_wall(28, 6, paint)
@@ -777,7 +779,7 @@ def p_price_board():
             while x < 21.5:
                 n = rng.choice((2, 3, 4))
                 if rng.random() > 0.15:
-                    frect(cv, x, y, x + n * 0.5, y + 0.5, hx('#f0c820') if rng.random() < 0.2 else hx('#f4f0e2'))
+                    frect(cv, x, y, x + n * 0.5, y + 0.5, hx('#f0c820') if rng.random() < 0.2 else CHALK)
                 x += n * 0.5 + 1.0
     return on_wall(24, 5, paint)
 
@@ -786,7 +788,7 @@ def p_tape_rack():
     """Video tapes for rent on a wall rack: the boxes' spines in rows, the loud colours of the covers, NEW stickers,
     a few slots out."""
     def paint(cv):
-        frect(cv, 1, 0.6, 29, 5.0, hx('#2a2a34'))
+        frect(cv, 1, 0.6, 29, 5.0, GUNMETAL)
         frect(cv, 1, 0.6, 29, 1.2, hx('#4a4a56'))
         rng = random.Random(4128)
         cols = ('#c8242c', '#e8c040', '#2a6ad8', '#1c1c22', '#e8508a', '#3a9a4a', '#e87a2a', '#7a3aa0', '#e8e4d8')
@@ -809,7 +811,7 @@ def p_notice_board():
         for (x0, x1, c) in ((1.8, 5.8, '#f4f0e2'), (6.4, 9.6, '#f0e060'), (10.4, 15.0, '#e8e4d8'), (15.6, 18.0, '#e8a0b4'), (18.4, 20.4, '#f4f0e2')):
             frect(cv, x0, 2.2, x1, 3.8, hx(c))
             frect(cv, x0 + 0.5, 2.9, x1 - 0.5, 3.2, hx('#6a6a70'))
-            cv.dot(x0 + 0.5, 2.3, hx('#c8242c') if x0 < 10 else hx('#2a6ad8'))
+            cv.dot(x0 + 0.5, 2.3, SIGNAL_RED if x0 < 10 else hx('#2a6ad8'))
         for x in (10.8, 11.6, 12.4, 13.2, 14.0):
             cv.dot(x, 3.6, hx('#b0aca0'))                               # the fringe of numbers
     return on_wall(22, 5, paint, 4129)
@@ -822,7 +824,7 @@ def p_coin_changer():
         fill_shape(cv, 6.0, 3.0, 5.0, 2.5, lambda u, v, L: shade(GREY_STEEL, L), kind='rect', corner=0.5, bevel=0.7)
         frect(cv, 2.0, 1.4, 10.0, 2.2, hx('#2a4a9a'))
         frect(cv, 3.0, 3.0, 7.0, 3.6, hx('#1c1c22'))
-        cv.dot(7.6, 3.2, hx('#3aff8a'))
+        cv.dot(7.6, 3.2, NEON_GREEN)
         frect(cv, 3.5, 4.4, 8.5, 6.0, hx('#3a3a44'))                   # the cup
         frect(cv, 3.5, 4.4, 8.5, 4.9, hx('#1c1c22'))
         cv.dot(5.0, 5.4, hx('#d8dce4'))
@@ -837,10 +839,10 @@ def p_hand_dryer():
         en = ramp('#d8d4c0', 0.42, 0.2, 0.3)
         fill_shape(cv, 5.0, 2.8, 4.0, 2.3, lambda u, v, L: shade(en, L), kind='rect', corner=1.0, bevel=1.0, ang=0.1)
         fill_shape(cv, 5.0, 5.2, 1.6, 1.1, lambda u, v, L: shade(CHROME, L))   # the nozzle
-        fill_shape(cv, 5.0, 5.4, 0.9, 0.5, lambda u, v, L: hx('#141218'))
+        fill_shape(cv, 5.0, 5.4, 0.9, 0.5, lambda u, v, L: TYRE_BLACK)
         fill_shape(cv, 6.8, 2.6, 1.0, 1.0, lambda u, v, L: shade(CHROME, 0.3 + L * 0.7))   # the button
-        cv.dot(3.0, 2.0, hx('#3a2414'))
-        stud(cv, 2.0, 1.2, hx('#8a8e98'))
+        cv.dot(3.0, 2.0, DARK_WOOD)
+        stud(cv, 2.0, 1.2, STEEL_GREY)
     return on_wall(10, 7, paint, 4131)
 
 
@@ -869,7 +871,7 @@ def p_wall_clock():
     hour marks, the two hands at a quarter past two (the second hand is drawn live: render/PropLife.js)."""
     def paint(cv):
         fill_shape(cv, 4.5, 2.4, 3.5, 1.9, lambda u, v, L: shade(ramp('#1c1c22', 0.4, 0.2, 0.5), L))
-        fill_shape(cv, 4.5, 2.6, 2.8, 1.4, lambda u, v, L: hx('#f4f0e2') if L > 0.3 else hx('#d8d4c4'))
+        fill_shape(cv, 4.5, 2.6, 2.8, 1.4, lambda u, v, L: CHALK if L > 0.3 else hx('#d8d4c4'))
         for x in (2.2, 4.5, 6.8):
             cv.dot(x, 2.6, hx('#1c1c22'))
         line(cv, 4.5, 2.6, 5.6, 2.2, hx('#1c1c22'))
@@ -881,9 +883,9 @@ def p_cleaning_rack():
     """The brooms on their hooks: a rail on the wall, a push broom (its head of stiff bristles toward the room), a
     string mop gone grey, a dustpan, a spray bottle and a yellow glove on the last hook."""
     def paint(cv):
-        frect(cv, 1.0, 0.7, 21.0, 1.4, hx('#6a6e78'))
+        frect(cv, 1.0, 0.7, 21.0, 1.4, IRON_GREY)
         for x in (3.5, 9.0, 14.0, 18.5):
-            stud(cv, x, 1.0, hx('#c8ccd6'))
+            stud(cv, x, 1.0, PALE_STEEL)
         frect(cv, 3.2, 1.4, 3.8, 4.0, WOOD[2])                         # the broom
         slab(cv, 1.2, 4.0, 6.8, 6.4, ramp('#8a6a3a', 0.45, 0.22, 0.3), 0.3, 0.5, 0.4, 0.3)
         for x in (1.6, 2.6, 3.6, 4.6, 5.6):
@@ -913,7 +915,7 @@ def p_bar_mat():
         worn = max(0.0, 1 - abs(y - H / 2) / 4.5) * (0.5 + n(x, y))
         col = shade(rb, 0.35 + (0.25 if rib else 0.0) + worn * 0.3)
         if int(x * 2) % 8 == 3 and int(y * 2) % 6 == 4:
-            col = hx('#0c0a10')                                        # a drain hole
+            col = PITCH                                        # a drain hole
         return alpha(col, 235)
     px_paint(cv, 0, 0, W, H, mat)
     rng = random.Random(4135)
@@ -959,7 +961,7 @@ def c_phone():
     cv = Cv(8, 7)
     bk = ramp('#26242c', 0.4, 0.2, 0.5)
     slab(cv, 1.0, 1.5, 7.0, 6.5, bk, 0.3, 0.6, 0.8, 0.8)
-    ring(cv, 4.0, 4.6, 0.6, 1.5, lambda dx, dy, d: hx('#d8dce4') if int((math.atan2(dy, dx) + 3.2) * 1.6) % 2 else hx('#8a8e98'))
+    ring(cv, 4.0, 4.6, 0.6, 1.5, lambda dx, dy, d: hx('#d8dce4') if int((math.atan2(dy, dx) + 3.2) * 1.6) % 2 else STEEL_GREY)
     fill_capsule(cv, [(1.2, 1.4), (6.8, 1.4)], 0.9, lambda q, L, s_, i, t: shade(bk, 0.3 + L * 0.7))
     cv.outline()
     return cv
@@ -973,7 +975,7 @@ def c_papers():
     for y in (2.0, 3.0, 4.0):
         frect(cv, 2.2, y, 5.6, y + 0.4, hx('#8a8a90'))
     frect(cv, 4.2, 4.8, 5.8, 5.6, hx('#c8242c', 200))
-    cv.dot(2.0, 1.2, hx('#c8ccd6'))
+    cv.dot(2.0, 1.2, PALE_STEEL)
     cv.outline()
     return cv
 
@@ -981,8 +983,8 @@ def c_papers():
 def c_mug():
     """A mug of coffee from above: white china, a brown ring inside its rim, the handle."""
     cv = Cv(5, 4)
-    frect(cv, 3.5, 1.5, 4.5, 2.5, hx('#d8d4c8'))
-    glass_top(cv, 2.0, 2.0, 1.6, hx('#3a2414'), hx('#f4f0e2'))
+    frect(cv, 3.5, 1.5, 4.5, 2.5, PUTTY)
+    glass_top(cv, 2.0, 2.0, 1.6, DARK_WOOD, CHALK)
     cv.outline()
     return cv
 
@@ -991,7 +993,7 @@ def c_vhs():
     """A video cassette from above: black plastic, its two reel windows, a hand-written label."""
     cv = Cv(7, 5)
     slab(cv, 0.5, 0.5, 6.5, 4.5, ramp('#1c1c22', 0.4, 0.2, 0.5), 0.3, 0.6, 0.5, 0.3)
-    frect(cv, 1.5, 1.0, 5.5, 2.0, hx('#f4f0e2'))
+    frect(cv, 1.5, 1.0, 5.5, 2.0, CHALK)
     frect(cv, 2.0, 1.3, 4.0, 1.6, hx('#2a4a9a'))
     for x in (2.2, 4.4):
         cv.dot(x, 3.2, hx('#5a5868'))
@@ -1036,9 +1038,9 @@ def c_adding():
     cv = Cv(7, 9)
     slab(cv, 0.6, 2.4, 6.4, 8.4, ramp('#c8c0a8', 0.42, 0.2, 0.25), 0.35, 0.5, 0.7, 0.5)
     for k in range(12):
-        cv.dot(1.6 + (k % 4) * 1.2, 4.6 + (k // 4) * 1.1, hx('#3a3a44') if k % 4 < 3 else hx('#c8242c'))
+        cv.dot(1.6 + (k % 4) * 1.2, 4.6 + (k // 4) * 1.1, hx('#3a3a44') if k % 4 < 3 else SIGNAL_RED)
     frect(cv, 1.5, 3.0, 5.5, 3.8, hx('#0c2a1a'))
-    fill_capsule(cv, [(3.5, 2.4), (3.0, 1.2), (4.4, 0.7)], 0.8, lambda q, L, s_, i, t: hx('#f4f0e2') if L > 0.35 else hx('#d0ccbc'))
+    fill_capsule(cv, [(3.5, 2.4), (3.0, 1.2), (4.4, 0.7)], 0.8, lambda q, L, s_, i, t: CHALK if L > 0.35 else hx('#d0ccbc'))
     cv.outline()
     return cv
 
@@ -1054,7 +1056,7 @@ def c_ashtray_full():
         x, y = 3.5 + math.cos(a) * 1.2, 3.5 + math.sin(a) * 1.2
         cv.dot(x, y, hx('#efe6d4'))
         cv.dot(x + 0.5 * math.cos(a), y + 0.5 * math.sin(a), hx('#d89a50'))
-    cv.dot(3.5, 3.0, hx('#ff6b1a'))
+    cv.dot(3.5, 3.0, SIGNAL_ORANGE)
     cv.outline()
     return cv
 

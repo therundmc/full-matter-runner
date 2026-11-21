@@ -3,7 +3,7 @@ shades on the floor."""
 import random
 
 from .core import ascii_cv, ashtray, Batch, Cv, hx, layer
-from .palette import FLUO
+from .palette import FLUO, LINEN
 
 
 def shades_item():
@@ -37,7 +37,7 @@ def items():
     I['can'] = ascii_cv(["......",
                          ".rWrs.",
                          ".RRRs.",
-                         "......"], {'r': hx('#d8303a'), 'R': hx('#a01e28'), 'W': hx('#f0ece0'), 's': hx('#c8ccd4')})
+                         "......"], {'r': hx('#d8303a'), 'R': hx('#a01e28'), 'W': LINEN, 's': hx('#c8ccd4')})
     # a glossy cover: a picture, the title across its head, the print of its lines
     I['magazine'] = ascii_cv(["........",
                               ".tttttt.",

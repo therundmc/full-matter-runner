@@ -7,6 +7,7 @@ import math
 import random
 
 from .core import Batch, Cv, dk, FINE, hx, LX, LY, LZ, mix, OUTLINE, ramp, shift, tone, VNoise
+from .palette import PITCH
 
 
 CRIT_CM = 32 * 1.3 * FINE / 100.0   # sprite px per cm
@@ -250,7 +251,7 @@ RAT_BACK = ramp('#5a4a40', 0.5, 0.26, 0.3)
 RAT_BELLY = ramp('#a69284', 0.45, 0.22, 0.25)
 RAT_TAIL = ramp('#b88a88', 0.45, 0.22, 0.25)
 RAT_PINK = ramp('#d49a96', 0.45, 0.22, 0.25)
-RAT_EYE = hx('#0c0a10')
+RAT_EYE = PITCH
 RAT_NOSE = hx('#e8a8a8')
 
 

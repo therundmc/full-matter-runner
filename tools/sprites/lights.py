@@ -6,10 +6,9 @@ import random
 from .core import (
     alpha, Cv, dk, fill_shape, frect, hx, light, line, lt, mix, px_paint, ramp, ring, shade, smudge, stud, wood_fill
 )
-from .palette import BRASS, NEON_CYAN, NEON_PINK
+from .palette import BRASS, HOT, NEON_CYAN, NEON_PINK, PALE_STEEL, PURE_WHITE
 
 
-HOT = hx('#fff6dc')
 
 
 def lamp_core(cv, gl, cx, cy, r):
@@ -28,7 +27,7 @@ def p_floor_lamp():
     for a in (0.6, 2.7, 4.8):                                          # the wire spider holding the shade
         line(cv, 8.0 + math.cos(a) * 1.6, 8.0 + math.sin(a) * 1.6, 8.0 + math.cos(a) * 2.6, 8.0 + math.sin(a) * 2.6, hx('#5a4a3a'))
     lamp_core(cv, gl, 8.0, 8.0, 1.7)
-    cv.dot(7.5, 7.5, hx('#ffffff'))
+    cv.dot(7.5, 7.5, PURE_WHITE)
     cv.outline()
     ring(gl, 8.0, 8.0, 2.0, 6.3, lambda dx, dy, d: (255, 176, 96, int(70 - 8 * d)))
     return cv, gl
@@ -46,7 +45,7 @@ def p_table_lamp():
     line(cv, 11.0, 12.0, 15.6, 15.0, hx('#1a1418'))                    # the cord
     pleated(cv, 9.0, 9.0, 1.6, 5.2, ramp('#d98a5a', 0.42, 0.2, 0.35))
     lamp_core(cv, gl, 9.0, 9.0, 1.6)
-    cv.dot(8.5, 8.5, hx('#ffffff'))
+    cv.dot(8.5, 8.5, PURE_WHITE)
     cv.outline()
     ring(gl, 9.0, 9.0, 1.6, 5.2, lambda dx, dy, d: (255, 170, 110, int(90 - 10 * d)))
     return cv, gl
@@ -117,7 +116,7 @@ def p_tube_light():
     """A fluorescent batten on the wall (-y): the steel channel with its end caps and screws, the tube's pins, the tube
     hot down its middle, a darkened end where it is wearing out, the light it throws on the wall below."""
     cv, gl = Cv(30, 5), Cv(30, 5)
-    col, hot = hx('#cfe6ff'), hx('#ffffff')
+    col, hot = hx('#cfe6ff'), PURE_WHITE
     m = ramp('#4a4858', 0.5, 0.25, 0.4)
     frect(cv, 0, 0, 30, 2, m[2])
     frect(cv, 0, 0, 30, 0.5, m[3])
@@ -134,7 +133,7 @@ def p_tube_light():
         return k
     px_paint(cv, 2, 2, 28, 4, tube)
     for x in (2.0, 27.5):
-        frect(cv, x, 2.5, x + 0.5, 3.5, hx('#c8ccd6'))                 # the pins
+        frect(cv, x, 2.5, x + 0.5, 3.5, PALE_STEEL)                 # the pins
     cv.outline()
     px_paint(gl, 2, 2, 28, 4, lambda x, y, c: hot if 2.5 <= y < 3.0 else col)
     frect(cv, 2, 4.0, 28, 5.0, alpha(col, 110))
@@ -156,7 +155,7 @@ def p_ceiling_lamp():
         stud(cv, 9.0 + math.cos(a) * 2.6, 9.0 + math.sin(a) * 2.6, BRASS[1])
     smudge(cv, random.Random(5734), 3, (3, 3, 15, 15), (0.6, 1.2), 0.5, hx('#e8e4d8'))   # chips in the enamel
     lamp_core(cv, gl, 9.0, 9.0, 2.2)
-    cv.dot(8.5, 8.5, hx('#ffffff'))
+    cv.dot(8.5, 8.5, PURE_WHITE)
     cv.outline()
     ring(gl, 9.0, 9.0, 7.0, 8.9, lambda dx, dy, d: (255, 214, 150, int(150 - 70 * (d - 7.0))))   # light leaking under the rim
     return cv, gl

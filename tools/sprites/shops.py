@@ -7,7 +7,9 @@ from .core import (
     chrome_bar, Cv, dk, fill_shape, frect, hx, layer, light, line, lt, mix, mottle, px_paint, ramp, ring, shade, shift,
     stud, wood_fill
 )
-from .palette import CHROME, GLASS, NEON_AMBER, NEON_CYAN, NEON_GREEN, NEON_PINK, NEON_YELLOW
+from .palette import (
+    CHROME, ENAMEL, GLASS, GRAPHITE, GUNMETAL, NEON_AMBER, NEON_CYAN, NEON_GREEN, NEON_PINK, NEON_YELLOW, PURE_WHITE
+)
 from .type import neon_text
 from .neon import Neon, sign_backing
 from .furniture import knob
@@ -28,7 +30,7 @@ def rack_bottle(cv, x, y, col, cap, rng):
         cv.dot(x + q, y + q, lt(cap, 0.6))                             # the glint of a lamp on the cap
 
 
-CAPS = [hx('#d8b048'), hx('#c8ccd4'), hx('#b8242a'), hx('#2a2a30'), hx('#e8e4d8')]
+CAPS = [hx('#d8b048'), hx('#c8ccd4'), hx('#b8242a'), GRAPHITE, hx('#e8e4d8')]
 
 
 def p_bottle_shelf():
@@ -75,7 +77,7 @@ def p_washer():
     powder and a few grains spilled."""
     S = 24
     cv = Cv(S, S)
-    en = ramp('#dfe3e8', 0.42, 0.2, 0.4)
+    en = ENAMEL
     rng = random.Random(191)
     fill_shape(cv, 12.0, 12.0, 11.0, 11.0, lambda u, v, L: shade(en, L), kind='rect', bevel=1.6, corner=1.4)
     mottle(cv, random.Random(1912), 3, 6)
@@ -85,11 +87,11 @@ def p_washer():
     knob(cv, 4.4, 3.8, 1.4, '#e8ecf2', -0.6, hx('#2a2e38'))            # the cycle knob
     fill_shape(cv, 9.0, 3.8, 1.6, 1.4, lambda u, v, L: hx('#1a1e24'), kind='rect', corner=0.4)   # the timer window
     line(cv, 8.2, 3.8, 9.8, 3.8, hx('#f0a830'))
-    cv.dot(11.5, 3.0, hx('#3aff8a'))                                   # ready
+    cv.dot(11.5, 3.0, NEON_GREEN)                                   # ready
     cv.dot(11.5, 4.5, hx('#2a4a30'))
     chrome_bar(cv, 14.0, 2.4, 21.0, 5.2)                               # the coin slide
     for x in (15.2, 17.2, 19.2):
-        frect(cv, x, 3.4, x + 1.0, 4.2, hx('#2a2a34'))                 # its coin slots
+        frect(cv, x, 3.4, x + 1.0, 4.2, GUNMETAL)                 # its coin slots
     stud(cv, 2.2, 2.0, pn[1])
     stud(cv, 21.6, 2.0, pn[1])
 
@@ -114,7 +116,7 @@ def p_washer():
     def powder(ly):
         fill_shape(ly, 20.4, 16.0, 1.6, 2.4, lambda u, v, L: hx('#f26a1a') if v < -0.6 else shade(ramp('#2a6ad8', 0.45, 0.22, 0.4), L),
                    ang=0.12, kind='rect', corner=0.3, bevel=0.6)
-        ly.dot(20.0, 16.4, hx('#ffffff'))
+        ly.dot(20.0, 16.4, PURE_WHITE)
     layer(cv, powder)
     for _ in range(6):
         cv.dot(rng.uniform(17.5, 22.0), rng.uniform(18.5, 22.0), hx('#f4f6fc'))

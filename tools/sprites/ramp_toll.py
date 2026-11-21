@@ -11,12 +11,13 @@ from .core import (
     ring, shade, shift, smudge, stud, tone, VNoise, wood_fill
 )
 from .palette import (
-    CHROME, DECO_PINK, DECO_TEAL, GLASS, PASTEL_PINK, PASTEL_TEAL, ROAD_WHITE, ROAD_YELLOW, RUBBER, SIGN_GREEN,
-    SIGN_INK, SIGN_ORANGE, SIGN_RED, SIGN_WHITE, SIGN_YELLOW, STEEL_L, ZINC
+    CHROME, DECO_PINK, DECO_TEAL, GLASS, GRAPHITE, GUNMETAL, IRON_GREY, LED_RED, PALE_GREY, PASTEL_PINK, PASTEL_TEAL,
+    PITCH, PURE_WHITE, ROAD_WHITE, ROAD_YELLOW, RUBBER, RUST_BROWN, SIGN_GREEN, SIGN_INK, SIGN_ORANGE, SIGN_RED,
+    SIGN_WHITE, SIGN_YELLOW, SIGNAL_RED, SOOT, STEEL_GREY, STEEL_L, TYRE_BLACK, WALNUT, ZINC
 )
 from .type import words
 from .neon import neon_halo, neon_words
-from .tiles import tile_px
+from .tiles import GRIME, OIL, tile_px
 from .road import GUTTER, road_mark, road_text
 
 
@@ -39,7 +40,7 @@ def sign_plate(cv, x0, y0, x1, y1, face, rim=SIGN_WHITE, r=1.5, border=1.0):
 def sign_wear(cv, rng, box, n=4):
     """What a roadside sign collects: grime in soft patches, a few chips to the metal, a sticker's ghost."""
     smudge(cv, rng, n, box, (1.2, 3.0), 0.16)
-    smudge(cv, rng, n // 2 + 1, box, (0.4, 0.9), 0.5, hx('#8a8e98'))
+    smudge(cv, rng, n // 2 + 1, box, (0.4, 0.9), 0.5, STEEL_GREY)
 
 
 # ---- the road closed by the works, the way round them
@@ -158,18 +159,18 @@ def p_jersey_barrier():
         return shift(c, int((grit(x, y) - 0.5) * 18))
     px_paint(cv, 0, 0, W, H, f)
     for x in (22, 74):                                                     # the lifting slots
-        frect(cv, x - 1.5, 7.5, x + 1.5, 12.5, hx('#16141c'))
+        frect(cv, x - 1.5, 7.5, x + 1.5, 12.5, OIL)
         frect(cv, x - 1.5, 7.5, x + 1.5, 8.0, dk(CONCRETE[1], 0.3))
     for y in (6.5, 13.5):                                                  # the joint loops
         frect(cv, 0.5, y - 0.75, 2.0, y + 0.75, shade(STEEL_L, 0.45))
         frect(cv, W - 2.0, y - 0.75, W - 0.5, y + 0.75, shade(STEEL_L, 0.3))
     for k in range(9):                                                     # rust run down the near face
-        cv.dot(23.0 + k * 0.15, 12.5 + k * 0.6, alpha(hx('#8a4a22'), 200 - k * 16))
+        cv.dot(23.0 + k * 0.15, 12.5 + k * 0.6, alpha(RUST_BROWN, 200 - k * 16))
         cv.dot(23.5 + k * 0.15, 12.5 + k * 0.6, alpha(hx('#6a3a1c'), 150 - k * 12))
     frect(cv, 47, 8.5, 49, 11.5, hx('#e8901c'))                             # the reflector
     cv.dot(47.25, 8.75, hx('#ffe0a0'))
     tyre = VNoise(W, 20, 6, rng)
-    px_paint(cv, 0, H / 2 + 7.0, W, H / 2 + 9.5, lambda x, y, cur: mix(cur, hx('#1a1820'), 0.55) if cur[3] and tyre(x, y) > 0.56 else None)
+    px_paint(cv, 0, H / 2 + 7.0, W, H / 2 + 9.5, lambda x, y, cur: mix(cur, SOOT, 0.55) if cur[3] and tyre(x, y) > 0.56 else None)
     smudge(cv, rng, 10, (2, 2, W - 2, H - 2), (1.5, 4.0), 0.14)
     cv.outline()
     return cv
@@ -261,7 +262,7 @@ def p_excavator():
         frect(cv, x, 54, x + 1.5, 54.5, lt(yel[2], 0.2))
     fill_shape(cv, 50.0, 29.0, 3.4, 3.4, lambda u, v, L: shade(ramp('#5a5e68', 0.5, 0.25, 0.35), 0.2 + L * 0.8))   # air filter
     fill_shape(cv, 60.0, 30.0, 2.2, 2.2, lambda u, v, L: shade(CHROME, 0.3 + L * 0.6))   # the exhaust
-    fill_shape(cv, 60.0, 30.0, 1.2, 1.2, lambda u, v, L: hx('#0c0a10'))
+    fill_shape(cv, 60.0, 30.0, 1.2, 1.2, lambda u, v, L: PITCH)
     smudge(cv, rng, 4, (54, 24, 72, 36), (2.0, 4.5), 0.35, hx('#1c1a1e'))   # soot
     frect(cv, 44, 22.0, 70, 22.75, shade(yel, 0.9))                        # the handrail
     frect(cv, 44, 22.75, 70, 23.25, dk(yel[1], 0.4))
@@ -299,7 +300,7 @@ def p_excavator():
         fill_capsule(ly, [(100, 57.5), (142, 55.0), (172, 53.0)], 6.0, lambda k, L, s, i, t: shade(yel, 0.2 + L * 0.75))
     layer(cv, boom)
     for off in (-3.5, 3.5):                                                # the hoses along it
-        line(cv, 106, 56.5 + off, 166, 53.2 + off * 0.7, hx('#141218'))
+        line(cv, 106, 56.5 + off, 166, 53.2 + off * 0.7, TYRE_BLACK)
     fill_capsule(cv, [(122, 55.5), (150, 54.0)], 1.6, barrel)              # the stick's ram on top of it
     fill_capsule(cv, [(150, 54.0), (166, 53.2)], 1.0, chrome)
     fill_shape(cv, 171, 53, 3.4, 3.4, lambda u, v, L: shade(yel, 0.2 + L * 0.75))   # the stick's pin
@@ -348,7 +349,7 @@ def p_dump_truck():
         line(cv, 199, y + s * 6.5, 199, y + s * 1.0, shade(STEEL_L, 0.5))
         frect(cv, 197.5, y - 1.5, 201.5, y + 1.5, SIGN_INK)
     fill_shape(cv, 178, 10.5, 2.4, 2.4, lambda u, v, L: shade(CHROME, 0.3 + L * 0.7))   # the stack
-    fill_shape(cv, 178, 10.5, 1.2, 1.2, lambda u, v, L: hx('#0c0a10'))
+    fill_shape(cv, 178, 10.5, 1.2, 1.2, lambda u, v, L: PITCH)
     fill_shape(cv, 178, H - 10.5, 3.0, 3.0, lambda u, v, L: shade(ramp('#3a3c44', 0.5, 0.25, 0.35), 0.2 + L * 0.8))
 
     def tipper(ly):
@@ -461,7 +462,7 @@ def p_works_light():
     for y in (16.0, 28.5, 43.5, 56.0):
         frect(cv, 37.5, y - 4, 39.5, y + 4, hx('#f4f6ff'))
         frect(cv, 37.0, y - 4, 37.5, y + 4, hx('#9aa4c0'))
-        frect(gl, 37.0, y - 4, 39.5, y + 4, hx('#ffffff'))
+        frect(gl, 37.0, y - 4, 39.5, y + 4, PURE_WHITE)
         px_paint(gl, 39.5, y - 6.5, 46, y + 6.5, lambda x, y_, cur, y=y: alpha(hx('#e6eeff'), int(max(0, 150 - (x - 39.5) * 22 - abs(y_ - y) * 12))) if 150 - (x - 39.5) * 22 - abs(y_ - y) * 12 > 8 else None)
     return cv, gl
 
@@ -477,7 +478,7 @@ def p_site_fence():
         for x in (3.0, W - 3.0):
             fill_shape(ly, x, H / 2, 2.8, 9.0, lambda u, v, L: shade(ramp('#2c2a30', 0.45, 0.22, 0.4), 0.25 + L * 0.65), kind='rect', corner=1.2, bevel=1.2)
             for y in (5.5, 14.5):
-                fill_shape(ly, x, y, 0.8, 0.8, lambda u, v, L: hx('#0c0a10'))
+                fill_shape(ly, x, y, 0.8, 0.8, lambda u, v, L: PITCH)
     layer(cv, feet)
 
     def panel(ly):
@@ -494,8 +495,8 @@ def p_site_fence():
     for x in (2.0, W - 4.0):                                               # the clamps
         frect(cv, x, 8.0, x + 2.0, 10.5, shade(STEEL_L, 0.6))
     sign_plate(cv, W / 2 - 14, 6.5, W / 2 + 14, 12.0, '#ece8de', rim=SIGN_RED, r=0.5, border=0.5)
-    words(cv, W / 2, 7.5, 'KEEP OUT', hx('#c8242c'), 0.5, centre=True)
-    smudge(cv, rng, 6, (4, 6, W - 4, 13), (0.6, 1.5), 0.4, hx('#8a4a22'))
+    words(cv, W / 2, 7.5, 'KEEP OUT', SIGNAL_RED, 0.5, centre=True)
+    smudge(cv, rng, 6, (4, 6, W - 4, 13), (0.6, 1.5), 0.4, RUST_BROWN)
     return cv
 
 
@@ -530,7 +531,7 @@ def p_road_cut():
             return None
         if e < 1.0:
             return (22, 20, 30, 240)                                       # the tar joint
-        return alpha(shift(hx('#2a2a34'), rng.randint(-4, 4)), 246) if rng.random() > 0.05 else (74, 80, 98, 240)
+        return alpha(shift(GUNMETAL, rng.randint(-4, 4)), 246) if rng.random() > 0.05 else (74, 80, 98, 240)
     px_paint(cv, 84, 2, 100, H - 2, patch)
     orange = alpha(hx('#ea6e24'), 220)
     for y in range(8, H - 8, 4):
@@ -593,7 +594,7 @@ def p_roller_door():
     px_paint(cv, 0, 0, W, H, door)
     for (x, y0) in ((14.0, 3.5), (52.0, 4.0), (77.0, 3.5)):                 # rust runs from the hood
         for k in range(12):
-            cv.dot(x + 0.25 * (k % 2), y0 + k * 0.5, alpha(hx('#8a4a22'), 210 - k * 14))
+            cv.dot(x + 0.25 * (k % 2), y0 + k * 0.5, alpha(RUST_BROWN, 210 - k * 14))
     fill_shape(cv, W / 2, H - 1.5, 2.0, 1.0, lambda u, v, L: shade(CHROME, 0.3 + L * 0.6), kind='rect', corner=0.4)   # the lock
     frect(cv, 30, H - 2.0, 36, H - 1.0, shade(STEEL_L, 0.55))              # the handle
     pink, cyan = hx('#ff3a8a'), hx('#2ae0f0')
@@ -603,7 +604,7 @@ def p_roller_door():
         for _ in range(n):
             pts.append((x, y))
             x, y = x + trng.uniform(2.5, 5.0), max(5.0, min(H - 4.5, y + trng.uniform(-3.5, 3.5)))
-        fill_capsule(cv, pts, 0.9, lambda k, L, s, i, t, col=col: col if k < 0.75 else mix(col, hx('#ffffff'), 0.3))
+        fill_capsule(cv, pts, 0.9, lambda k, L, s, i, t, col=col: col if k < 0.75 else mix(col, PURE_WHITE, 0.3))
         for (px, py) in pts[1::2]:
             for k in range(trng.randint(2, 5)):
                 cv.dot(px, py + 1 + k * 0.5, col)                           # drips
@@ -634,7 +635,7 @@ def p_loading_dock():
         return shift(shade(CONCRETE, 0.62 if y > 1 else 0.9), int((grit(x, y) - 0.5) * 20))
     px_paint(cv, 0, 0, W, H, apron)
     for x in (34.0, 93.5):
-        frect(cv, x, 1.5, x + 0.5, 17.5, hx('#16141c'))
+        frect(cv, x, 1.5, x + 0.5, 17.5, OIL)
     for x in (22.0, 106.0):                                                # the bumpers
         fill_shape(cv, x, 23.5, 5.5, 4.0, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.5), kind='rect', corner=0.8, bevel=1.0)
         for k in range(-4, 5, 2):
@@ -679,8 +680,8 @@ def p_chainlink_gate():
     fill_shape(cv, W / 2 + 1.0, 12.6, 1.4, 1.2, lambda u, v, L: shade(ramp('#b88a2a', 0.5, 0.25, 0.35), 0.3 + L * 0.7), kind='rect', corner=0.4)
     frect(cv, W / 2 - 4.0, 12.5, W / 2 - 3.0, 15.5, shade(STEEL_L, 0.45))   # the drop rod
     sign_plate(cv, 30, 6.0, 52, 11.5, '#ece8de', rim=SIGN_RED, r=0.5, border=0.5)
-    words(cv, 41, 7.0, 'PRIVATE', hx('#c8242c'), 0.5, centre=True)
-    smudge(cv, rng, 6, (4, 3, W - 4, 13), (0.6, 1.5), 0.4, hx('#8a4a22'))
+    words(cv, 41, 7.0, 'PRIVATE', SIGNAL_RED, 0.5, centre=True)
+    smudge(cv, rng, 6, (4, 3, W - 4, 13), (0.6, 1.5), 0.4, RUST_BROWN)
     return cv
 
 
@@ -715,7 +716,7 @@ def p_pallet_stack():
             if k != 5 or y < 10:
                 stud(cv, 2.5 + k * 5, y - 0.5, hx('#5a5a62'))
                 stud(cv, 4.5 + k * 5, y + 0.5, hx('#5a5a62'))
-    words(cv, 13.0, 22.0, 'HT', alpha(hx('#2a2420'), 200), 0.5)
+    words(cv, 13.0, 22.0, 'HT', alpha(GRIME, 200), 0.5)
     smudge(cv, rng, 5, (2, 2, W - 2, H - 2), (1.5, 3.5), 0.16)
     return cv
 
@@ -742,7 +743,7 @@ def p_oil_drum():
         fill_shape(cv, x, y, r, r, lambda u, v, L: shade(STEEL_L, 0.3 + L * 0.5))
     smudge(cv, rng, 3, (5, 9, 15, 16), (2.0, 3.5), 0.55, hx('#0c0c14'))   # spilt oil
     cv.dot(9.0, 12.0, hx('#7a8aa8'))
-    smudge(cv, rng, 10, (1, 1, S - 1, S - 1), (0.8, 2.2), 0.5, hx('#8a4a22'))
+    smudge(cv, rng, 10, (1, 1, S - 1, S - 1), (0.8, 2.2), 0.5, RUST_BROWN)
     fill_shape(cv, 14.5, 5.5, 2.0, 1.4, lambda u, v, L: dk(blue[2], 0.35), ang=0.6)   # a dent
     cv.outline()
     return cv
@@ -762,7 +763,7 @@ def p_sign_stop():
             return None
         if d > 8.0:
             return SIGN_WHITE
-        return hx('#d8303a') if (x - c0) + (y - c0) < -7 else hx('#c8242c')
+        return hx('#d8303a') if (x - c0) + (y - c0) < -7 else SIGNAL_RED
     px_paint(cv, 0, 0, S, S, octa)
     words(cv, c0, 8.25, 'STOP', SIGN_WHITE, 0.5, centre=True)
     sign_wear(cv, rng, (2, 2, S - 2, S - 2), 3)
@@ -801,10 +802,10 @@ def p_guardrail():
             stud(cv, x, y, hx('#5a5e68'))
     frect(cv, W - 7.5, 5.0, W - 7.0, 9.5, dk(ZINC[1], 0.3))                # the splice's lap
     frect(cv, 79.0, 3.5, 81.0, 4.5, hx('#e8e4da'))                          # the reflector tab
-    smudge(cv, rng, 8, (1, 5, W - 1, 9.5), (1.0, 3.0), 0.35, hx('#8a5a32'))
+    smudge(cv, rng, 8, (1, 5, W - 1, 9.5), (1.0, 3.0), 0.35, WALNUT)
     for _ in range(3):                                                     # where cars rubbed it
         x0 = rng.uniform(4, W - 30)
-        px_paint(cv, x0, 7.5, x0 + rng.uniform(10, 24), 9.5, lambda x, y, cur: (mix(cur, hx('#1a1820'), 0.5) if rng.random() < 0.8 else lt(cur, 0.4)) if cur[3] and cur != OUTLINE else None)
+        px_paint(cv, x0, 7.5, x0 + rng.uniform(10, 24), 9.5, lambda x, y, cur: (mix(cur, SOOT, 0.5) if rng.random() < 0.8 else lt(cur, 0.4)) if cur[3] and cur != OUTLINE else None)
     return cv
 
 
@@ -835,8 +836,8 @@ def p_guardrail_end():
         px_paint(ly, 1.5, 4.5, 6.5, 16.5, lambda x, y, cur: (SIGN_INK if int((x + y) // 2) % 2 else hx('#e8c020')) if cur[3] else None)
     layer(cv, head)
     for (x, y) in ((14, 6.5), (14, 14.5), (19, 6.5), (19, 14.5)):
-        stud(cv, x, y, hx('#8a8e98'))
-    smudge(cv, rng, 5, (2, 4, W - 2, 15), (1.0, 3.0), 0.3, hx('#8a5a32'))
+        stud(cv, x, y, STEEL_GREY)
+    smudge(cv, rng, 5, (2, 4, W - 2, 15), (1.0, 3.0), 0.3, WALNUT)
     smudge(cv, rng, 4, (2, 4, 22, 16), (1.0, 2.5), 0.35)
     return cv
 
@@ -882,8 +883,8 @@ def p_guardrail_end_trail():
     for (x, y) in ((13.0, 10.0), (13.0, 12.5), (16.0, 10.0), (16.0, 12.5)):
         stud(cv, x, y, hx('#5a5e68'))
     frect(cv, 18.0, 9.0, 18.5, 13.5, dk(ZINC[1], 0.3))                    # the splice's lap
-    smudge(cv, rng, 6, (2, 4, W - 2, 14), (1.0, 3.0), 0.35, hx('#8a5a32'))
-    smudge(cv, rng, 3, (26, 12, 44, 13.5), (1.5, 3.0), 0.4, hx('#1a1820'))   # tyre black where one rubbed it
+    smudge(cv, rng, 6, (2, 4, W - 2, 14), (1.0, 3.0), 0.35, WALNUT)
+    smudge(cv, rng, 3, (26, 12, 44, 13.5), (1.5, 3.0), 0.4, SOOT)   # tyre black where one rubbed it
     return cv
 
 
@@ -922,8 +923,8 @@ def p_crash_cushion(narrow=False):
         fill_shape(ly, 93.0, H / 2, 2.0, (y1 - y0) / 2 + 1.0, lambda u, v, L: shade(stl, 0.3 + L * 0.6), kind='rect', corner=0.6, bevel=1.0)   # the backstop
     layer(cv, rails)
     for x in range(22, 92, 9):
-        stud(cv, x, y0 + 1.5, hx('#8a8e98'))
-        stud(cv, x, y1 - 1.5, hx('#8a8e98'))
+        stud(cv, x, y0 + 1.5, STEEL_GREY)
+        stud(cv, x, y1 - 1.5, STEEL_GREY)
 
     def nose(ly):
         fill_shape(ly, 11.5, H / 2, 8.5, (y1 - y0) / 2, lambda u, v, L: shade(yel, 0.3 + L * 0.65), kind='rect', corner=7.0, bevel=2.0)
@@ -983,7 +984,7 @@ def p_sign_freeway():
         if abs(u) > half - 0.75 or v < -6.75:
             return SIGN_WHITE
         if v < -2.5:
-            return hx('#c8242c') if not (v < -6.0 and abs(u) < 2.0) else SIGN_WHITE
+            return SIGNAL_RED if not (v < -6.0 and abs(u) < 2.0) else SIGN_WHITE
         return hx('#2a4ea8')
     px_paint(cv, c0 - 9, 3, c0 + 9, 19, shield)
     words(cv, c0, 9.0, '9', SIGN_WHITE, 1.0, centre=True)
@@ -1203,10 +1204,10 @@ def p_toll_booth_of(duck=False):
         fill_shape(cv, 84, 9, 4.0, 2.2, lambda u, v, L: shade(ramp('#c8b8a0', 0.5, 0.25, 0.3), 0.3 + L * 0.6), kind='rect', corner=0.8)
         frect(cv, 81.5, 8.0, 85.5, 9.5, hx('#ffb040'))
         frect(gl, 81.5, 8.0, 85.5, 9.5, alpha(hx('#ffc060'), 230))
-        cv.dot(87, 9, hx('#2a2a30'))
-        line(cv, 87, 7, 90, 5, hx('#c8c8d0'))                                   # its aerial
+        cv.dot(87, 9, GRAPHITE)
+        line(cv, 87, 7, 90, 5, PALE_GREY)                                   # its aerial
         # the desk fan in the corner, its blades a blur of grey
-        ring(cv, 88, 34, 0, 3.0, lambda dx, dy, d: hx('#8a8e98') if d > 2.3 else hx('#b8bcc4') if int(math.atan2(dy, dx) * 2) % 2 else hx('#6a6e78'))
+        ring(cv, 88, 34, 0, 3.0, lambda dx, dy, d: STEEL_GREY if d > 2.3 else hx('#b8bcc4') if int(math.atan2(dy, dx) * 2) % 2 else IRON_GREY)
         fill_shape(cv, 60, 20, 3.5, 3.5, lambda u, v, L: shade(ramp('#2a2a30', 0.45, 0.22, 0.35), 0.3 + L * 0.6))   # the stool
         shirt, cap = ramp('#6a9ad0', 0.5, 0.26, 0.3), ramp('#1e2a44', 0.45, 0.22, 0.3)
 
@@ -1242,8 +1243,8 @@ def p_toll_booth_of(duck=False):
         layer(cv, basket)
         for (dx, dy) in ((-1.0, 0.5), (1.0, -0.5), (0.0, 1.5), (-1.5, -1.0)):
             cv.dot(14 + dx, 30 + dy, hx('#e8e8f2'))                             # coins in its throat
-        cv.dot(11.0, 26.5, hx('#ffffff'))                                       # the chrome's glint
-        frect(gl, 10.5, 26.0, 11.5, 27.0, alpha(hx('#ffffff'), 140))
+        cv.dot(11.0, 26.5, PURE_WHITE)                                       # the chrome's glint
+        frect(gl, 10.5, 26.0, 11.5, 27.0, alpha(PURE_WHITE, 140))
         smudge(cv, rng, 4, (2, 2, W - 2, H - 2), (1.0, 2.5), 0.15)
         return cv, gl
     return make
@@ -1379,7 +1380,7 @@ def gate_arm(x0=None, x1=None, seed=0):
         px_paint(cv, 0, 0, W, H, arm)
         for X in (44.0, 92.0):
             if whole or a < X < b:
-                frect(cv, X - dx - 1.0, cy - 0.75, X - dx + 1.0, cy + 0.75, hx('#ff2a3a'))
+                frect(cv, X - dx - 1.0, cy - 0.75, X - dx + 1.0, cy + 0.75, LED_RED)
         if whole:
             def cab(ly):
                 fill_shape(ly, 9, cy, 8.0, 5.0, lambda u, v, L: shade(ramp('#e0b020', 0.5, 0.26, 0.28), 0.2 + L * 0.75), kind='rect', corner=1.0, bevel=1.5)
@@ -1415,7 +1416,7 @@ def gate_steel(bent=False):
                 return None
             c = shade(st, 0.86 if t < -2.0 else 0.28 if t > 2.0 else 0.58)
             if -1.0 <= t < 1.5 and int(x // 10) % 2:
-                c = hx('#c8242c') if int(x // 20) % 2 else hx('#e8e4da')   # the reflective bands
+                c = SIGNAL_RED if int(x // 20) % 2 else hx('#e8e4da')   # the reflective bands
             if bent and abs(x - 62) < 14 and grit(x, y) > 0.45:
                 c = shade(STEEL_L, 0.7 if t < 0 else 0.4)                   # scraped to the steel where it struck
             return c
@@ -1443,16 +1444,16 @@ def gate_steel(bent=False):
             u, v = x - px, y - py
             if bent:
                 u, v = u * math.cos(0.5) + v * math.sin(0.5), -u * math.sin(0.5) + v * math.cos(0.5)
-            return hx('#c8242c') if abs(u) < 4.8 and abs(v) < 4.8 and (abs(u - v) < 1.4 or abs(u + v) < 1.4) else None
+            return SIGNAL_RED if abs(u) < 4.8 and abs(v) < 4.8 and (abs(u - v) < 1.4 or abs(u + v) < 1.4) else None
         px_paint(cv, px - 8, max(0, py - 8), px + 8, min(H, py + 8), x_)
         if not bent:
             for (x, y) in ((W / 2 - 6.5, 3.5), (W / 2 + 6.0, 3.5), (W / 2 - 6.5, H - 4.0), (W / 2 + 6.0, H - 4.0)):
-                stud(cv, x, y, hx('#8a8e98'))
+                stud(cv, x, y, STEEL_GREY)
         else:
             for _ in range(10):                                            # its paint flakes, a gouge
-                cv.dot(rng.uniform(46, 80), H / 2 + rng.uniform(-3, 3) + dy(62), hx('#e8e4da') if rng.random() < 0.5 else hx('#c8242c'))
-            line(cv, 52, H / 2 - 4.5, 72, H / 2 - 5.5, hx('#16141c'))
-        smudge(cv, rng, 6, (18, 7, W - 6, 13), (0.8, 2.0), 0.4, hx('#8a5a32'))
+                cv.dot(rng.uniform(46, 80), H / 2 + rng.uniform(-3, 3) + dy(62), hx('#e8e4da') if rng.random() < 0.5 else SIGNAL_RED)
+            line(cv, 52, H / 2 - 4.5, 72, H / 2 - 5.5, OIL)
+        smudge(cv, rng, 6, (18, 7, W - 6, 13), (0.8, 2.0), 0.4, WALNUT)
         smudge(cv, rng, 4, (2, 2, W - 2, H - 2), (1.5, 3.5), 0.15)
         return cv
     return make
@@ -1568,7 +1569,7 @@ def p_overpass():
     parapet(H - 16, H, H - 16)
     for x in range(40, W, 96):                                             # scuppers, a rust stain under each
         for (y, d) in ((16.5, 1), (H - 17.5, -1)):
-            frect(cv, x - 2.5, y, x + 2.5, y + 1.5, hx('#16141c'))
+            frect(cv, x - 2.5, y, x + 2.5, y + 1.5, OIL)
             for k in range(7):
                 cv.dot(x - 1.0 + rng.uniform(-0.6, 0.6), y + d * (2.0 + k * 0.8), alpha(hx('#7a4a26'), 150 - k * 18))
 
@@ -1585,7 +1586,7 @@ def p_overpass():
         frect(cv, x, y, x + w, y + h, lambda cur: mix(cur, hx('#2c2c34'), 0.7))
         frect(cv, x, y, x + w, y + 0.75, hx('#1c1a22'))
     smudge(cv, rng, 40, (8, 18, W - 8, H - 18), (2, 6), 0.16)
-    smudge(cv, rng, 14, (8, 18, W - 8, H - 18), (1, 3), 0.3, hx('#8a8e98'))
+    smudge(cv, rng, 14, (8, 18, W - 8, H - 18), (1, 3), 0.3, STEEL_GREY)
     cv.outline()
     return cv
 

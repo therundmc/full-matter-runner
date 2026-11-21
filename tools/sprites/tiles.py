@@ -11,7 +11,7 @@ import math
 import random
 
 from .core import Batch, Cv, FINE, hx, mix, tint
-from .palette import FL_ASPHALT, FL_SIDEWALK
+from .palette import FL_ASPHALT, FL_SIDEWALK, RUST_BROWN
 
 
 T = 32
@@ -745,7 +745,7 @@ def v_stucco_chip(cv, rng):
     d_chip(cv, rng, -20, 10, (1.8, 2.8))
     m = patch(rng, rng.uniform(11, 21), rng.uniform(11, 21), 1.6, 1.2, 0.4)
     apply_patch(cv, m, lambda x, y, c, w: tint(c, -4 * w, hx('#8a8478'), 0.75 * w))
-    d_stain(cv, rng, hx('#8a4a22'), 0.25, (1.5, 2.5), -3)
+    d_stain(cv, rng, RUST_BROWN, 0.25, (1.5, 2.5), -3)
 
 
 # the stucco's variants (MapRenderer wallTile: _v1 another draw, _v2.._v5 another with a detail, by each cell's hash)

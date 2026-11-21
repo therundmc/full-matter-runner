@@ -2,7 +2,7 @@
 magazines and the ammunition on the floor, the casings."""
 
 from .core import ascii_cv, Batch, hx, lt, ramp
-from .palette import BRASS, STEEL, STEEL_L, WOOD
+from .palette import BRASS, GUNMETAL, LINEN, SIGNAL_ORANGE, SIGNAL_YELLOW, STEEL, STEEL_L, WOOD
 
 
 OLIVE = ramp('#5d6a32', 0.45, 0.22, 0.3)
@@ -70,12 +70,12 @@ def weapons():
     gun = {'L': STEEL[3], 'M': STEEL[2], 'D': STEEL[1], 'K': STEEL[0], 'w': WOOD[3], 'W': WOOD[2],
            'V': WOOD[1], 'G': hx('#2a2230'), 'g': hx('#4a3e50'), 'S': STEEL_L[3], 's': STEEL_L[2],
            'c': hx('#36e8f0'), 'C': hx('#1a98a8'), 'o': OLIVE[3], 'O': OLIVE[2], 'Q': OLIVE[1], 'q': OLIVE[0],
-           'y': hx('#f9c80e'), 'Y': hx('#b88a08'), 'r': hx('#b8262c'), 'R': hx('#7a1420'), 't': hx('#d8d8e0'),
+           'y': SIGNAL_YELLOW, 'Y': hx('#b88a08'), 'r': hx('#b8262c'), 'R': hx('#7a1420'), 't': hx('#d8d8e0'),
            'T': hx('#2a2230'), 'x': hx('#7a4a32'), 'n': hx('#1c1820'), 'h': hx('#5a0c16'),
            'a': DRAB[3], 'A': DRAB[2], 'z': DRAB[1], 'Z': DRAB[0],
            # the pool cue: dark butt, its linen wrap, pale maple, the ferrule, the chalked tip (and their undersides)
            'B': hx('#3a2418'), 'k': hx('#241610'), 'b': hx('#6a4426'), 'j': hx('#4a2e1a'), 'm': hx('#d8c090'),
-           'f': hx('#f0ece0'), 'e': hx('#c8c4b8'), 'l': hx('#a88e5c'),
+           'f': LINEN, 'e': hx('#c8c4b8'), 'l': hx('#a88e5c'),
            # the bat's ash, lit to shaded
            'u': hx('#dcb47c'), 'U': hx('#bc9058'), 'i': hx('#8e643a'), 'I': hx('#5e3e24')}
     # an M1911 .45, side on: the blued slide with its rear serrations, the ejection port, the bushing at the muzzle,
@@ -336,14 +336,14 @@ def mags():
                                 ".yyyyyyd.",
                                 ".DDDDDDD.",
                                 "........."], {'A': grn[3], 'g': grn[2], 'G': grn[1], 'd': grn[1], 'D': grn[0],
-                                               'y': hx('#f9c80e'), 'K': hx('#2a2a34')})
+                                               'y': SIGNAL_YELLOW, 'K': GUNMETAL})
     ol_ = ramp('#7a8a3a', 0.5, 0.25, 0.4)
     out['ammo_rocket'] = ascii_cv(["............",
                                    ".Kk......r..",
                                    ".KAAAAyAArRr",
                                    ".KgggggyggRR",
                                    ".Kk......R..",
-                                   "............"], {'A': ol_[3], 'g': ol_[1], 'y': hx('#ff6b1a'), 'r': hx('#ff5a4a'),
+                                   "............"], {'A': ol_[3], 'g': ol_[1], 'y': SIGNAL_ORANGE, 'r': hx('#ff5a4a'),
                                                      'R': hx('#c8202a'), 'K': hx('#2a2430'), 'k': hx('#4a4458')})
     return out
 

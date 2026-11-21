@@ -6,7 +6,7 @@ import random
 from .core import (
     Cv, dk, fill_capsule, fill_shape, frect, hx, line, lt, mix, px_paint, ramp, ring, shade, smudge, stud, VNoise
 )
-from .palette import BRASS, NEON_AMBER, NEON_CYAN, NEON_PINK, STEEL, STEEL_L
+from .palette import BRASS, GRAPHITE, NEON_AMBER, NEON_CYAN, NEON_PINK, PAPER_WHITE, STEEL, STEEL_L
 from .type import neon_text
 from .neon import Neon, sign_backing
 
@@ -184,7 +184,7 @@ def p_pay_phone():
     frect(cv, 1.0, 0.6, 9.0, 1.2, hx('#c8282e'))                       # the red band of its top
     for k in range(9):
         cv.dot(5.5 + (k % 3) * 0.9, 2.0 + (k // 3) * 0.8, hx('#d8dce4'))
-    frect(cv, 8.3, 2.0, 8.7, 3.2, hx('#2a2a30'))                       # the coin slot
+    frect(cv, 8.3, 2.0, 8.7, 3.2, GRAPHITE)                       # the coin slot
     fill_capsule(cv, [(3.5, 4.4), (3.0, 5.6), (3.8, 6.2)], 0.35, lambda k, L, s, i, t: shade(STEEL, L))
     cv.outline()
     return cv
@@ -226,7 +226,7 @@ def p_neon_sign_beer():
     ne = Neon(36, 14)
     ne.line([(3, 4), (3, 11), (8, 11), (8, 4)], NEON_AMBER)
     ne.line([(9, 6), (10, 6), (10, 9), (9, 9)], NEON_AMBER)
-    ne.line([(3, 3), (8, 3)], hx('#f4f0e6'))
+    ne.line([(3, 3), (8, 3)], PAPER_WHITE)
     neon_text(ne, 12, 3, 'BEER', hx('#ff3a30'))
     ne.render(cv, gl)
     return cv, gl

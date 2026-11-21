@@ -8,9 +8,14 @@ from .core import (
     alpha, CLEAR, crease, curve, Cv, dk, fill_capsule, fill_shape, frect, hx, layer, light, line, lt, mix, px_paint,
     ramp, ring, shade, shift, smudge, stud, VNoise
 )
-from .palette import BRASS, NEON_CYAN, NEON_PINK, RUBBER, STEEL_L, STUCCO, WOOD, ZINC
+from .palette import (
+    BRASS, CHALK, GRAPHITE, GUNMETAL, IRON_GREY, LINEN, NEON_CYAN, NEON_PINK, PALE_GREY, PAPER_WHITE, PURE_WHITE,
+    PUTTY, RUBBER, RUST_BROWN, SIGN_WHITE, SIGNAL_YELLOW, SILVER_GREY, SOOT, STEEL_L, STUCCO, WALNUT, WOOD, ZINC
+)
 from .type import hand_words, neon_text, words, words_w
 from .neon import Neon
+from .tiles import FL_DIRT
+from .ramp_toll import CONCRETE
 from .flat import bottle_down
 from .miami import pole_cabinet
 
@@ -33,7 +38,7 @@ def bus_bench(kind):
         for x in (5.0, W - 5.0):
             frect(cv, x - 2, 24.5, x + 2, 25.5, shade(con, 0.2))              # the legs' feet
         n = VNoise(W, H, 5, rng)
-        bg, ink = (ramp('#e8cc58', 0.45, 0.22, 0.2), hx('#c8282c')) if kind == 'bail' else (ramp('#7ab8d8', 0.45, 0.22, 0.2), hx('#f4f0e6'))
+        bg, ink = (ramp('#e8cc58', 0.45, 0.22, 0.2), hx('#c8282c')) if kind == 'bail' else (ramp('#7ab8d8', 0.45, 0.22, 0.2), PAPER_WHITE)
 
         def back(x, y, cur):
             if x < 2 or x >= W - 2 or y < 1 or y >= 13.5:
@@ -45,8 +50,8 @@ def bus_bench(kind):
         px_paint(cv, 0, 0, W, H, back)
         if kind == 'bail':
             hand_words(cv, 5, 3.5, 'BAIL', ink, 1.3, 10371, wob=0.1)
-            words(cv, 40, 3.5, '24 HRS', hx('#2a2a30'), 0.5)
-            words(cv, 36, 8.0, '555-0187', hx('#2a2a30'), 0.5)
+            words(cv, 40, 3.5, '24 HRS', GRAPHITE, 0.5)
+            words(cv, 36, 8.0, '555-0187', GRAPHITE, 0.5)
             frect(cv, 34.5, 3, 35, 12, hx('#c8282c'))
         else:
             frect(cv, 3, 2, W - 3, 8.5, lambda c: mix(hx('#24508a'), c, 0.25))
@@ -107,15 +112,15 @@ def news_box_of(body, top, seed):
         r = ramp(body, 0.45, 0.22, 0.3)
         px_paint(cv, 1, 1, 15, 12, lambda x, y, c: shade(r, 0.85 if y < 2.0 else 0.38 if y >= 10.5 else 0.62))
         frect(cv, 2, 1.5, 14, 3.5, hx(top))                                 # its band
-        frect(cv, 3, 2.25, 13, 2.75, hx('#f4f0e6'))
+        frect(cv, 3, 2.25, 13, 2.75, PAPER_WHITE)
         frect(cv, 1, 3.5, 15, 4, dk(r[1], 0.2))                             # the lid's hinge
 
         def paper(x, y, c):
             if y < 5 or y >= 9.5 or x < 3.0 or x >= 13.0:
-                return hx('#2a2a34')
+                return GUNMETAL
             col = hx('#ece8dc')
             if 5.5 <= y < 6.5 and 3.5 <= x < 12.0:
-                col = hx('#2a2a30')
+                col = GRAPHITE
             elif 7.0 <= y < 9.0 and 3.5 <= x < 6.5:
                 col = hx('#8a8a90') if int(y * 2) % 2 else hx('#b8b4a8')
             elif 7.0 <= y < 9.0 and x >= 7.0 and int(y * 2) % 2 == 0:
@@ -123,7 +128,7 @@ def news_box_of(body, top, seed):
             return col
         px_paint(cv, 2.5, 4.5, 13.5, 10, paper)
         fill_shape(cv, 13.4, 11.0, 0.6, 0.4, lambda u, v, L: hx('#d8d8e0'), kind='rect', corner=0.1)
-        smudge(cv, rng, 5, (1, 1, 15, 12), (0.4, 0.9), 0.6, hx('#9aa0ac'))
+        smudge(cv, rng, 5, (1, 1, 15, 12), (0.4, 0.9), 0.6, SILVER_GREY)
         smudge(cv, rng, 3, (1, 1, 15, 4), (1.5, 3.0), 0.25, hx(CREAM))       # faded
         cv.outline()
         return cv
@@ -141,12 +146,12 @@ def p_mailbox_blue():
         fill_shape(cv, x, y, 1.2, 1.2, lambda u, v, L: shade(blue, 0.2), kind='rect', corner=0.3)   # its legs' feet
     fill_shape(cv, W / 2, H / 2 - 0.5, W / 2 - 2, H / 2 - 2, lambda u, v, L: shade(blue, 0.2 + L * 0.7 + (0.12 if abs(u) < 2 else 0)), kind='super', p=3.0)
     fill_shape(cv, W / 2, H - 3.2, 5.0, 1.4, lambda u, v, L: shade(ramp('#3a4a6a', 0.5, 0.25, 0.4), 0.3 + L * 0.6), kind='rect', corner=0.6)   # the chute
-    frect(cv, 5.5, 4.5, W - 5.5, 7.0, hx('#ece8de'))
+    frect(cv, 5.5, 4.5, W - 5.5, 7.0, SIGN_WHITE)
     frect(cv, 6.0, 5.2, W - 6.0, 5.6, hx('#2a3a6a'))
     frect(cv, 6.0, 6.2, W - 8.0, 6.5, hx('#c8282c'))
-    fill_shape(cv, 4.5, 9.5, 1.0, 0.7, lambda u, v, L: hx('#f9c80e'), kind='rect', corner=0.2)   # a sticker
-    smudge(cv, rng, 5, (2, 2, W - 2, H - 2), (0.4, 0.9), 0.5, hx('#9aa0ac'))
-    smudge(cv, rng, 3, (2, H - 5, W - 2, H - 2), (0.8, 1.8), 0.35, hx('#8a4a22'))
+    fill_shape(cv, 4.5, 9.5, 1.0, 0.7, lambda u, v, L: SIGNAL_YELLOW, kind='rect', corner=0.2)   # a sticker
+    smudge(cv, rng, 5, (2, 2, W - 2, H - 2), (0.4, 0.9), 0.5, SILVER_GREY)
+    smudge(cv, rng, 3, (2, H - 5, W - 2, H - 2), (0.8, 1.8), 0.35, RUST_BROWN)
     cv.outline()
     return cv
 
@@ -166,8 +171,8 @@ def mailbox_post(number, box, seed):
         frect(cv, 6, 0.5, 12, 2.0, hx('#d02a2a'))                              # the flag, up
         frect(cv, 6, 0.5, 12, 1.0, hx('#ff5a4a'))
         light = sum(hx(box)[:3]) > 420                                         # (dark figures on a pale box)
-        words(cv, 4, 4.0, number, hx('#2a2430') if light else hx('#f4f0e6'), 0.5)
-        smudge(cv, rng, 4, (3, 2, W - 3, H - 1), (0.6, 1.4), 0.4, hx('#8a4a22'))
+        words(cv, 4, 4.0, number, hx('#2a2430') if light else PAPER_WHITE, 0.5)
+        smudge(cv, rng, 4, (3, 2, W - 3, H - 1), (0.6, 1.4), 0.4, RUST_BROWN)
         cv.outline()
         return cv
     return make
@@ -245,7 +250,7 @@ def p_house_door():
             frect(cv, px0, py0, px1, py0 + 0.5, lambda c: dk(c, 0.3))
             frect(cv, px0, py1 - 0.5, px1, py1, lambda c: lt(c, 0.18))
     fill_shape(cv, 28.5, 8.0, 0.9, 0.9, lambda u, v, L: shade(ramp('#d8a840', 0.45, 0.22, 0.3), 0.4 + L * 0.6))   # the knob
-    cv.dot(20.0, 5.0, hx('#1a1820'))                                      # the peephole
+    cv.dot(20.0, 5.0, SOOT)                                      # the peephole
     smudge(cv, rng, 3, (8, 3, 32, 12), (1.0, 2.5), 0.18)
 
     def lamp(ly):
@@ -281,7 +286,7 @@ def p_pole_sign_strip():
         frect(cv, 8, y0 + 1, W - 8, y0 + 11, hx(face))
         frect(cv, 8, y0 + 1, W - 8, y0 + 2, lambda c: lt(c, 0.25))
         words(cv, W / 2, y0 + 3, txt, hx(ink), 1.0, centre=True)
-        frect(gl, 8, y0 + 1, W - 8, y0 + 11, alpha(mix(hx(face), hx('#ffffff'), 0.4), 110))
+        frect(gl, 8, y0 + 1, W - 8, y0 + 11, alpha(mix(hx(face), PURE_WHITE, 0.4), 110))
         words(gl, W / 2, y0 + 3, txt, alpha(dk(hx(ink), 0.5), 0), 1.0, centre=True)
     hole = [(W - 26, 39), (W - 8, 39), (W - 8, 50), (W - 17, 50)]
     px_paint(cv, W - 26, 39, W - 8, 50, lambda x, y, c: hx('#0e0c16') if (y - 39) * 0.9 > (W - 26 - x) * -1.2 and x > W - 26 + (y - 39) * 0.8 else None)
@@ -326,7 +331,7 @@ def yard_fence(gate):
         for x in posts:
             r = 2.0 if gate and x in (48.0, 80.0) else 1.6
             fill_shape(cv, x, 3.1, r, r, lambda u, v, L: shade(ZINC, 0.2 + L * 0.8))
-        smudge(cv, rng, 6, (0, 2, W, 11), (1.0, 2.5), 0.4, hx('#8a5a32'))
+        smudge(cv, rng, 6, (0, 2, W, 11), (1.0, 2.5), 0.4, WALNUT)
         leaf, bloom = ramp('#2e6a34', 0.55, 0.3, 0.3), ramp('#e02a8a', 0.45, 0.24, 0.3)
         vine = Cv(W, H, cv.s)
         for _ in range(70):
@@ -376,7 +381,7 @@ def garden_wall(name):
         crease(cv, [(cx + 30, 7.0), (cx + 31, 12.5)], 0.35)
         px_paint(cv, 70, 2.5, 76, 5.0, lambda x, y, c: shade(ramp('#8e8a84', 0.45, 0.22, 0.3), 0.5) if (x - 70) * 0.5 + (y - 2.5) < 2.4 else None)   # chipped
         smudge(cv, rng, 8, (2, 7, W - 2, 12.5), (1.5, 3.5), 0.16)
-        px_paint(cv, 24, 7, 25, 12.5, lambda x, y, c: mix(c, hx('#8a4a22'), 0.4 * (1 - (y - 7) / 6)) if c[3] else None)   # rust run
+        px_paint(cv, 24, 7, 25, 12.5, lambda x, y, c: mix(c, RUST_BROWN, 0.4 * (1 - (y - 7) / 6)) if c[3] else None)   # rust run
         cv.outline()
         return cv
     return make
@@ -407,7 +412,7 @@ def p_carport():
         if (x - 4) % 26 < 1.2:
             c, a = dk(base, 0.35), 230                                        # the lap
         if abs(y - 34) < 1.5 or abs(y - 70) < 1.5:
-            c, a = mix(c, hx('#6a6e78'), 0.6), 230                          # a purlin under it
+            c, a = mix(c, IRON_GREY, 0.6), 230                          # a purlin under it
         return alpha(c, a)
     px_paint(cv, 0, 0, W, H, roof)
     px_paint(cv, 118, 30, 140, 56, lambda x, y, c: CLEAR if abs((x - 118) * 1.1 - (y - 30) - 2 * math.sin(y)) < 1.4 or (x - 128) ** 2 + (y - 44) ** 2 < 7 else None)   # cracked through
@@ -426,7 +431,7 @@ def p_driveway():
     W, H = 192, 104
     cv = Cv(W, H)
     rng = random.Random(10451)
-    con = ramp('#a8a49a', 0.46, 0.24, 0.22)
+    con = CONCRETE
     n, n2 = VNoise(W, H, 8, rng), VNoise(W, H, 3, rng)
 
     def f(x, y, cur):
@@ -444,7 +449,7 @@ def p_driveway():
         return c
     px_paint(cv, 0, 0, W, H, f)
     for (x, y, r) in ((112, 52, 13), (96, 50, 7)):
-        smudge(cv, rng, 4, (x - 4, y - 4, x + 4, y + 4), (r * 0.5, r), 0.3, hx('#1a1820'))
+        smudge(cv, rng, 4, (x - 4, y - 4, x + 4, y + 4), (r * 0.5, r), 0.3, SOOT)
     crease(cv, [(20, 8), (34, 22), (38, 40), (52, 48)], 0.3)
     crease(cv, [(150, H - 6), (160, 70), (176, 64)], 0.3)
     return cv
@@ -467,12 +472,12 @@ def p_tv_antenna():
             line(cv, x, 15, x + 0.5, 15 + h, shade(al, 0.8))
         else:
             line(cv, x, 15 - h, x, 15 + h, shade(al, 0.85))
-        stud(cv, x, 15, hx('#6a6e78'))
+        stud(cv, x, 15, IRON_GREY)
     fill_shape(cv, 17, 15, 2.2, 1.6, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.6), kind='rect', corner=0.4)   # the dipole's box
     fill_capsule(cv, [(17, 16.5), (24, 19), (28, 16)], 0.4, lambda k, L, s, i, t: hx('#3a3630'))   # the lead
     fill_shape(cv, 28, 15, 2.4, 2.4, lambda u, v, L: shade(STEEL_L, 0.25 + L * 0.6))   # the mast and its clamp
     line(cv, 28, 15, 2, 28, alpha(hx('#7a7e88'), 200))                       # a guy wire
-    smudge(cv, rng, 4, (4, 12, 52, 18), (0.6, 1.4), 0.45, hx('#8a5a32'))
+    smudge(cv, rng, 4, (4, 12, 52, 18), (0.6, 1.4), 0.45, WALNUT)
     cv.outline(hx('#1a1a22'))
     return cv
 
@@ -519,7 +524,7 @@ def lawn(W, H, seed):
             if d > 0.58:
                 c = mix(c, shade(s, k + 0.05), min(0.85, (d - 0.58) * 2.5))
             if d > 0.84:
-                c = mix(c, hx('#6c5846'), min(0.7, (d - 0.84) * 5))         # bare
+                c = mix(c, FL_DIRT, min(0.7, (d - 0.84) * 5))         # bare
             c = shift(c, rng.randint(-7, 7))
             if rng.random() < 0.07:
                 c = dk(c, 0.22)                                            # a blade's shadow
@@ -596,7 +601,7 @@ def p_cart_loaded():
         fill_shape(ly, 9.5, 11.0, 4.0, 2.6, lambda u, v, L: alpha(shade(ramp('#d8dce0', 0.4, 0.2, 0.2), 0.4 + L * 0.5), 230), kind='super', p=2.4)
         for _ in range(9):
             x, y = rng.uniform(6.5, 12.5), rng.uniform(9.5, 12.5)
-            ly.dot(x, y, rng.choice((hx('#c8c8d0'), hx('#c82a2a'), hx('#e8e8ee'), hx('#2a5ab8'))))
+            ly.dot(x, y, rng.choice((PALE_GREY, hx('#c82a2a'), hx('#e8e8ee'), hx('#2a5ab8'))))
         fill_shape(ly, 17.5, 11.5, 4.5, 3.4, lambda u, v, L: shade(ramp('#6a6e62', 0.5, 0.26, 0.3), 0.2 + L * 0.6), kind='rect', corner=1.5)
         frect(ly, 13.5, 13.0, 22.0, 15.5, lambda c: shade(ramp('#6a6e62', 0.5, 0.26, 0.3), 0.3))   # over the edge
     layer(cv, load)
@@ -733,7 +738,7 @@ def p_doorway_camp():
     for x in (9.0, 32.0, 55.0):
         line(cv, x, 3.0, x, 6.5, hx('#d8d0b8'))                             # tied to the grille
     for x in range(10, 56, 9):
-        stud(cv, x, 6.5, hx('#c8c8d0'))                                     # its grommets
+        stud(cv, x, 6.5, PALE_GREY)                                     # its grommets
     for pts in (((14, 8), (18, 20), (16, 30)), ((46, 10), (50, 22)), ((24, 12), (30, 24), (36, 28)), ((38, 8), (40, 16))):
         crease(cv, list(pts), 0.3)
     frect(cv, 27, 17, 34, 18.5, lambda c: mix(c, hx('#a8a8a0'), 0.6))      # duct tape over a tear
@@ -825,7 +830,7 @@ def market_stall(kind):
                 x0 = 6 + k * 17.5
                 crate_box(cv, x0, 26, x0 + 16, 43, 0)
                 fruit_heap(cv, x0 + 1.5, 27.5, x0 + 14.5, 41.5, fk, rng)
-                frect(cv, x0 + 10, 39, x0 + 15, 42, hx('#f4f0e2'))
+                frect(cv, x0 + 10, 39, x0 + 15, 42, CHALK)
                 hand_words(cv, x0 + 10.5, 39.7, ('1', '3', '5', '2')[k], hx('#c8282c'), 0.3, 10550 + k)
             ring(cv, 74, 30, 0.0, 3.0, lambda dx, dy, d: shade(STEEL_L, 0.3 + light(dx / 3, dy / 3) * 0.6) if d > 2.2 else hx('#f4f2ea'))   # the scale
             line(cv, 74, 30, 75.5, 28.6, hx('#c8282c'))
@@ -854,7 +859,7 @@ def market_stall(kind):
         frect(cv, 2, 2, W - 2, 3, shade(STEEL_L, 0.45))                      # the frame along its back
         smudge(cv, rng, 6, (4, 3, W - 4, 20), (1.5, 4.0), 0.12)
         cv.outline()
-        line(cv, 40, 19, 40, 23.5, hx('#2a2a30'))                            # the bulb on its cord
+        line(cv, 40, 19, 40, 23.5, GRAPHITE)                            # the bulb on its cord
         fill_shape(cv, 40, 24.5, 1.3, 1.3, lambda u, v, L: hx('#fff4c0'))
         fill_shape(gl, 40, 24.5, 1.3, 1.3, lambda u, v, L: hx('#ffe8a0'))
         return cv, gl
@@ -885,7 +890,7 @@ def plywood_sign(W, H, lines, seed, legs=True):
         for x in (4.0, W - 4.0):
             fill_capsule(cv, [(x, 1.5), (x, 3.5)], 1.0, lambda k, L, s, i, t: shade(PLY, 0.2 + L * 0.4))
     n = VNoise(W, H, 4, rng)
-    fill_shape(cv, W / 2, H / 2 + 1, W / 2 - 1.5, H / 2 - 2, lambda u, v, L: mix(shade(PLY, 0.5 + L * 0.3), hx('#f0ece0'), 0.7 * n(u + W, v + H) + 0.2), kind='rect', corner=0.5, bevel=1.0)
+    fill_shape(cv, W / 2, H / 2 + 1, W / 2 - 1.5, H / 2 - 2, lambda u, v, L: mix(shade(PLY, 0.5 + L * 0.3), LINEN, 0.7 * n(u + W, v + H) + 0.2), kind='rect', corner=0.5, bevel=1.0)
     for (txt, ink, k, y) in lines:
         hand_words(cv, W / 2, y, txt, hx(ink), k, seed + len(txt), centre=True)
         for _ in range(2):
@@ -1001,7 +1006,7 @@ def tyre_flat(cv, x, y, R, rng, letters=False, r_in=None):
         if d > R - 1.0 and int((a + math.pi) * R * 0.9) % 2 == 0:
             c = dk(c, 0.25)                                                # the tread
         if letters and abs(d - (R + r_in) / 2) < 0.5 and 0.3 < (a % 1.6) < 1.2 and int(a * 12) % 2:
-            c = hx('#d8d4c8')
+            c = PUTTY
         return shift(c, rng.randint(-4, 4))
     ring(cv, x, y, 0.0, R, f)
     ring(cv, x, y, r_in - 0.6, r_in, lambda dx, dy, d: shade(RUBBER, 0.6 if dx + dy < 0 else 0.15))
@@ -1025,7 +1030,7 @@ def p_tyre_stack():
     for k in range(4):
         layer(cv, lambda ly, k=k: tyre_flat(ly, S / 2 + rng.uniform(-1.4, 1.4), S / 2 + rng.uniform(-1.4, 1.4), 9.8 - k * 0.1, rng, k == 3))
     ring(cv, S / 2, S / 2, 0.0, 4.4, lambda dx, dy, d: hx('#0e0c12') if cv.get(S / 2 + dx, S / 2 + dy)[3] == 0 else None)
-    hand_words(cv, 5, 2.5, '5', hx('#f4f0e6'), 0.5, 10632)
+    hand_words(cv, 5, 2.5, '5', PAPER_WHITE, 0.5, 10632)
     return cv
 
 
@@ -1072,8 +1077,8 @@ def p_tyre_rack():
                 return c
             fill_shape(ly, x, 10, 3.4, 9.0, f, kind='rect', corner=2.5, bevel=1.5)
         layer(cv, t)
-    hand_words(cv, 11.5, 7, '8', hx('#f4f0e6'), 0.5, 10652)
-    hand_words(cv, 34.5, 7, '12', hx('#f4f0e6'), 0.5, 10653)
+    hand_words(cv, 11.5, 7, '8', PAPER_WHITE, 0.5, 10652)
+    hand_words(cv, 34.5, 7, '12', PAPER_WHITE, 0.5, 10653)
     for x in (1.5, W - 1.5):
         fill_shape(cv, x, 10, 1.2, 8.5, lambda u, v, L: shade(STEEL_L, 0.3 + L * 0.5), kind='rect', corner=0.3)
     return cv

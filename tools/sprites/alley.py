@@ -12,14 +12,17 @@ from .core import (
     alpha, crease, Cv, dk, fill_shape, frect, glass_top, hx, layer, light, line, lt, mix, on_wall, OUTLINE, px_paint,
     ramp, shade, smudge, VNoise, wood_fill
 )
-from .palette import BRASS, CHROME, NEON_CYAN, NEON_GREEN, NEON_PINK, RUBBER, STEEL_L
+from .palette import (
+    BRASS, CARD, CHALK, CHROME, DARK_WOOD, HOT, NEON_CYAN, NEON_GREEN, NEON_PINK, PASTEL_PINK, PITCH, PUTTY, RUBBER,
+    RUST_BROWN, STEEL_L
+)
 from .type import neon_text, words
 from .neon import glow_from, Neon, sign_backing
 from .furniture import p_dumpster
 from .palms import leaf_over, palm_crown, PALM_DEAD, PALM_GREENS
 
 
-MI_PINK, MI_MINT, MI_PEACH, MI_LILAC, MI_AQUA = '#f0a0bc', '#8ad8c0', '#f4b896', '#b8a0e0', '#6ad0e0'
+MI_PINK, MI_MINT, MI_PEACH, MI_LILAC, MI_AQUA = PASTEL_PINK, '#8ad8c0', '#f4b896', '#b8a0e0', '#6ad0e0'
 MI_VIOLET = hx('#b44aff')
 
 
@@ -41,7 +44,7 @@ def _crate(cv, rng, x0, y0, x1, y1, wood, r, rad, leaf=None):
     for x in (x0, x1 - 1.0):
         frect(cv, x, y0, x + 1.0, y1, shade(wood, 0.5))
     _fruit(cv, rng, x0 + 1.0, y0 + 1.0, x1 - 1.0, y1 - 1.0, r, rad, int((x1 - x0) * (y1 - y0) / (rad * rad * 2.2)), leaf)
-    frect(cv, x0 + 1.5, y1 - 0.6, x0 + 5.5, y1 + 0.2, hx('#f4f0e2'))   # the grower's label on its front
+    frect(cv, x0 + 1.5, y1 - 0.6, x0 + 5.5, y1 + 0.2, CHALK)   # the grower's label on its front
     frect(cv, x0 + 2.0, y1 - 0.3, x0 + 5.0, y1, hx(rng.choice(('#c8202c', '#2a6ad8', '#2a8a4a'))))
 
 
@@ -75,7 +78,7 @@ def p_box_stack():
     W, H = 34, 28
     cv = Cv(W, H)
     rng = random.Random(9911)
-    card = ramp('#b88a52', 0.45, 0.22, 0.25)
+    card = CARD
 
     def box(ly, cx, cy, rx, ry, ang, tone):
         fill_shape(ly, cx, cy, rx, ry, lambda u, v, L: shade(card, tone + L * 0.35), kind='rect', bevel=1.2, corner=0.5, ang=ang)
@@ -98,7 +101,7 @@ def p_box_stack():
         cv.blend(25.0 + dx * 0.5, 15.0 + dy * 0.5, green)
     for (x, y) in ((6.5, 5.5), (28.5, 22.0)):
         for (dx, dy) in ((0, 0), (-1, 1), (1, 1), (0, 1), (0, 2)):        # arrows, THIS SIDE UP
-            cv.blend(x + dx * 0.5, y + dy * 0.5, alpha(hx('#3a2414'), 150))
+            cv.blend(x + dx * 0.5, y + dy * 0.5, alpha(DARK_WOOD, 150))
     smudge(cv, rng, 5, (2, 2, W - 2, H - 2), (1.5, 3.5), 0.14)
     smudge(cv, rng, 2, (2, 2, W - 2, H - 2), (2.0, 3.0), 0.2, hx('#6a4a2a'))   # damp
     return cv
@@ -156,7 +159,7 @@ def p_fruit_cart():
     def board(ly):
         fill_shape(ly, 30.0, H - 2.6, 9.0, 2.4, lambda u, v, L: shade(ramp(MI_AQUA, 0.45, 0.22, 0.3), 0.4 + L * 0.4), kind='rect', corner=0.4)
     layer(cv, board)
-    words(cv, 30.0, H - 4.4, 'FRUTAS', hx('#f4f0e2'), 0.5, centre=True)
+    words(cv, 30.0, H - 4.4, 'FRUTAS', CHALK, 0.5, centre=True)
     smudge(cv, rng, 5, (8, 4, W - 3, H - 4), (1.5, 3.0), 0.12)
     return cv
 
@@ -187,7 +190,7 @@ def p_news_stand():
     for x in range(2, W - 1, 4):                                          # the wire over them
         frect(cv, x, 1.5, x + 0.5, H - 1.5, lambda c: mix(c, steel[3], 0.5))
     frect(cv, 1.0, 0.5, W - 1.0, 4.5, shade(steel, 0.8))
-    words(cv, W / 2, 0.75, 'NEWS', hx('#f4f0e2'), 0.5, centre=True)
+    words(cv, W / 2, 0.75, 'NEWS', CHALK, 0.5, centre=True)
     fill_shape(cv, 9.0, 5.5, 2.0, 1.2, lambda u, v, L: shade(ramp('#9a4a3a', 0.45, 0.22, 0.3), L), kind='rect', corner=0.3)   # the brick
     smudge(cv, rng, 4, (1, 1, W - 1, H - 1), (1.0, 2.5), 0.15)
     cv.outline()
@@ -205,7 +208,7 @@ def _cloth(ly, rng, x0, y0, w, h, base, pattern=None):
         fold = 0.5 + 0.3 * math.sin((x - x0) * 1.3 + rng_phase) - (y - y0) / h * 0.25
         c = shade(r, max(0.05, min(0.95, fold)))
         if pattern == 'stripes' and int((x - x0) // 2) % 2:
-            c = mix(c, hx('#f4f0e2'), 0.7)
+            c = mix(c, CHALK, 0.7)
         elif pattern == 'print' and ((int(x * 2) * 7 + int(y * 2) * 13) % 11) == 0:
             c = hx(rng.choice(('#f4f0e2', '#f4c830', '#2a8a4a')))
         return c
@@ -223,7 +226,7 @@ def p_laundry_line():
     cv = Cv(W, H)
     rng = random.Random(9941)
     for y in (12.0, 28.0):
-        line(cv, 1.0, y, W - 1.0, y + 0.5, hx('#d8d4c8'))
+        line(cv, 1.0, y, W - 1.0, y + 0.5, PUTTY)
         line(cv, 1.0, y + 0.5, W - 1.0, y + 1.0, alpha(hx('#5a5660'), 160))
         for x in (1.0, W - 2.5):
             frect(cv, x, y - 1.0, x + 1.5, y + 1.5, hx('#5a5e66'))
@@ -254,7 +257,7 @@ def cloth_piece(w, h, base, pat, seed):
         def px(u, v, L):
             c = shade(r, max(0.05, min(0.95, 0.25 + n(w / 2 + u, h / 2 + v) * 0.6 + (L - 0.5) * 0.4)))
             if pat == 'stripes' and int((u + w) // 2) % 2:
-                c = mix(c, hx('#f4f0e2'), 0.65)
+                c = mix(c, CHALK, 0.65)
             return c
         fill_shape(cv, w / 2, h / 2, w / 2 - 1.2, h / 2 - 1.2, px, kind='super', p=3.0, ang=rng.uniform(-0.2, 0.2))
         crease(cv, [(2.5, h / 2), (w / 2, h / 2 - 1.5), (w - 3, h / 2 + 1)], 0.25)
@@ -313,9 +316,9 @@ def scooter(body, seed):
         for y in (2.5, H - 2.5):
             fill_shape(cv, 52.5, y, 1.4, 1.0, lambda u, v, L: shade(RUBBER, 0.4 + L * 0.4))   # the grips
             fill_shape(cv, 50.5, y + (1.5 if y < H / 2 else -1.5), 1.2, 1.2, lambda u, v, L: shade(CHROME, L))   # mirrors
-        fill_shape(cv, 55.0, H / 2, 1.6, 2.4, lambda u, v, L: hx('#fff6dc') if L > 0.5 else shade(CHROME, L))   # the headlight
-        fill_shape(cv, 33.0, 15.0, 1.4, 1.4, lambda u, v, L: hx('#f4f0e2'))     # a sticker
-        cv.dot(33.0, 15.0, hx('#ff2a6d'))
+        fill_shape(cv, 55.0, H / 2, 1.6, 2.4, lambda u, v, L: HOT if L > 0.5 else shade(CHROME, L))   # the headlight
+        fill_shape(cv, 33.0, 15.0, 1.4, 1.4, lambda u, v, L: CHALK)     # a sticker
+        cv.dot(33.0, 15.0, NEON_PINK)
         smudge(cv, rng, 4, (8, 2, 50, H - 2), (1.0, 2.5), 0.16)
         cv.outline()
         return cv
@@ -420,7 +423,7 @@ def p_ac_drip():
             frect(ly, x, 3.0, x + 1.0, 9.0, lambda c: dk(c, 0.3))       # the grille's louvres
         fill_shape(ly, 14.0, 6.0, 3.0, 2.5, lambda u, v, L: shade(ramp('#3a3a44', 0.4, 0.2, 0.3), L))   # the fan behind
     layer(cv, unit)
-    smudge(cv, rng, 5, (3, 4, 25, 10), (0.8, 2.0), 0.5, hx('#8a4a22'))
+    smudge(cv, rng, 5, (3, 4, 25, 10), (0.8, 2.0), 0.5, RUST_BROWN)
     frect(cv, 3.0, 9.5, 5.0, 10.5, hx('#c8c4b8'))                        # the rag
     for y in (11.5, 12.5, 14.0):
         cv.dot(15.0, y, alpha(hx('#9ac8e8'), 200))                       # the drip
@@ -438,7 +441,7 @@ def p_fire_escape():
 
     def deck(x, y, cur):
         if (int(x * 2) % 3) == 2:
-            return alpha(hx('#0c0a10'), 120)
+            return alpha(PITCH, 120)
         return shade(iron, 0.35 + 0.25 * ((int(y) % 6) / 6.0))
     px_paint(cv, 2, 2, W - 2, H - 3, deck)
     frect(cv, 1, 1, W - 1, 2.5, shade(iron, 0.7))                        # its railing along the outer edge and ends
@@ -455,7 +458,7 @@ def p_fire_escape():
     def things(ly):
         fill_shape(ly, 14.0, 30.0, 4.0, 4.0, lambda u, v, L: shade(ramp('#c86a3a', 0.45, 0.22, 0.3), L))   # the pot
         for _ in range(16):
-            ly.dot(14 + rng.uniform(-4, 4), 30 + rng.uniform(-4, 4), rng.choice((hx('#3a8a3a'), hx('#2a6a2a'), hx('#ff2a6d'), hx('#e83a4a'))))
+            ly.dot(14 + rng.uniform(-4, 4), 30 + rng.uniform(-4, 4), rng.choice((hx('#3a8a3a'), hx('#2a6a2a'), NEON_PINK, hx('#e83a4a'))))
         fill_shape(ly, 40.0, 26.0, 5.0, 5.0, lambda u, v, L: shade(ramp(MI_AQUA, 0.45, 0.22, 0.3), 0.2 + L * 0.6), kind='rect', corner=1.0)   # a chair
     layer(cv, things)
     smudge(cv, rng, 10, (2, 2, W - 2, H - 2), (1.0, 3.0), 0.5, hx('#7a3e1a'))
@@ -499,12 +502,12 @@ def graffiti_neon(cols, seed):
             c = hx(rng.choice(cols))
             frect(cv, x, 1.0, x + w, rng.choice((3.5, 4.0, 4.5)), c)
             frect(cv, x, 1.0, x + w, 1.5, lt(c, 0.35))
-            frect(cv, x + w - 0.5, 1.0, x + w, 4.0, hx('#140c1c'))
+            frect(cv, x + w - 0.5, 1.0, x + w, 4.0, OUTLINE)
             if rng.random() < 0.4:
                 frect(cv, x + rng.uniform(1, w - 1), 4.0, x + rng.uniform(1, w - 1) + 0.5, 5.5, c)   # a drip
             x += w + rng.uniform(0.0, 1.5)
         for _ in range(4):
-            cv.dot(rng.uniform(4, 60), rng.uniform(1.5, 3.5), hx('#f4f0e2'))   # its shine
+            cv.dot(rng.uniform(4, 60), rng.uniform(1.5, 3.5), CHALK)   # its shine
     return lambda: on_wall(64, 6, paint)
 
 

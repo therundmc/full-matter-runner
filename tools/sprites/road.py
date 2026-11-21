@@ -8,7 +8,9 @@ from .core import (
     alpha, Cv, dk, fill_capsule, fill_shape, frect, hx, layer, line, lt, LX, LY, mix, px_paint, ramp, ring, shade,
     shift, smudge, tone, VNoise
 )
-from .palette import FL_ASPHALT, FL_SIDEWALK, ROAD_WHITE, ROAD_YELLOW, RUBBER, STEEL, STEEL_L
+from .palette import (
+    CHALK, FL_ASPHALT, FL_SIDEWALK, ROAD_WHITE, ROAD_YELLOW, RUBBER, SIGN_INK, SIGN_WHITE, SIGNAL_RED, STEEL, STEEL_L
+)
 from .type import FONT, inked, tiny_text
 from .tiles import tile_px
 
@@ -527,7 +529,7 @@ def p_bus_shelter():
     frect(fr, 5.5, 6.5, 10.5, 41.5, hx('#dfeeff'))
     frect(fr, 6.5, 12, 9.5, 30, hx('#c8402c'))                              # its bottle
     frect(fr, 7.25, 8.5, 8.75, 12, hx('#c8402c'))
-    frect(fr, 6.5, 18, 9.5, 21, hx('#f4f0e2'))
+    frect(fr, 6.5, 18, 9.5, 21, CHALK)
     frect(fr, 6.5, 33, 9.5, 34, hx('#2a3448'))
     frect(fr, 6.5, 36, 9.5, 37, hx('#2a3448'))
     fr.outline()
@@ -542,11 +544,11 @@ def p_sign_noparking():
     disc, the P struck out in red."""
     S = 12
     cv = Cv(S, S)
-    fill_shape(cv, S / 2, S / 2, 5, 5, lambda u, v, L: hx('#c8242c') if u * u + v * v > 13.5 else hx('#ece8de'))
+    fill_shape(cv, S / 2, S / 2, 5, 5, lambda u, v, L: SIGNAL_RED if u * u + v * v > 13.5 else SIGN_WHITE)
     tiny_text(cv, S / 2 - 1.25, S / 2 - 1.75, 'P', hx('#18161e'))
     for k in range(-12, 13):
-        cv.dot(S / 2 + k * 0.25, S / 2 + k * 0.25, hx('#c8242c'))
-        cv.dot(S / 2 + k * 0.25 + 0.5, S / 2 + k * 0.25, hx('#c8242c'))
+        cv.dot(S / 2 + k * 0.25, S / 2 + k * 0.25, SIGNAL_RED)
+        cv.dot(S / 2 + k * 0.25 + 0.5, S / 2 + k * 0.25, SIGNAL_RED)
     cv.outline()
     return cv
 
@@ -555,9 +557,9 @@ def p_sign_oneway():
     """A one-way sign: a black plate, the white arrow along +x."""
     W, H = 26, 10
     cv = Cv(W, H)
-    frect(cv, 1, 1, W - 1, H - 1, hx('#ece8de'))
-    frect(cv, 1.5, 1.5, W - 1.5, H - 1.5, hx('#17151d'))
-    px_paint(cv, 3, 2, W - 3, H - 2, lambda x, y, cur: hx('#ece8de') if (x < 17 and abs(y - 5) < 1.1) or (16 <= x < 23 and abs(y - 5) < (23 - x) * 0.5) else None)
+    frect(cv, 1, 1, W - 1, H - 1, SIGN_WHITE)
+    frect(cv, 1.5, 1.5, W - 1.5, H - 1.5, SIGN_INK)
+    px_paint(cv, 3, 2, W - 3, H - 2, lambda x, y, cur: SIGN_WHITE if (x < 17 and abs(y - 5) < 1.1) or (16 <= x < 23 and abs(y - 5) < (23 - x) * 0.5) else None)
     cv.outline()
     return cv
 
@@ -566,11 +568,11 @@ def p_sign_speed():
     """A speed limit sign: a white plate, 35."""
     W, H = 12, 14
     cv = Cv(W, H)
-    frect(cv, 1, 1, W - 1, H - 1, hx('#17151d'))
-    frect(cv, 1.5, 1.5, W - 1.5, H - 1.5, hx('#ece8de'))
+    frect(cv, 1, 1, W - 1, H - 1, SIGN_INK)
+    frect(cv, 1.5, 1.5, W - 1.5, H - 1.5, SIGN_WHITE)
     frect(cv, 3, 3, W - 3, 3.5, hx('#5a5860'))
     frect(cv, 3, 4.5, W - 3, 5, hx('#5a5860'))
-    tiny_text(cv, 3.25, 7, '35', hx('#17151d'))
+    tiny_text(cv, 3.25, 7, '35', SIGN_INK)
     cv.outline()
     return cv
 
@@ -579,14 +581,14 @@ def p_sign_bus():
     """A bus stop's sign: a blue plate, a white bus on it."""
     W, H = 12, 14
     cv = Cv(W, H)
-    frect(cv, 1, 1, W - 1, H - 1, hx('#ece8de'))
+    frect(cv, 1, 1, W - 1, H - 1, SIGN_WHITE)
     frect(cv, 1.5, 1.5, W - 1.5, H - 1.5, hx('#2a56b0'))
-    frect(cv, 2.5, 4, W - 2.5, 9, hx('#ece8de'))                             # the bus
+    frect(cv, 2.5, 4, W - 2.5, 9, SIGN_WHITE)                             # the bus
     frect(cv, 3, 5, W - 3, 6.5, hx('#2a56b0'))
     for x in (4.5, 6.5):
-        frect(cv, x, 5, x + 0.5, 6.5, hx('#ece8de'))
+        frect(cv, x, 5, x + 0.5, 6.5, SIGN_WHITE)
     for x in (3.5, 7.5):
-        frect(cv, x, 9, x + 1, 10, hx('#ece8de'))
+        frect(cv, x, 9, x + 1, 10, SIGN_WHITE)
     frect(cv, 3, 11.5, W - 3, 12, hx('#b8c8e8'))
     cv.outline()
     return cv
@@ -599,11 +601,11 @@ def p_sign_works():
     c0 = S / 2
     for x in (2.5, S - 3.5):                                                # the stand's feet
         frect(cv, x, c0 - 0.5, x + 1, S - 1.5, shade(STEEL_L, 0.4))
-    px_paint(cv, 0, 0, S, S, lambda x, y, cur: (hx('#17151d') if abs(x - c0) + abs(y - c0) > 6.6 else hx('#f08a1c')) if abs(x - c0) + abs(y - c0) < 7.6 else None)
-    fill_shape(cv, c0 - 0.5, c0 - 3.2, 1.0, 1.0, lambda u, v, L: hx('#17151d'))    # his head
-    frect(cv, c0 - 1.25, c0 - 2.25, c0 + 0.25, c0 + 1.5, hx('#17151d'))            # him
-    line(cv, c0 + 0.25, c0 - 1.5, c0 + 3.0, c0 + 2.0, hx('#17151d'))               # the shovel
-    frect(cv, c0 - 3.5, c0 + 2.0, c0 + 3.5, c0 + 2.75, hx('#17151d'))              # the heap
+    px_paint(cv, 0, 0, S, S, lambda x, y, cur: (SIGN_INK if abs(x - c0) + abs(y - c0) > 6.6 else hx('#f08a1c')) if abs(x - c0) + abs(y - c0) < 7.6 else None)
+    fill_shape(cv, c0 - 0.5, c0 - 3.2, 1.0, 1.0, lambda u, v, L: SIGN_INK)    # his head
+    frect(cv, c0 - 1.25, c0 - 2.25, c0 + 0.25, c0 + 1.5, SIGN_INK)            # him
+    line(cv, c0 + 0.25, c0 - 1.5, c0 + 3.0, c0 + 2.0, SIGN_INK)               # the shovel
+    frect(cv, c0 - 3.5, c0 + 2.0, c0 + 3.5, c0 + 2.75, SIGN_INK)              # the heap
     cv.outline()
     return cv
 
@@ -701,8 +703,8 @@ def p_compressor():
     frect(cv, 28.5, 8, 29, H - 8, dk(yel[1], 0.3))
     fill_shape(cv, 40, H / 2 + 4, 2.4, 2.4, lambda u, v, L: shade(STEEL, 0.2 + L * 0.7))    # the exhaust's cap
     fill_shape(cv, 22, H / 2, 1.6, 1.6, lambda u, v, L: shade(STEEL_L, 0.3 + L * 0.7))      # the lifting eye
-    fill_shape(cv, 22, H / 2, 0.7, 0.7, lambda u, v, L: hx('#17151d'))
-    frect(cv, 9, H / 2 + 6, 20, H / 2 + 9, hx('#17151d'))                   # its plate (no name)
+    fill_shape(cv, 22, H / 2, 0.7, 0.7, lambda u, v, L: SIGN_INK)
+    frect(cv, 9, H / 2 + 6, 20, H / 2 + 9, SIGN_INK)                   # its plate (no name)
     frect(cv, 10, H / 2 + 7, 19, H / 2 + 7.5, hx('#e8e4d6'))
     smudge(cv, rng, 7, (4, 8, 54, H - 8), (1.5, 4.0), 0.22)
     smudge(cv, rng, 5, (4, 8, 54, H - 8), (0.6, 1.4), 0.5, hx('#7a4a26'))   # rust where the paint went
@@ -785,7 +787,7 @@ def p_gantry_sign():
     cv = Cv(W, H)
     st = ramp('#6a7080', 0.5, 0.25, 0.4)
     green = ramp('#1c6a4c', 0.5, 0.26, 0.25)
-    white = hx('#ece8de')
+    white = SIGN_WHITE
 
     def truss(x, y, cur):
         if not 1 <= y < 8:

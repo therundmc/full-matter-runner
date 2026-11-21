@@ -5,7 +5,8 @@ import random
 
 from .core import alpha, Cv, dk, fill_shape, frect, hx, light, lt, mix, px_paint, ramp, ring, shade, smudge, wood_fill
 from .palette import (
-    AMBER, CHROME, GLASS, HEAD_C, HEAD_GLOW, NEON_AMBER, NEON_CYAN, NEON_PINK, RUBBER, STEEL_L, TAIL_C, TAIL_GLOW
+    AMBER, CARD, CHALK, CHROME, DARK_WOOD, GLASS, GRAPHITE, HEAD_C, HEAD_GLOW, NEON_AMBER, NEON_CYAN, NEON_PINK,
+    RUBBER, STEEL_L, TAIL_C, TAIL_GLOW
 )
 from .type import neon_text
 from .neon import Neon, sign_backing
@@ -187,14 +188,14 @@ def p_cardboard_box():
     printed arrow, crushed at a corner, a damp stain."""
     W, H = 16, 14
     cv = Cv(W, H)
-    card = ramp('#b88a52', 0.45, 0.22, 0.25)
+    card = CARD
     fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(card, 0.35 + L * 0.45), kind='rect', bevel=1.2, corner=0.5)
     frect(cv, 1.5, H / 2 - 0.25, W - 1.5, H / 2 + 0.25, dk(card[2], 0.3))      # where the flaps meet
     frect(cv, W / 2 - 0.25, 1.5, W / 2 + 0.25, H - 1.5, dk(card[2], 0.2))
     frect(cv, W / 2 - 1.5, 1, W / 2 + 1.5, H - 1, lambda c: mix(c, hx('#8a5a2a'), 0.6))   # the tape
     frect(cv, W / 2 - 1.5, 1, W / 2 - 1.0, H - 1, lambda c: lt(c, 0.15))
     for (dx, dy) in ((0, 0), (-1, 1), (1, 1), (0, 1), (0, 2)):                # a printed arrow
-        cv.blend(3.5 + dx * 0.5, 3.0 + dy * 0.5, alpha(hx('#3a2414'), 150))
+        cv.blend(3.5 + dx * 0.5, 3.0 + dy * 0.5, alpha(DARK_WOOD, 150))
     px_paint(cv, W - 4, H - 4, W - 1, H - 1, lambda x, y, cur: dk(cur, 0.25) if x + y > W + H - 6 else None)   # crushed
     smudge(cv, random.Random(9121), 2, (3, 3, W - 3, H - 3), (1.5, 2.5), 0.18)
     cv.outline()
@@ -209,7 +210,7 @@ def p_paper_bundle():
     fill_shape(cv, W / 2 + 0.4, H / 2 + 0.4, W / 2 - 1.2, H / 2 - 1.2, lambda u, v, L: hx('#b8b2a2'), kind='rect', corner=0.3, ang=0.06)
     paper = ramp('#e8e4d6', 0.35, 0.16, 0.1)
     fill_shape(cv, W / 2, H / 2, W / 2 - 1.4, H / 2 - 1.4, lambda u, v, L: shade(paper, 0.5 + L * 0.4), kind='rect', bevel=0.8, corner=0.3)
-    frect(cv, 3, 2.5, W - 3, 3.2, hx('#2a2a30'))                              # the headline
+    frect(cv, 3, 2.5, W - 3, 3.2, GRAPHITE)                              # the headline
     frect(cv, 3, 4.0, 6.5, 7.0, lambda c: hx('#9a9aa0'))                     # the photo
     for y in (4.2, 5.2, 6.2):
         frect(cv, 7.2, y, W - 3, y + 0.5, hx('#a8a8b0'))                      # the columns
@@ -234,8 +235,8 @@ def p_fruit_stand():
         for _ in range(14):
             fx, fy = rng.uniform(x0 + rad, x0 + 10 - rad), rng.uniform(2 + rad, H - 4 - rad)
             fill_shape(cv, fx, fy, rad, rad, lambda u, v, L, r=r: shade(r, 0.2 + L * 0.75))
-        frect(cv, x0 + 6.5, 2.5, x0 + 9.5, 4.5, hx('#f4f0e2'))               # the price card
-        frect(cv, x0 + 7.0, 3.2, x0 + 9.0, 3.7, hx('#2a2a30'))
+        frect(cv, x0 + 6.5, 2.5, x0 + 9.5, 4.5, CHALK)               # the price card
+        frect(cv, x0 + 7.0, 3.2, x0 + 9.0, 3.7, GRAPHITE)
     frect(cv, 1, H - 3.5, W - 1, H - 1, lambda c: hx('#3a8a3a'))              # the fake grass
     for x in range(2, W - 1, 2):
         cv.dot(x, H - 3.0, hx('#5aaa4a'))
@@ -380,8 +381,8 @@ SPRITES = {
     'lorry': (p_lorry, (280, 80), 'fine glow', (276, 76)),
     'awning': (p_awning, (98, 38), 'fine hung'),
     'neon_sign_diner': (p_neon_sign_diner, (46, 14), 'glow hung'),
-    'awning_red': (awning_of(ramp('#b82030', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25), 8851), (98, 38), 'fine hung'),
-    'awning_green': (awning_of(ramp('#2a7a4a', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25), 8852), (98, 38), 'fine hung'),
+    'awning_red': (awning_of(ramp('#b82030', 0.5, 0.26, 0.3), AWNING_B, 8851), (98, 38), 'fine hung'),
+    'awning_green': (awning_of(ramp('#2a7a4a', 0.5, 0.26, 0.3), AWNING_B, 8852), (98, 38), 'fine hung'),
     'awning_blue': (awning_of(ramp('#2a4a9a', 0.5, 0.26, 0.3), ramp('#d8dce6', 0.45, 0.24, 0.25), 8853), (98, 38), 'fine hung'),
     'awning_wine': (awning_of(ramp('#6a1a3a', 0.5, 0.26, 0.3), ramp('#6a1a3a', 0.62, 0.36, 0.2), 8854), (98, 38), 'fine stock hung'),
     'traffic_cone': (p_traffic_cone, (12, 12), 'fine', (10, 10)),

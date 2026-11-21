@@ -4,7 +4,10 @@ import math
 import random
 
 from .core import CLEAR, Cv, dk, FINE, hx, light, lt, mix, OUTLINE, pal, px_paint, ramp, VNoise
-from .palette import AMBER, CHROME, GLASS, HEAD_C, HEAD_GLOW, NEON_CYAN, RUBBER, TAIL_C, TAIL_GLOW
+from .palette import (
+    AMBER, CHROME, GLASS, HEAD_C, HEAD_GLOW, NEON_CYAN, NEON_PINK, PURE_WHITE, PUTTY, RUBBER, SIGNAL_ORANGE,
+    SIGNAL_YELLOW, TAIL_C, TAIL_GLOW
+)
 
 
 def plate(k, x, y0, y1):
@@ -404,7 +407,7 @@ def p_car(body=SEDAN_BODY, stripe=None, keep=None):
     k.line(101, 20, 130, 20, ridge(0.18))                    # hood creases
     k.line(9, 20, 30, 20, ridge(0.15))                       # trunk lid crease
     k.put(131, 28, CHROME[3])                                # hood ornament
-    k.dot(131.5, 28.0, hx('#ffffff'))
+    k.dot(131.5, 28.0, PURE_WHITE)
     for (y0, y1, side) in ((26, 14, False), (45, 33, False)):   # parked wipers: the chrome arm, the black blade
         k.line(97, y0, 96, y1, CHROME[1], both=False)
         k.line(96, y0 - 1, 95, y1 + 1, RUBBER[0], both=False)
@@ -456,7 +459,7 @@ def center_stripe(k, x0, x1, col):
 # the pursuers' sedan: black, one pink stripe (docs/LEVEL2.md: the only black cars on the road). Its black leans warm
 # (red over blue) so that Vehicle.js never takes a pixel of it for glass
 PURSUER_BODY = ramp('#1e1a1f', 0.5, 0.25, 0.3)
-PURSUER_STRIPE = hx('#ff2a6d')
+PURSUER_STRIPE = NEON_PINK
 
 
 def p_pursuer():
@@ -492,7 +495,7 @@ def p_car2():
     k.inside(93.0, 26.5, 95.0, 29.0, hx('#8a8e9c'), 0.5)
     k.inside(22.0, 12.0, 44.0, 44.0, hx('#3a3640'), 0.3)
     k.inside(30.0, 28.5, 40.0, 35.5, hx('#8a2a2a'), 0.42, round_=True)
-    k.inside(33.0, 31.5, 37.0, 32.5, hx('#d8d4c8'), 0.4)
+    k.inside(33.0, 31.5, 37.0, 32.5, PUTTY, 0.4)
     k.film(78, 98, ((98.5, 26.5),), 13.5, 0.07)
     k.panel(body, 50, 77, 17.5)                              # roof
     for i in range(53 * k.s, 75 * k.s):                      # T-top: smoked panels around the centre bar
@@ -564,7 +567,7 @@ def p_van():
     """80s panel van, 5.0 x 2.0 m: long ribbed box roof, short hood, black bumpers, sliding side door."""
     k = Veh(160, 64, 32, 5003)
     body = VAN_BODY
-    sunset = [hx('#f9c80e'), hx('#ff6b1a'), hx('#ff2a6d'), hx('#7a1fa2')]
+    sunset = [SIGNAL_YELLOW, SIGNAL_ORANGE, NEON_PINK, hx('#7a1fa2')]
     wheels = (38, 140)
     k.shell(body, 1, 158, 29.5, 3, 8, crown=3.0)
     k.arches(wheels, r=12)
@@ -976,7 +979,7 @@ def p_car2_door():
 
 
 def p_van_door():
-    return door_debris(VAN_BODY, 30, stripe=hx('#ff6b1a'))
+    return door_debris(VAN_BODY, 30, stripe=SIGNAL_ORANGE)
 
 
 def p_pursuer_hood():

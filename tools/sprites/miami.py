@@ -9,8 +9,8 @@ from .core import (
     ramp, ring, shade, shift, smudge, stud, VNoise
 )
 from .palette import (
-    CHROME, NEON_AMBER, NEON_CYAN, NEON_PINK, NEON_YELLOW, RUBBER, SIGN_GREEN, SIGN_INK, SIGN_WHITE, SIGN_YELLOW,
-    STEEL_L, STUCCO, ZINC
+    CHROME, IRON_GREY, KHAKI, NEON_AMBER, NEON_CYAN, NEON_PINK, NEON_YELLOW, PALE_GREY, PUTTY, RUBBER, RUST_BROWN,
+    SIGN_GREEN, SIGN_INK, SIGN_WHITE, SIGN_YELLOW, SOOT, STEEL_GREY, STEEL_L, STUCCO, WALNUT, ZINC
 )
 from .type import neon_text, tube_text, tube_w, words
 from .neon import Neon, sign_backing
@@ -139,7 +139,7 @@ def pole_cabinet(cv, W, H, body, rim, rng):
     px_paint(cv, 0, 0, W, H, f)
     for x in (4.0, W - 4.0):
         for y in (9.0, H - 5.0):
-            stud(cv, x, y, hx('#c8c8d0'))
+            stud(cv, x, y, PALE_GREY)
     smudge(cv, rng, 8, (3, 3, W - 3, H - 3), (1.5, 3.5), 0.14)
 
 
@@ -270,7 +270,7 @@ def p_tent_tarp():
     tarp = ramp('#2a5ab8', 0.5, 0.26, 0.3)
     for (a, b) in (((4, 4), (12, 12)), ((W - 4, 4), (W - 12, 12)), ((4, H - 4), (12, H - 16))):
         line(cv, a[0], a[1], b[0], b[1], hx('#c8c0a8'))                   # guy lines
-        fill_shape(cv, a[0], a[1], 1.0, 1.0, lambda u, v, L: hx('#8a6a3a'))
+        fill_shape(cv, a[0], a[1], 1.0, 1.0, lambda u, v, L: KHAKI)
     frect(cv, 18, H - 14, 54, H - 3, hx('#b88a52'))                       # the carton at its mouth
     fill_shape(cv, 36, H - 12, 12, 5, lambda u, v, L: shade(ramp('#3a5a2a', 0.5, 0.25, 0.3), 0.3 + L * 0.5), kind='super', p=2.5)
 
@@ -285,8 +285,8 @@ def p_tent_tarp():
         return shade(tarp, max(0.05, min(0.95, k)))
     layer(cv, lambda ly: fill_shape(ly, 36, 22, 30, 17, sheet, kind='rect', corner=3.0, bevel=2.0), hx('#0a1430'))
     for x in (10, 21, 32, 43, 54, 64):
-        stud(cv, x, 6.0, hx('#c8c8d0'))
-        stud(cv, x, 38.0, hx('#c8c8d0'))
+        stud(cv, x, 6.0, PALE_GREY)
+        stud(cv, x, 38.0, PALE_GREY)
     frect(cv, 40, 12, 52, 15, hx('#a8a8a0'))                               # duct tape
     crease(cv, [(14, 8), (22, 20), (26, 34)], 0.25)
     crease(cv, [(50, 30), (58, 22), (62, 10)], 0.2)
@@ -347,7 +347,7 @@ def p_mattress_dumped():
         smudge(cv, rng, 3, (x - 2, y - 2, x + 2, y + 2), (r * 0.6, r), 0.25, hx('#8a7a48'))
         tide(cv, x, y, r + 1.0, hx('#5a4a2a'), 0.35, broken=x)
     for (x, y) in ((14, 30), (38, 8), (58, 36), (28, 38)):
-        smudge(cv, rng, 2, (x - 1, y - 1, x + 1, y + 1), (1.0, 2.0), 0.4, hx('#8a4a22'))   # rust from the springs
+        smudge(cv, rng, 2, (x - 1, y - 1, x + 1, y + 1), (1.0, 2.0), 0.4, RUST_BROWN)   # rust from the springs
     px_paint(cv, 26, 20, 48, 26, lambda x, y, c: (hx('#e8dcb0') if abs(y - 23 - (x - 37) * 0.12) < 1.6 + math.sin(x) * 0.5 else c) if c[3] else None)
     ring(cv, 40, 23, 1.2, 2.4, lambda dx, dy, d: shade(STEEL_L, 0.3 + light(dx / 2.4, dy / 2.4) * 0.6))   # a spring out
     frect(cv, W - 8, H - 7, W - 2, H - 2, lambda c: hx('#e8dcb0') if c[3] else c)
@@ -367,7 +367,7 @@ def litter(seed, n_cans, grass=True):
             x, y, a = rng.uniform(6, W - 6), rng.uniform(5, H - 5), rng.uniform(0, 3)
             col = rng.choice(cols)
             fill_shape(cv, x, y, 3.0, 1.6, lambda u, v, L, col=col: shade(ramp(col, 0.5, 0.25, 0.3), 0.3 + L * 0.6), ang=a, kind='rect', corner=0.8)
-            cv.dot(x + math.cos(a) * 2.5, y + math.sin(a) * 2.5, hx('#c8c8d0'))
+            cv.dot(x + math.cos(a) * 2.5, y + math.sin(a) * 2.5, PALE_GREY)
         x, y = rng.uniform(10, W - 10), rng.uniform(8, H - 8)
         fill_shape(cv, x, y, 5.5, 1.8, lambda u, v, L: mix(hx('#3a6a3a'), hx('#a8d8a0'), L * 0.6), ang=rng.uniform(0, 3), kind='rect', corner=1.6)
         for _ in range(4):
@@ -382,7 +382,7 @@ def litter(seed, n_cans, grass=True):
         x, y = rng.uniform(12, W - 12), rng.uniform(8, H - 8)
         fill_capsule(cv, [(x - 8, y - 1), (x, y + 1.5), (x + 7, y - 0.5)], 1.6, lambda k, L, s, i, t: shade(RUBBER, 0.2 + L * 0.6))   # tread
         for _ in range(16):
-            cv.dot(rng.uniform(2, W - 2), rng.uniform(2, H - 2), rng.choice((hx('#5a8a4a'), hx('#9ac8d8'), hx('#d8d4c8'))))
+            cv.dot(rng.uniform(2, W - 2), rng.uniform(2, H - 2), rng.choice((hx('#5a8a4a'), hx('#9ac8d8'), PUTTY)))
         cv.outline(hx('#1a1a14'))
         return cv
     return make
@@ -417,10 +417,10 @@ def chainlink(hole):
         for x in (2.0, 64.0, 126.0):
             fill_shape(cv, x, 3.6, 1.8, 1.8, lambda u, v, L: shade(ZINC, 0.2 + L * 0.8))
         for (a, b) in (((0, 46), (84, W)) if hole else ((0, W),)):
-            line(cv, a, 1.5, b, 1.5, hx('#8a8e98'))                          # the barbed strand
+            line(cv, a, 1.5, b, 1.5, STEEL_GREY)                          # the barbed strand
             for x in range(a + 3, b, 6):
-                line(cv, x - 0.6, 0.8, x + 0.6, 2.2, hx('#6a6e78'))
-        smudge(cv, rng, 6, (0, 2, W, 12), (1.0, 2.5), 0.4, hx('#8a5a32'))
+                line(cv, x - 0.6, 0.8, x + 0.6, 2.2, IRON_GREY)
+        smudge(cv, rng, 6, (0, 2, W, 12), (1.0, 2.5), 0.4, WALNUT)
         return cv
     return make
 
@@ -460,9 +460,9 @@ def p_guardrail_dented():
     for _ in range(9):                                                    # scraped bright, tyre black
         x0, x1 = rng.uniform(30, 70), rng.uniform(78, 110)
         y = rng.uniform(6.5, 9.0)
-        px_paint(cv, x0, y, x1, y + 0.5, lambda x, y_, c: (lt(c, 0.5) if rng.random() < 0.7 else hx('#1a1820')) if c[3] and c != OUTLINE else None)
+        px_paint(cv, x0, y, x1, y + 0.5, lambda x, y_, c: (lt(c, 0.5) if rng.random() < 0.7 else SOOT) if c[3] and c != OUTLINE else None)
     smudge(cv, rng, 6, (40, 1, 100, 9.5), (1.5, 3.5), 0.4)
-    smudge(cv, rng, 5, (1, 5, W - 1, 9.5), (1.0, 3.0), 0.35, hx('#8a5a32'))
+    smudge(cv, rng, 5, (1, 5, W - 1, 9.5), (1.0, 3.0), 0.35, WALNUT)
     return cv
 
 
@@ -472,7 +472,7 @@ def p_call_box():
     W, H = 18, 20
     cv = Cv(W, H)
     rng = random.Random(10081)
-    fill_shape(cv, W / 2, 3.5, 7.5, 2.5, lambda u, v, L: mix(hx('#1a2a5a'), hx('#5a7ac8'), 0.2 + L * 0.5) if int((u + 8) * 2) % 3 else hx('#c8c8d0'), kind='rect', corner=0.5)
+    fill_shape(cv, W / 2, 3.5, 7.5, 2.5, lambda u, v, L: mix(hx('#1a2a5a'), hx('#5a7ac8'), 0.2 + L * 0.5) if int((u + 8) * 2) % 3 else PALE_GREY, kind='rect', corner=0.5)
     sign_plate(cv, 2, 6.5, W - 2, H - 1, SIGN_YELLOW, rim=SIGN_INK, r=1.0, border=0.75)
     frect(cv, 3.5, 8.5, W - 3.5, 12.0, hx('#2a4ea8'))
     words(cv, W / 2, 8.8, 'CALL', SIGN_WHITE, 0.5, centre=True)

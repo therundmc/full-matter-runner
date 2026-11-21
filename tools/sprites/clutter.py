@@ -5,7 +5,7 @@ import math
 import random
 
 from .core import ashtray, CLEAR, Cv, dk, fill_capsule, fill_shape, frect, hx, light, line, lt, ramp, ring, shade
-from .palette import CASH, STEEL_L
+from .palette import CASH, KHAKI, LINEN, NEON_GREEN, PAPER_WHITE, PARCHMENT, PURE_WHITE, PUTTY, STEEL_L
 
 
 BEER = ramp('#d89a2a', 0.45, 0.22, 0.35)
@@ -29,8 +29,8 @@ def drink_glass(cv, cx, cy, r, level, rng):
         fill_shape(cv, cx, cy, inner, inner, lambda u, v, L: hx('#6c7a84') if L < 0.5 else hx('#86949e'))
         for _ in range(4):                                             # the foam's lacing down the inside
             a = rng.uniform(0, 2 * math.pi)
-            cv.dot(cx + math.cos(a) * inner * 0.75, cy + math.sin(a) * inner * 0.75, hx('#d8d4c8'))
-    cv.dot(cx - r * 0.5, cy - r * 0.5, hx('#ffffff'))
+            cv.dot(cx + math.cos(a) * inner * 0.75, cy + math.sin(a) * inner * 0.75, PUTTY)
+    cv.dot(cx - r * 0.5, cy - r * 0.5, PURE_WHITE)
 
 
 def c_pint(level, seed):
@@ -56,7 +56,7 @@ def c_shot():
     cv = Cv(3, 3)
     fill_shape(cv, 1.5, 1.5, 1.2, 1.2, lambda u, v, L: GLASS_RIM if L > 0.6 else hx('#8a98a2'))
     fill_shape(cv, 1.55, 1.55, 0.7, 0.7, lambda u, v, L: hx('#8a4418'))
-    cv.dot(1.0, 1.0, hx('#ffffff'))
+    cv.dot(1.0, 1.0, PURE_WHITE)
     cv.outline()
     return cv
 
@@ -67,7 +67,7 @@ def c_lowball():
     fill_shape(cv, 2.5, 2.5, 2.0, 2.0, lambda u, v, L: GLASS_RIM if L > 0.6 else hx('#8a98a2'))
     fill_shape(cv, 2.55, 2.55, 1.35, 1.35, lambda u, v, L: WHISKY if u + v > -0.5 else lt(WHISKY, 0.2))
     fill_shape(cv, 2.2, 2.4, 0.65, 0.6, lambda u, v, L: hx('#eef4f6') if L > 0.5 else hx('#c4d4dc'), ang=0.4, kind='rect', corner=0.2, bevel=0.3)
-    cv.dot(1.25, 1.25, hx('#ffffff'))
+    cv.dot(1.25, 1.25, PURE_WHITE)
     cv.outline()
     return cv
 
@@ -85,7 +85,7 @@ def c_liquor():
     """A square whisky bottle from above: dark amber glass, its black cap, the label's edge."""
     cv = Cv(5, 5)
     fill_shape(cv, 2.5, 2.5, 1.9, 1.9, lambda u, v, L: shade(ramp('#7a3c12', 0.5, 0.25, 0.5), L), kind='rect', corner=0.5, bevel=0.7)
-    frect(cv, 0.7, 3.4, 4.3, 4.0, hx('#e8dcc0'))                      # the label round its foot
+    frect(cv, 0.7, 3.4, 4.3, 4.0, PARCHMENT)                      # the label round its foot
     fill_shape(cv, 2.5, 2.5, 0.8, 0.8, lambda u, v, L: hx('#2a2628') if L < 0.6 else hx('#4a4448'))
     cv.outline()
     return cv
@@ -141,7 +141,7 @@ def c_peanuts():
     """A steel bowl of peanuts in their shells."""
     cv = Cv(6, 6)
     ring(cv, 3.0, 3.0, 2.0, 2.5, lambda dx, dy, d: shade(STEEL_L, 0.2 + 0.85 * light(dx / d, dy / d)))
-    fill_shape(cv, 3.0, 3.0, 2.0, 2.0, lambda u, v, L: hx('#8a6a3a'))
+    fill_shape(cv, 3.0, 3.0, 2.0, 2.0, lambda u, v, L: KHAKI)
     rng = random.Random(7104)
     for _ in range(7):
         x, y, a = rng.uniform(1.8, 4.2), rng.uniform(1.8, 4.2), rng.uniform(0, math.pi)
@@ -157,12 +157,12 @@ def c_till():
     case = ramp('#b8b09c', 0.5, 0.25, 0.35)
     fill_shape(cv, 6.5, 5.0, 5.5, 4.0, lambda u, v, L: shade(case, L), kind='rect', corner=0.8, bevel=1.0)
     frect(cv, 2.0, 7.0, 11.0, 8.3, hx('#5a5448'))                     # the display's hood, at the back
-    frect(cv, 3.0, 7.3, 8.0, 8.0, hx('#3aff8a'))                      # its digits' glow
+    frect(cv, 3.0, 7.3, 8.0, 8.0, NEON_GREEN)                      # its digits' glow
     for k in range(4):
         for j in range(5):
             c = hx('#e8e2d0') if (j + k) % 4 else hx('#c8323a')
             frect(cv, 2.2 + j * 1.6, 1.8 + k * 1.2, 3.2 + j * 1.6, 2.6 + k * 1.2, c)
-    fill_shape(cv, 11.0, 2.2, 0.9, 0.9, lambda u, v, L: hx('#f4f0e6') if L > 0.5 else hx('#d0c8b8'))   # the paper roll
+    fill_shape(cv, 11.0, 2.2, 0.9, 0.9, lambda u, v, L: PAPER_WHITE if L > 0.5 else hx('#d0c8b8'))   # the paper roll
     frect(cv, 1.5, 0.9, 11.5, 1.3, lambda c: dk(c, 0.3) if c[3] else None)   # the drawer's lip
     cv.outline()
     return cv
@@ -183,14 +183,14 @@ def c_chips():
     cv = Cv(4, 4)
     fill_shape(cv, 2.0, 2.0, 1.5, 1.5, lambda u, v, L: shade(ramp('#c8303a', 0.45, 0.22, 0.35), L))
     for a in (0.3, 1.9, 3.5, 5.1):
-        cv.dot(2.0 + math.cos(a) * 1.15, 2.0 + math.sin(a) * 1.15, hx('#f0ece0'))
+        cv.dot(2.0 + math.cos(a) * 1.15, 2.0 + math.sin(a) * 1.15, LINEN)
     cv.dot(2.0, 2.0, hx('#e8a0a4'))
     cv.outline()
     return cv
 
 
 def banknote(cv, cx, cy, w, h, a):
-    green = ramp('#5a8a4a', 0.4, 0.2, 0.3)
+    green = CASH
     fill_shape(cv, cx, cy, w, h, lambda u, v, L: shade(green, L) if abs(u) > w * 0.25 else hx('#86b070'), ang=a, kind='rect', corner=0.2, bevel=0.4)
 
 
@@ -251,7 +251,7 @@ def c_flute():
     fill_shape(cv, 2.0, 2.0, 1.55, 1.55, lambda u, v, L: GLASS_RIM if L > 0.62 else hx('#9aaab4'))
     fill_shape(cv, 2.05, 2.05, 1.0, 1.0, lambda u, v, L: lt(CHAMPAGNE, 0.3) if u + v < -0.4 else CHAMPAGNE)
     cv.dot(2.4, 2.3, hx('#fff6d6'))
-    cv.dot(1.0, 1.0, hx('#ffffff'))
+    cv.dot(1.0, 1.0, PURE_WHITE)
     cv.outline()
     return cv
 
@@ -263,7 +263,7 @@ def c_flute_down():
     line(cv, 1.6, 1.5, 3.4, 1.5, hx('#c8d4dc'))
     fill_capsule(cv, [(3.9, 1.5), (5.8, 1.5)], 0.95,
                  lambda k, L, s, i, t: GLASS_RIM if L > 0.72 else hx('#a4b2bc') if k > 0.55 else hx('#c8bc88'))
-    cv.dot(4.3, 1.0, hx('#ffffff'))
+    cv.dot(4.3, 1.0, PURE_WHITE)
     cv.outline()
     return cv
 
@@ -365,7 +365,7 @@ def c_sock():
 def c_card():
     """One playing card dropped face down: its red back, a white border."""
     cv = Cv(3, 4)
-    frect(cv, 0.5, 0.5, 2.5, 3.5, hx('#f0ece0'))
+    frect(cv, 0.5, 0.5, 2.5, 3.5, LINEN)
     frect(cv, 1.0, 1.0, 2.0, 3.0, hx('#a8282e'))
     cv.outline()
     return cv
@@ -376,7 +376,7 @@ def c_chip():
     cv = Cv(3, 3)
     fill_shape(cv, 1.5, 1.5, 1.05, 1.05, lambda u, v, L: shade(ramp('#d8303a', 0.45, 0.22, 0.3), L))
     for (x, y) in ((1.25, 0.75), (1.75, 2.25), (0.75, 1.75), (2.25, 1.25)):
-        cv.dot(x, y, hx('#f0ece0'))
+        cv.dot(x, y, LINEN)
     cv.outline()
     return cv
 

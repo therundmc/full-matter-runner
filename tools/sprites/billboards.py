@@ -7,7 +7,7 @@ from .core import (
     alpha, CLEAR, curve, Cv, dk, fill_capsule, fill_shape, frect, hx, layer, line, mix, px_paint, ramp, shade, smudge,
     VNoise
 )
-from .palette import DECO_PINK, DECO_TEAL, NEON_CYAN, STEEL_L, ZINC
+from .palette import DECO_PINK, DECO_TEAL, HOT, NEON_CYAN, SIGN_WHITE, SIGNAL_RED, STEEL_L, ZINC
 from .type import words
 from .neon import neon_halo, neon_words
 
@@ -98,10 +98,10 @@ def billboard_ad(head, sub, small, seed, scene='motel', face='poster'):
         if face != 'poster':
             if face == 'frame':
                 for (a, b, c, d) in ((fx0, fy0, fx1, fy0 + 2), (fx0, fy1 - 2, fx1, fy1), (fx0, fy0, fx0 + 2, fy1), (fx1 - 2, fy0, fx1, fy1)):
-                    frect(cv, a, b, c, d, hx('#ece8de'))                      # the white frame, empty
+                    frect(cv, a, b, c, d, SIGN_WHITE)                      # the white frame, empty
                 layer(cv, lambda ly: board_lattice(ly, fx0 + 5, fy0 + 5, fx1 - 5, fy1 - 5, 64, STEEL_L, 3))
             else:
-                frect(cv, fx0, fy0, fx1, fy1, hx('#ece8de'))
+                frect(cv, fx0, fy0, fx1, fy1, SIGN_WHITE)
                 board_sheets(cv, fx0 + 2, fy0 + 2, fx1 - 2, fy1 - 2, 64, 'wood', random.Random(seed + 11))
             for x in (60, 150, 240, 330):                                   # the lamps, as on the whole board
                 frect(cv, x - 0.5, 1, x + 0.5, fy0, shade(STEEL_L, 0.5))
@@ -109,7 +109,7 @@ def billboard_ad(head, sub, small, seed, scene='motel', face='poster'):
                 frect(cv, x - 2, 3.5, x + 2, 4.5, hx('#fff4d8'))
             cv.outline()
             return cv
-        frect(cv, fx0, fy0, fx1, fy1, hx('#ece8de'))                         # the frame
+        frect(cv, fx0, fy0, fx1, fy1, SIGN_WHITE)                         # the frame
         sx1, hor = 128, 58
 
         def poster(x, y, cur):
@@ -244,8 +244,8 @@ def billboard(kind, face='poster'):
                 fill_shape(cv, 112, 62, 7.0, 15.0, lambda u, v, L: shade(ramp('#c87a2a', 0.5, 0.26, 0.35), 0.3 + L * 0.7), kind='rect', corner=3.0)
                 frect(cv, 109, 44, 115, 48, hx('#f4f0e0'))                    # the bottle: its cap, its label
                 frect(cv, 106.5, 57, 117.5, 69, hx('#fff4e0'))
-                words(cv, 112, 59, 'SPF', hx('#c8242c'), 0.5, centre=True)
-                words(cv, 112, 64, '4', hx('#c8242c'), 0.5, centre=True)
+                words(cv, 112, 59, 'SPF', SIGNAL_RED, 0.5, centre=True)
+                words(cv, 112, 64, '4', SIGNAL_RED, 0.5, centre=True)
             else:
                 hz = 58.0
 
@@ -290,7 +290,7 @@ def billboard(kind, face='poster'):
         for x in (38.0, 102.0, 154.0, 218.0):                              # the lamps on their arms
             fill_capsule(cv, [(x, y1 + 12), (x, y1 - 6)], 1.0, lambda k, L, s, i, t: shade(STEEL_L, L))
             fill_shape(cv, x, y1 - 8, 5.0, 2.6, lambda u, v, L: shade(ramp('#4e5362', 0.5, 0.25, 0.4), 0.2 + L * 0.6), kind='rect', corner=1.0)
-            frect(cv, x - 4, y1 - 8, x + 4, y1 - 6.5, hx('#fff6dc'))
+            frect(cv, x - 4, y1 - 8, x + 4, y1 - 6.5, HOT)
             frect(gl, x - 4, y1 - 8, x + 4, y1 - 6.5, hx('#fff0d0'))
         return (cv, gl) if face == 'poster' else cv
     return make

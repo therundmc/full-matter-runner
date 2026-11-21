@@ -11,6 +11,7 @@ from .core import (
 from .palette import CHROME, DECO_PINK, DECO_TEAL, PASTEL_PINK, PASTEL_TEAL, ZINC
 from .type import words
 from .neon import neon_halo, neon_words
+from .tiles import OIL
 from .vehicles import p_car
 
 
@@ -91,7 +92,7 @@ def p_police_car():
             continue
         if 108 <= x < 113 or 12 <= x < 16:
             cv.p[i, j] = mix(c, teal, 0.8)                                 # the livery
-    words(cv, 67.0, H / 2 - 5.25, '17', hx('#16141c'), 1.5, centre=True)    # the roof number, read from the air
+    words(cv, 67.0, H / 2 - 5.25, '17', OIL, 1.5, centre=True)    # the roof number, read from the air
 
     def bar(ly):
         fill_shape(ly, 52, H / 2, 3.0, 18.0, lambda u, v, L: shade(CHROME, 0.2 + L * 0.6), kind='rect', corner=1.2, bevel=1.0)

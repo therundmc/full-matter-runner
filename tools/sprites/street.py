@@ -6,7 +6,7 @@ from .core import (
     alpha, bevel_edges, Cv, dk, fill_capsule, fill_shape, frect, hx, layer, light, line, lt, mix, OUTLINE, px_paint,
     ramp, ring, shade, smudge, stud, wood_fill
 )
-from .palette import NEON_CYAN, NEON_PINK
+from .palette import NEON_CYAN, NEON_GREEN, NEON_PINK, PITCH, SIGNAL_ORANGE, SIGNAL_YELLOW
 from .type import FONT_BAR, inked
 from .neon import Neon, sign_backing
 
@@ -44,7 +44,7 @@ def p_streetlight():
 def p_neon_sign_palm():
     cv, gl = sign_backing(40, 14), Cv(40, 14)
     ne = Neon(40, 14)
-    pink, cyan, orange, yel = NEON_PINK, NEON_CYAN, hx('#ff6b1a'), hx('#f9c80e')
+    pink, cyan, orange, yel = NEON_PINK, NEON_CYAN, SIGNAL_ORANGE, SIGNAL_YELLOW
     ne.arc(27.5, 10.5, 6.5, math.pi, 2 * math.pi, orange)       # sun
     for (y, half, col) in [(6, 4, yel), (8, 5, orange)]:
         ne.line([(27 - half + 1, y), (27 + half, y)], col)
@@ -52,7 +52,7 @@ def p_neon_sign_palm():
     ne.line([(10, 10), (11, 7), (12, 4)], cyan)                   # palm trunk
     for (pts) in [[(12, 4), (9, 3), (6, 5)], [(12, 4), (15, 3), (18, 5)], [(12, 4), (10, 6), (8, 8)],
                   [(12, 4), (14, 6), (16, 8)], [(12, 4), (12, 2)]]:
-        ne.line(pts, cyan if pts[-1][1] != 2 else hx('#3aff8a'))
+        ne.line(pts, cyan if pts[-1][1] != 2 else NEON_GREEN)
     ne.render(cv, gl)
     return cv, gl
 
@@ -69,9 +69,9 @@ def p_neon_sign_bar():
     ne.line([(4, 3), (12, 3), (8, 7), (4, 3)], NEON_CYAN)
     ne.line([(8, 7), (8, 10)], NEON_CYAN)
     ne.line([(6, 10), (10, 10)], NEON_CYAN)
-    ne.dot(10, 2, hx('#3aff8a'))
-    ne.dot(11, 1, hx('#3aff8a'))
-    ne.dot(7, 4, hx('#f9c80e'))
+    ne.dot(10, 2, NEON_GREEN)
+    ne.dot(11, 1, NEON_GREEN)
+    ne.dot(7, 4, SIGNAL_YELLOW)
     ne.render(cv, gl)
     return cv, gl
 
@@ -79,7 +79,7 @@ def p_neon_sign_bar():
 def p_neon_sign_arrow():
     cv, gl = sign_backing(30, 12), Cv(30, 12)
     ne = Neon(30, 12)
-    yel = hx('#f9c80e')
+    yel = SIGNAL_YELLOW
     ne.line([(3, 4), (18, 4), (18, 2), (26, 6), (18, 9), (18, 7), (3, 7), (3, 4)], yel)
     ne.render(cv, gl)
     for x in range(5, 18, 3):
@@ -97,7 +97,7 @@ def p_jukebox():
     cx = W / 2
     body = ramp('#4a1838', 0.5, 0.25, 0.35)
     chrome = ramp('#b8bccc', 0.5, 0.25, 0.4)
-    bands = [NEON_PINK, hx('#ff6b1a'), hx('#f9c80e')]
+    bands = [NEON_PINK, SIGNAL_ORANGE, SIGNAL_YELLOW]
     rng = random.Random(661)
     bubbles = set((rng.randrange(0, 60), rng.randrange(0, 44)) for _ in range(40))
 
@@ -133,7 +133,7 @@ def p_jukebox():
             return None
         return hx('#1a1028') if int(math.atan2(y - 11.5, x - cx) * 22) % 2 else hx('#100a18')
     px_paint(cv, 6, 4, 24, 14, dome)
-    labels = [NEON_PINK, hx('#f9c80e'), NEON_CYAN, hx('#3aff8a'), hx('#ff6b1a'), hx('#f4f0ff'), NEON_PINK]
+    labels = [NEON_PINK, SIGNAL_YELLOW, NEON_CYAN, NEON_GREEN, SIGNAL_ORANGE, hx('#f4f0ff'), NEON_PINK]
     for i in range(7):
         a = math.pi * (1.1 + 0.8 * i / 6.0)
         x0, y0 = cx + math.cos(a) * 4.6, 11.5 + math.sin(a) * 4.6
@@ -143,7 +143,7 @@ def p_jukebox():
         for (ox, oy) in ((0, 0), (0.5, 0), (0, 0.5)):
             cv.dot(mx + ox, my + oy, labels[i])
             gl.dot(mx + ox, my + oy, dk(labels[i], 0.3))
-    ring(cv, cx, 11.0, 0.0, 2.6, lambda dx, dy, d: hx('#16121e') if int(d * 3) % 2 else hx('#0c0a10'))
+    ring(cv, cx, 11.0, 0.0, 2.6, lambda dx, dy, d: hx('#16121e') if int(d * 3) % 2 else PITCH)
     fill_shape(cv, cx, 11.0, 0.9, 0.9, lambda u, v, L: NEON_PINK if L > 0.4 else dk(NEON_PINK, 0.3))
     cv.dot(cx - 1.5, 10.0, hx('#5a5868'))
     for y in range(10, 26):                   # reflection streak on the dome

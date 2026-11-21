@@ -7,7 +7,10 @@ from .core import (
     alpha, bevel_edges, chrome_bar, CLEAR, crease, Cv, dash, dk, fgrain, fill_capsule, fill_shape, frect, hx, layer,
     light, line, lt, mix, px_paint, ramp, ring, shade, shift, smudge, stud, VNoise, wood_fill
 )
-from .palette import BRASS, CHROME, RUBBER
+from .palette import (
+    BRASS, CHROME, GRAPHITE, GUNMETAL, IRON_GREY, KHAKI, PALE_STEEL, PARCHMENT, PURE_WHITE, PUTTY, RUBBER,
+    SIGNAL_YELLOW, SILVER_GREY, SOOT, STEEL_GREY
+)
 from .type import FONT_TUBE, inked
 
 
@@ -80,7 +83,7 @@ def p_cash_case():
                     col = hx('#f2ead0') if t < 0.6 else hx('#c8c0a4')  # the paper band
                 return col
             px_paint(cv, x, y, x + 5.2, y + 2.8, wad)
-            cv.dot(x + 2.5, y + 1.0, hx('#8a6a3a'))
+            cv.dot(x + 2.5, y + 1.0, KHAKI)
     for x in (5.0, 15.5):                                              # latches
         chrome_bar(cv, x, 14.2, x + 1.5, 15.0)
     fill_capsule(cv, [(9.0, 15.0), (13.0, 15.0)], 0.5, lambda k, L, s, i, t: shade(RUBBER, L))   # the handle
@@ -129,7 +132,7 @@ def p_mirror_ball():
         return col
     fill_shape(cv, 6.0, 6.0, 5.0, 5.0, ball)
     for (x, y) in ((3.5, 3.5), (5.0, 2.5), (2.5, 5.5)):
-        cv.dot(x, y, hx('#ffffff'))
+        cv.dot(x, y, PURE_WHITE)
     cv.outline()
     return cv
 
@@ -172,8 +175,8 @@ def p_vending():
         frect(cv, x, 7, x + 1, 7.5, lt(red[2], 0.2))
     frect(cv, 3, 14.5, 25, 16, hx('#f2ece0'))                         # the logo's stripe over the front
     frect(cv, 5, 15, 13, 15.5, hx('#c81e28'))
-    frect(cv, 14, 15, 17, 15.5, hx('#2a2a30'))
-    fill_shape(cv, 22.0, 9.0, 1.4, 1.0, lambda u, v, L: hx('#f9c80e'), ang=0.3, kind='rect', corner=0.2)   # a sticker
+    frect(cv, 14, 15, 17, 15.5, GRAPHITE)
+    fill_shape(cv, 22.0, 9.0, 1.4, 1.0, lambda u, v, L: SIGNAL_YELLOW, ang=0.3, kind='rect', corner=0.2)   # a sticker
     smudge(cv, random.Random(4991), 4, (2, 2, 26, 13), (1.0, 2.2), 0.18)
     stud(cv, 2.0, 2.5, red[1])
     stud(cv, 25.5, 2.5, red[1])
@@ -212,9 +215,9 @@ def p_phone_booth():
     for k in range(9):                              # its keys
         fr.dot(9.5 + (k % 3) * 1.0, 6.5 + (k // 3) * 1.0, hx('#c8ccd8') if k != 4 else hx('#f0f2f8'))
     fill_capsule(fr, [(13.6, 6.0), (13.6, 9.4)], 0.6, lambda k, L, s, i, t: shade(ramp('#2a2e38', 0.4, 0.2, 0.5), L))   # the receiver
-    fr.dot(14.5, 6.0, hx('#f9c80e'))                # coin slot
+    fr.dot(14.5, 6.0, SIGNAL_YELLOW)                # coin slot
     fill_shape(fr, 5.4, 12.0, 1.2, 2.4, lambda u, v, L: hx('#f0e080') if L > 0.6 else hx('#c8b860'), kind='rect', corner=0.3, bevel=0.5)   # the directory
-    line(fr, 5.4, 9.6, 6.2, 5.0, hx('#9aa0ac'))     # its chain
+    line(fr, 5.4, 9.6, 6.2, 5.0, SILVER_GREY)     # its chain
     fr.outline()
     cv.over(fr)
     return cv
@@ -251,7 +254,7 @@ def p_news_box():
             return hx('#2a3a5a')                                       # the window's frame
         col = hx('#ece8dc')
         if 5.0 <= y < 6.0 and 3.5 <= x < 12.0:
-            col = hx('#2a2a30')                                        # the headline
+            col = GRAPHITE                                        # the headline
         elif 6.5 <= y < 8.5 and 3.5 <= x < 6.5:
             col = hx('#8a8a90') if int(y * 2) % 2 else hx('#b8b4a8')   # a photograph
         elif 6.5 <= y < 8.5 and x >= 7.0 and int(y * 2) % 2 == 0:
@@ -261,8 +264,8 @@ def p_news_box():
     for i in range(3, 13):
         cv.bpx(i * 2 + 4, 9, (255, 255, 255, 50))                      # the glass catching the light
     fill_shape(cv, 13.4, 10.8, 0.6, 0.4, lambda u, v, L: hx('#d8d8e0'), kind='rect', corner=0.1)   # coin slot
-    smudge(cv, random.Random(5101), 4, (1, 1, 15, 12), (0.4, 0.9), 0.6, hx('#9aa0ac'))   # chipped to the steel
-    fill_shape(cv, 3.0, 1.7, 1.0, 0.5, lambda u, v, L: hx('#f9c80e'), kind='rect', corner=0.1)   # a sticker
+    smudge(cv, random.Random(5101), 4, (1, 1, 15, 12), (0.4, 0.9), 0.6, SILVER_GREY)   # chipped to the steel
+    fill_shape(cv, 3.0, 1.7, 1.0, 0.5, lambda u, v, L: SIGNAL_YELLOW, kind='rect', corner=0.1)   # a sticker
     cv.outline()
     return cv
 
@@ -407,8 +410,8 @@ def flipped_table(W, wood, leg, face=None, feet=4):
             for x0 in (5.5, W - 5.5):
                 post([(x0, 7.0), (x0, H - 2.4)], 1.35)
                 frect(cv, x0 - 2.5, 7.0, x0 + 2.5, 9.0, hx('#5a5e68'))  # the corner bracket
-                stud(cv, x0 - 1.5, 7.5, hx('#9aa0ac'))
-                stud(cv, x0 + 1.0, 7.5, hx('#9aa0ac'))
+                stud(cv, x0 - 1.5, 7.5, SILVER_GREY)
+                stud(cv, x0 + 1.0, 7.5, SILVER_GREY)
         else:
             c = W / 2
             post([(c, 7.0), (c, H - 5.5)], 1.7)
@@ -500,7 +503,7 @@ def p_urinal():
         fill_shape(ly, 7.0, 7.2, 1.0, 0.8, lambda u, v, L: hx('#5a8a6a') if L > 0.5 else hx('#3a6a4a'))   # the cake
         for (x, y) in ((6.0, 8.0), (7.0, 8.2), (8.0, 8.0)):
             ly.dot(x, y, hx('#4a4a52'))                                 # the drain's slots
-        fill_shape(ly, 7.0, 1.8, 1.0, 0.8, lambda u, v, L: hx('#f4f6fc') if L > 0.7 else hx('#9aa0ac'))   # the flush valve
+        fill_shape(ly, 7.0, 1.8, 1.0, 0.8, lambda u, v, L: hx('#f4f6fc') if L > 0.7 else SILVER_GREY)   # the flush valve
         ly.dot(7.0, 2.8, hx('#6a6e7a'))
     layer(cv, body)
     return cv
@@ -595,7 +598,7 @@ def p_stairs():
                 col = dk(col, 0.15)                                    # grime in the corners
             d = y - y0
             if d < 1.0:
-                col = hx('#b8bcc8') if d < 0.5 else hx('#6a6e78')      # the steel nosing
+                col = hx('#b8bcc8') if d < 0.5 else IRON_GREY      # the steel nosing
             elif 1.5 < d < 2.0 and 6 < x < W - 6:
                 col = hx('#2a2830')                                    # rubber strip
             elif y1 - y < 1.0:
@@ -650,8 +653,8 @@ def p_jerrycan():
         fill_capsule(cv, [(x, 1.8), (x, 4.4)], 0.5, lambda k, L, s, i, t: shade(red, L + 0.1))
     frect(cv, 2.2, 1.5, 8.8, 2.0, red[0])
     fill_shape(cv, 8.2, 2.4, 1.2, 1.2, lambda u, v, L: shade(ramp('#e0b040', 0.45, 0.22, 0.4), L))   # the cap
-    line(cv, 7.0, 2.0, 9.4, 1.4, hx('#8a8e98'))                        # its clamp
-    smudge(cv, random.Random(5500), 3, (2, 4, 9, 12), (0.4, 0.8), 0.7, hx('#8a8e98'))
+    line(cv, 7.0, 2.0, 9.4, 1.4, STEEL_GREY)                        # its clamp
+    smudge(cv, random.Random(5500), 3, (2, 4, 9, 12), (0.4, 0.8), 0.7, STEEL_GREY)
     line(cv, 8.6, 3.4, 8.9, 6.6, alpha(hx('#5a3a20'), 160))            # a run of fuel
     cv.outline()
     return cv
@@ -707,7 +710,7 @@ def p_runner():
 
     def pile(x, y, c):
         if y < 1.5 or y >= H - 1.5:
-            col = hx('#8a6a3a') if 0.5 <= y < 1.5 or H - 1.5 <= y < H - 0.5 else red[0]
+            col = KHAKI if 0.5 <= y < 1.5 or H - 1.5 <= y < H - 0.5 else red[0]
         elif y < 3.5 or y >= H - 3.5:
             col = red[1]
         else:
@@ -715,7 +718,7 @@ def p_runner():
             u = (x % 48.0) - 24.0
             d = abs(u) / 10.0 + abs(y - H / 2) / 4.5
             if 0.86 < d < 1.0:
-                col = mix(red[2], hx('#8a6a3a'), 0.35)                 # the lozenge
+                col = mix(red[2], KHAKI, 0.35)                 # the lozenge
             elif d < 0.3:
                 col = mix(red[2], hx('#2a3a5a'), 0.3)
         col = shift(col, int((nz(x, y) - 0.5) * 10))
@@ -788,7 +791,7 @@ def p_sandwich_board():
     for (y, x0, x1) in ((3.0, 4.0, 13.0), (4.5, 4.5, 11.0), (5.5, 4.0, 12.0), (9.0, 4.0, 12.5), (10.5, 5.0, 10.0)):
         for x in range(int(x0 * 2), int(x1 * 2)):
             if (x * 7 + int(y * 3)) % 5:
-                cv.dot(x / 2, y, hx('#d8d4c8') if x % 3 else hx('#e8a8b8'))   # chalk, now and then a pink word
+                cv.dot(x / 2, y, PUTTY if x % 3 else hx('#e8a8b8'))   # chalk, now and then a pink word
     for x in (2.0, W - 3.0):
         stud(cv, x, 6.5, BRASS[2], big=True)                         # the hinges
     smudge(cv, random.Random(6811), 3, (2, 2, W - 2, H - 2), (1.0, 2.0), 0.18, hx('#5a5a58'))   # rubbed-out chalk
@@ -900,7 +903,7 @@ def p_bike():
     for x0 in (2.0, 30.0):                                             # the wheels, seen on edge
         fill_capsule(cv, [(x0 + 0.6, 7.0), (x0 + 13.4, 7.0)], 0.9, lambda k, L, s, i, t: shade(RUBBER, L + 0.1))
         dash(cv, x0 + 1.0, 6.5, x0 + 13.0, 6.5, RUBBER[3], 1, 2)
-        frect(cv, x0 + 6.0, 6.5, x0 + 8.0, 7.5, hx('#c8ccd6'))         # the hub
+        frect(cv, x0 + 6.0, 6.5, x0 + 8.0, 7.5, PALE_STEEL)         # the hub
     red = ramp('#c8402c', 0.5, 0.25, 0.35)
     fill_capsule(cv, [(9.0, 7.0), (37.0, 7.0)], 0.7, lambda k, L, s, i, t: lt(red[3], 0.2) if L > 0.9 else shade(red, L))   # top tube
     fill_capsule(cv, [(16.5, 6.6), (21.0, 6.0)], 0.5, lambda k, L, s, i, t: shade(red, L))   # the down tube under it
@@ -958,7 +961,7 @@ def p_newspaper():
     frect(cv, 2.0, 1.8, 11.0, 2.8, hx('#1e1a24'))                      # the masthead
     frect(cv, 2.5, 2.2, 10.5, 2.4, hx('#8a8494'))
     frect(cv, 2.0, 3.5, 11.0, 4.0, hx('#3a3640'))                      # the headline
-    frect(cv, 7.5, 4.5, 11.0, 7.5, hx('#6a6e78'))                      # a photograph
+    frect(cv, 7.5, 4.5, 11.0, 7.5, IRON_GREY)                      # a photograph
     frect(cv, 8.0, 5.0, 10.0, 6.0, hx('#9a9ea8'))
     for y in (4.5, 5.5, 6.5, 7.5):
         frect(cv, 2.0, y, 7.0, y + 0.5, hx('#9a948a'))                 # columns of text
@@ -977,8 +980,8 @@ def p_shoes():
         fill_shape(cv, 4.9, y0, 3.5, 1.3, lambda u, v, L: shade(lea, L), kind='super', p=2.4)
         fill_shape(cv, 2.6, y0, 1.3, 0.8, lambda u, v, L: hx('#1c1418'), kind='super', p=2.2)   # the opening
         for k in range(3):                                             # the laces
-            cv.dot(4.5 + k * 0.5, y0 - 0.5, hx('#e8dcc0'))
-            cv.dot(4.5 + k * 0.5, y0 + 0.25, hx('#e8dcc0'))
+            cv.dot(4.5 + k * 0.5, y0 - 0.5, PARCHMENT)
+            cv.dot(4.5 + k * 0.5, y0 + 0.25, PARCHMENT)
         cv.dot(7.5, y0 - 0.75, lt(lea[3], 0.2))                        # the toe's polish
     cv.outline()
     return cv
@@ -999,7 +1002,7 @@ def p_keg():
     ring(cv, c, c, 7.1, 8.05, lambda dx, dy, d: shade(st, light(dx / d * 0.95, dy / d * 0.95)) if d > 7.6 else st[0])
     ring(cv, c, c, 6.5, 7.1, lambda dx, dy, d: shade(st, 0.9 - light(dx / d, dy / d) * 0.7))   # the chime's inner wall
     for (hx0, hy0) in ((c - 4.2, c - 5.6), (c + 2.4, c + 4.6)):            # the hand holes
-        frect(cv, hx0, hy0, hx0 + 2.0, hy0 + 1.0, hx('#1a1820'))
+        frect(cv, hx0, hy0, hx0 + 2.0, hy0 + 1.0, SOOT)
     ring(cv, c, c, 4.4, 4.8, lambda dx, dy, d: shade(st, 0.25 + light(dx / d, dy / d) * 0.7))  # the weld seam
     ring(cv, c, c, 2.6, 3.3, lambda dx, dy, d: hx('#2a6ad8') if dx + dy < 0 else hx('#1a4aa0'))   # the brewery's ring
     fill_shape(cv, c, c, 2.4, 2.4, lambda u, v, L: shade(ramp('#26242c', 0.45, 0.22, 0.5), L))   # the coupler
@@ -1007,9 +1010,9 @@ def p_keg():
     fill_capsule(cv, [(c - 1.2, c + 1.0), (c - 4.0, c + 3.5), (c - 6.6, c + 2.6), (c - 8.6, c + 4.2)], 0.42,
                  lambda k, L, s_, i, t: hx('#e8c070') if L > 0.55 else hx('#b07a2a'))   # the beer line, beer in it
     for x in (6.0, 7.0, 8.0, 10.0, 11.0):
-        cv.dot(x, 14.5, alpha(hx('#2a2a34'), 170))                       # stencilled number
+        cv.dot(x, 14.5, alpha(GUNMETAL, 170))                       # stencilled number
     rng = random.Random(4401)
-    smudge(cv, rng, 4, (2, 2, 16, 16), (0.5, 1.0), 0.35, hx('#6a6e78'))   # scuffs
+    smudge(cv, rng, 4, (2, 2, 16, 16), (0.5, 1.0), 0.35, IRON_GREY)   # scuffs
     smudge(cv, rng, 1, (11, 3, 14, 6), (1.2, 1.6), 0.25)                 # a dent
     fgrain(cv, random.Random(4402), 3)
     cv.outline()
