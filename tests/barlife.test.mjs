@@ -93,7 +93,8 @@ const { WEAPONS } = await load('game/data/weapons.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { findPath } = await load('engine/nav/Pathfinding.js');
-const { default: Enemy, keptAt } = await load('game/entities/Enemy.js');
+const { default: Enemy } = await load('game/entities/Enemy.js');
+const { keptAt } = await load('game/entities/enemy/Arms.js');
 const { default: Director } = await load('game/ai/Director.js');
 const { Body } = Matter;
 
