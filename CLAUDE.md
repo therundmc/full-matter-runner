@@ -192,7 +192,7 @@
 - Guards have the house's keys (`World.pathForGuard`, `Door.unlatch`): never lock a door without checking they still
   get out (the QA robot reports `guard-stuck`).
 - The getaway is THE BOSS's convertible (model `convertible`, entities/Vehicle.js: `seat`, `door`, `cabin`, `hat`;
-  systems/Outro.js `OUTRO`): he vaults the door into the seat (anyone can be sat at a wheel: `Vehicle.seatIn`,
+  systems/Outro.js, numbers data/outro.js `OUTRO`): he vaults the door into the seat (anyone can be sat at a wheel: `Vehicle.seatIn`,
   CharacterAnim `seatPose`, `ch.riding`, data/feel.js `SEAT`), the key, the wheelspin and its rubber, then
   `exit.route` (the path of the point `OUTRO.pivot` ahead of its middle; `exit.slide`: the share of the slide a
   bend) and the hat off the rear seat at the first hard swing; the boss's Uzi lies on the passenger seat (Vehicle
@@ -320,6 +320,9 @@
 - Read docs/ARCHITECTURE.md first (layers, step order, events, physics model).
 - `engine/` never imports `game/`. Logic modules stay DOM-free (canvas work in game/render or entity draw()).
 - New gameplay reactions: emit/listen on `world.events` instead of wiring direct calls.
+- Gameplay rolls (what decides the game) use the world's seeded dice, `dice(world)` (systems/Rng.js, `world.rng`);
+  looks keep Math.random, so a cosmetic change never shifts a QA seed. The AI finds what it uses by a prop's `use`
+  flag (data/props.js), never by its type's name. A chase route is checked by systems/Route.js `checkRoute`.
 - Physics: give every dynamic body kg + mu (`setMaterial`) and a `material`; read velocities with
   `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz); use `impulse()` (momentum) for hits/blasts;
   heavy objects use `world.physics.freezeIfHeavy(body)`.

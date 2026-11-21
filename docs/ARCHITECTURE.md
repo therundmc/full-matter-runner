@@ -58,6 +58,13 @@ src/
                           tiles, the wall tiles holding each opening up (`heldBy`)
     systems/              rules, called by World or driven by events
       Ballistics.js       traceBullet, lineOfSight, occlusion (blast transmission)
+      Rng.js              the world's GAMEPLAY dice (`world.rng`, made first in World, seeded once from Math.random so
+                          the QA seed reaches it): what decides the game rolls them (pursuers' slots and cooldowns, a
+                          wreck's fire, guards' reactions, hearing, aim error and spread, pastimes, the director's
+                          nerves); what only looks keeps Math.random (`dice(world)`; a stub world: Math.random)
+      Route.js            the chase's route (level `chase`: legs and scripted bends, distances along it, bendStep);
+                          `checkRoute(chase)`: what is wrong with one (run by tools/build_level2a.py and the tests)
+      RoutePath.js        a route's line (straight lines, corners rounded off): the chase's bends, level 1's getaway
       Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Kick.js             the player's feet on a standing guard: who a slide's end kicks (range, cone, timing), who is in
@@ -473,7 +480,7 @@ decides on (a case meets walls only, a round's hit is traced from his real place
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles, a bin knocked over: `clatter`) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident), Rumble (near him) |
-| `pursuerWreck` | `{ car, x, y }` (a pursuer stopped for good: wrecked, its driver shot, a front tyre, blown up) | systems/Pursuit.js | ChaseCam (the kill beat), CarFx (its engine's fire-ball) |
+| `pursuerWreck` | `{ car, x, y }` (a pursuer stopped for good: wrecked, its driver shot, a front tyre, blown up; a toll's crash is decided and marked `car.tollCrash` before it is told: Pursuit.wreck calls Toll.crash) | systems/Pursuit.js | ChaseCam (the kill beat), CarFx (its engine's fire-ball, none for a toll crash) |
 | `pursuerCrash` | `{ car, x, y }` (a pursuer on its way out stopped by what lines the road) | systems/Pursuit.js exitFx | CarFx (burning, it goes up there) |
 | `tyres` | `{ car, at: [points], k }` (tyres letting go this step: a burn-out, a shove, hard steering, a wreck sliding) | Drive.fx, Pursuit.exitFx | CarFx (rubber smoke in the air, the billows) |
 | `carStruck` | `{ car, x, y, dirA, tank }` (a round in a body panel) | Vehicle.hit | CarFx (hot sparks, a glint) |
