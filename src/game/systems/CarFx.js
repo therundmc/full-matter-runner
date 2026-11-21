@@ -118,6 +118,7 @@ export default class CarFx {
     if (this.listN !== w.props.length) {
       this.listN = w.props.length;
       this.list = w.props.filter((p) => p.isVehicle);
+      for (const v of this.cars.keys()) if (!this.list.includes(v)) this.cars.delete(v); // (a car gone from the world)
     }
     for (const v of this.list) this.car(v, dt);
     this.contacts(dt);

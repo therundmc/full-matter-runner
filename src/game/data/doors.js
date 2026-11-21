@@ -51,6 +51,7 @@ export const DOORS = {
   // blows on it (Door.hit), N.s along the blow where it lands: a round (per point of damage: a 7.62 counts 3), a
   // melee blow, a kick. A round barely turns it, a heavy one a little; a kick or a bat slams it open
   hits: { bullet: 2.5, melee: 45, kick: 80 },
+  jolt: 0.18,        // s the leaf is drawn jittering after a blow or a kick (not a round)
   burst: 0.32,       // rad/step the lock giving throws it open at (x the blow's power)
 
   // a hydraulic closer (a kind's or the level's option `closer`): it swings it back shut on its own, a spring of

@@ -668,6 +668,7 @@ export default class Drive {
   endBend() {
     const st = this.bend, b = st.b, v = this.van;
     this.bend = null;
+    this.flanks?.clear(); // (the cars scraped in it: met anew in the next one)
     this.bendI = b.i + 1 < this.route.bends.length ? b.i + 1 : -1;
     this.legI = b.to;
     this.cruise = this.leg.cruise;
@@ -1184,6 +1185,7 @@ export default class Drive {
     this.lost = false;
     for (const h of this.hits) this.react(h);
     this.hits.length = 0;
+    for (const [k, t] of this.seen) if (w.time - t >= this.C.hit.again) this.seen.delete(k); // (hit long enough ago: anew)
     if (!this.dead) { this.flankStep(dt); this.scrape(dt); this.fx(dt); }
     this.clearLanes(dt);
     this.carry();

@@ -2524,6 +2524,7 @@ export default class Enemy extends Character {
     if (this.knocked <= 0) {
       this.knocked = 0;
       this.dazed = false;
+      this.flung = null; // (up again: he no longer flies, whatever his speed)
       this.body.collisionFilter = { category: CAT.CHAR, mask: MASK.CHAR, group: 0 };
       this.angle = this.downAngle + Math.PI;
       if (this.passive) return;

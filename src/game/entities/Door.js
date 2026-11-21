@@ -245,6 +245,7 @@ export default class Door {
   // closer, soft end stops that knock when it swings into them, the latch when it comes shut
   constrain(dt) {
     this.tickLamp(dt);
+    this.shakeT = Math.max(0, this.shakeT - dt); // (the jitter after a blow: on the world's clock, draw)
     const b = this.body;
     if (this.locked) return;
     const S = DOORS.stop, K = this.spec;
@@ -379,7 +380,7 @@ export default class Door {
     } else {
       w.sound(this.spec.steel ? 'doorBoom' : 'doorSlam', px, py, kind === 'kick' ? 0.8 : 1);
       w.shake(0.12);
-      this.shakeT = 0.18;
+      this.shakeT = DOORS.jolt;
       w.noise(px, py, 300, null, 'door');
       if (this.locked) this.latch -= dmg;
     }
@@ -508,7 +509,6 @@ export default class Door {
   draw(ctx) {
     const b = this.body;
     const jx = this.shakeT > 0 ? rand(-1, 1) : 0;
-    this.shakeT -= 1 / 60;
     ctx.save();
     ctx.translate(b.position.x + jx, b.position.y);
     ctx.rotate(b.angle);

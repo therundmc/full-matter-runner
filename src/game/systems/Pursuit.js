@@ -1229,6 +1229,9 @@ export default class Pursuit {
       }
       if (tg && DRIVEN.has(car.state) && car.v.x < tg.x - this.C.lost) this.dropOut(car);
     }
+    // (out of it for good and left far behind, or gone from the world: no longer one of theirs to drive or count;
+    // the wreck stays on the road as any car)
+    this.cars = this.cars.filter((c) => !(c.v.dead || (tg && !c.dummy && !c.out && (c.state === 'wrecked' || c.state === 'lost') && c.v.x < tg.x - this.C.lost)));
     this.stepTell(dt, tg);
     this.stepLanes(dt);
     for (const tr of this.tracers) tr.t += dt;
