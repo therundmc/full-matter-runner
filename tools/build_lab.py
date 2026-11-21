@@ -195,7 +195,8 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    (its signal a green arrow), the south one, the lane he is in, by a steel boom (a red X). Told 1.5 s
                    out: bone arrows down the wooden lane, red on the steel one. Through the arm: it flies in its
                    lengths, a tenth of the speed lost, a breath of slow motion; nose-on into the boom: the crash. The
-                   road ends on a wall past it: E to get out before it
+                   road ends on a wall past it: E to get out before it. Before the plaza, channelizer posts on the
+                   lane line (level 2A's gore): steer through them, each torn off at no cost, its tube flying
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -735,6 +736,8 @@ for (i, r) in enumerate(T_ISLES):
     if i > 0:
         lv.prop('lane_signal_go' if i == 1 else 'lane_signal_stop', T_NOSE + 1.4, r)
 lv.prop('gate_arm_wood', T_GATE, T_LANES[0] - 11 / 32, 90)
+for c in (156.5, 159.5, 162.5):
+    lv.prop('channelizer', c, 47.5)            # (level 2A's gore posts: driven through, the tubes flying)
 lv.prop('gate_steel', T_GATE, T_LANES[1] - 12 / 32, 90)
 for (c, r) in ((160.5, 41.6), (176.5, 53.4)):
     lv.prop('highway_lamp', c, r, 90)

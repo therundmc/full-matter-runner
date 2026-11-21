@@ -1155,6 +1155,22 @@ lv.paint('mattress_dumped', 553.8, 39.3, 160)                           # (in a 
 lv.paint('tyre_marks', 543.5, 39.0 + 36 / 32 - 0.3)
 lv.paint('crash_debris', 549.8, 41.75, 90)                                # (past the gore's tip, off its paint)
 
+
+def gore_top(c):
+    """The row of the gore's slanted edge (the freeway's edge line coming in) at column c (gore_taper: 2.5 m wide at
+    M0, its point at M1 on the ramp's edge line, row R0)."""
+    return F1 + 0.5 + (R0 - F1 - 0.5) * (c - M0) / (M1 - M0)
+
+
+# the gore channelized: a line of flexible posts (`channelizer`) 3 m apart along each of its edges, just inside its
+# white lines, the two lines closing in toward its tip (where it is too narrow for two, the ramp's goes on alone);
+# meant to be driven through (torn off at no cost, the tubes flying): the only props on the gore (check_posts)
+POST_IN = 0.28                                                            # tiles inside the edge lines
+for c in (M0 + 1.5 + 3 * k for k in range(7)):
+    must('channelizer', c, R0 - POST_IN, on='=')                          # along the ramp's edge
+    if R0 - POST_IN - (gore_top(c) + POST_IN) >= 0.5:
+        must('channelizer', c, gore_top(c) + POST_IN, on='=')             # along the freeway's
+
 # ---------------------------------------------------------------- THE TOLL (cols 560 on; docs/LEVEL2.md segment 2)
 # The four lanes side by side the merge leaves (the freeway's two, leg 1's two) spread to the plaza's grid
 # under its lit roof (four lanes of 3 m between five islands of 1.5 m: TOLL_LANES in tools/generate_assets.py), each
@@ -1863,16 +1879,27 @@ ambient = {
 # first sidewalk row: where the parking row is on the north side, the lorry's stretch), its streets across [first col,
 # last col, row above, row below] (the line of the building fronts held across them: systems/Drive.js fronts; the
 # chase's own `across` hold on every leg)
+# the bank under the freeway (leg 1's north side): its kerb, then the freeway's rail along its top, both ending at the
+# bank's nose (the gore from col M0): the wheel kept off it beside them, never past them (the merge's lanes are his)
+BANK = [LEG1, M0 - 1, ROAD1[0] - 0.4, H]
 LEGS = [
     {'from': 0, 'to': LEG1, 'lanes': list(LANES), 'mid': 13.0, 'cruise': 8.9, 'kerbs': [9, 16],
      'across': [[SIDE[0] - 2, SIDE[1] + 2, 8, 18]]},
-    # leg 1: the frontage road, the on-ramp, the merge (one way east, both lanes ours). Framed from the freeway's near
-    # lane to the sheds' fronts; 70 km/h (a cruise is the leg's whole: one step up from the street's, the toll's next);
-    # the wheel kept between the bank and the sheds, the dock's edges or the ramp's guardrail (`across`)
-    {'from': LEG1, 'to': TOLL0, 'lanes': list(LANES1), 'mid': 44.5, 'cruise': 10.4,
+    # leg 1: the frontage road and the on-ramp (one way east, both lanes ours). Framed from the freeway's near lane to
+    # the sheds' fronts; 70 km/h (a cruise is the leg's whole: one step up from the street's, the toll's next); the
+    # wheel kept between the bank (its kerb, then the freeway's rail along its top: BANK, to where both end) and the
+    # sheds, the dock's edges or the ramp's guardrail (`across`)
+    {'from': LEG1, 'to': M0, 'lanes': list(LANES1), 'mid': 44.5, 'cruise': 10.4,
      'kerbs': [ROAD1[0], ROAD1[1] + 1],
-     'across': [[LEG1, TOLL_X - 1, ROAD1[0] - 0.4, H], [DOCK_S[0] - 2, DOCK_S[1] + 1, 0, ROAD1[1] + 2.2],
+     'across': [BANK, [DOCK_S[0] - 2, DOCK_S[1] + 1, 0, ROAD1[1] + 2.2],
                 [RAMP_X - 1, TOLL_X - 1, 0, ROAD1[1] + 1.9], [RAMP_X - 1, RAMP_X + 1, 0, ROAD1[1] + 1.7]]},   # (the rail's end)
+    # THE MERGE, past the bank's nose: the freeway's lanes open to the wheel across the gore (paint: driven over, its
+    # channelizer posts torn off), the view drawn up to the toll's middle (the four lanes side by side on the picture)
+    # and following half his way across (`track`: up on the freeway's far lane he stays on it); held inside the ramp's
+    # rail and, north, the approach's line (the toll's); the bank's hold still under his tail
+    {'from': M0, 'to': TOLL0, 'lanes': list(LANES1), 'mid': MID, 'cruise': 10.4, 'track': 0.5,
+     'kerbs': [ROAD1[0], ROAD1[1] + 1],
+     'across': [BANK, [M0, TOLL_X - 1, RAIL[0] + 0.22, ROAD1[1] + 1.9], [RAMP_X - 1, M0 - 1, 0, ROAD1[1] + 1.9]]},
     # THE TOLL: no bend, the legs follow one another by column (the car goes on in its row from one to the next:
     # Drive's framing eased across). The approach (the four lanes side by side the merge left: the freeway's two and
     # leg 1's), the plaza from the fan to just past the gates (its four lanes under the roof; the camera follows him
@@ -1968,9 +1995,9 @@ def lane_bands(leg):
 def check_lanes():
     """Nothing stands in the lanes of a leg, anywhere along it (a parked car's flank included), and nothing loose
     stands within reach of them: a thing a car could knock into a lane is a thing in the lane. A toll's gates stand
-    across theirs on purpose."""
+    across theirs on purpose; a gore's posts (POSTS) are driven through, on its paint only (check_posts)."""
     for (_, kind, col, row, deg, _) in lv.props:
-        if SIZES.get(kind) is None or kind in ACROSS:
+        if SIZES.get(kind) is None or kind in ACROSS or kind in POSTS:
             continue
         b = Level.box(kind, col, row, deg)
         if roadway(int(col)) and not 8 <= row < 18:
@@ -1999,6 +2026,10 @@ STAINS = {'puddle_neon', 'puddle_neon_b', 'oil_stain_a', 'oil_stain_b', 'oil_str
           'road_patch_c', 'road_crack_a', 'road_crack_b', 'tyre_marks', 'skid_marks', 'crash_debris', 'litter_a', 'litter_b',
           'litter_bottles', 'expansion_joint'}
 SLANTED = {'plaza_fan', 'lane_taper', 'gore_taper'}
+# a gore's paint (what closes it off between two roads) and the posts that may stand on it, and nowhere else: torn off
+# by a car at no cost, they are meant to be driven through (check_posts)
+GORE_PAINT = {'gore_taper', 'gore_hatch'}
+POSTS = {'channelizer'}
 SPRITES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'sprites', 'props')
 
 
@@ -2015,6 +2046,30 @@ def opaque(kind, deg):
     im = Image.open(os.path.join(SPRITES, kind + '.png')).getchannel('A')
     im = im.resize((im.width // 2, im.height // 2), Image.BOX).point(lambda v: 255 if v > 40 else 0)
     return im.rotate(-deg, expand=True, resample=Image.NEAREST) if deg % 360 else im
+
+
+def on_gore(col, row):
+    """Is the world point (col, row) on a gore's paint: between its painted lines, in their column (a pixel of the
+    sprite at or above it and one at or below it)?"""
+    for (kind, x, y, deg) in lv.floor:
+        if kind not in GORE_PAINT:
+            continue
+        m = opaque(kind, deg)
+        i, j = int((col - x) * 32 + m.width / 2), int((row - y) * 32 + m.height / 2)
+        if not (0 <= i < m.width and 0 <= j < m.height):
+            continue
+        column = m.crop((i, 0, i + 1, m.height))
+        if column.crop((0, 0, 1, j + 1)).getbbox() and column.crop((0, j, 1, m.height)).getbbox():
+            return True
+    return False
+
+
+def check_posts():
+    """A gore's posts (POSTS) stand on its paint, their whole box on it, and nowhere else."""
+    for (_, kind, col, row, deg, _) in lv.props:
+        if kind in POSTS:
+            b = Level.box(kind, col, row, deg)
+            assert all(on_gore(c, r) for c in (b[0], b[2]) for r in (b[1], b[3])), f'{kind} at {col},{row} is off a gore\'s paint'
 
 
 def check_stains(col0, col1, marks, eps=0.03):
@@ -2074,6 +2129,7 @@ def check_paint_overlaps(col0, col1, eps=0.03, stains=False):
 if __name__ == '__main__':
     lv.actor('@', int(START[0]), int(START[1]), face=0)
     check_lanes()
+    check_posts()
     check_paint_overlaps(0, W, stains=True)       # (the whole level: its rain, oil, cracks and rubber too)
     for B in BENDS:
         check_bend(B['path'], B['radius'])

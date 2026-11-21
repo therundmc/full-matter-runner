@@ -41,6 +41,7 @@
 //   pieces     [[sprite, x0, x1, fly]]: it comes apart into these whole pieces (props/<sprite>, painted as such: a
 //              gate arm's lengths), each where it was (x0..x1: fractions of its length), thrown `fly` x as fast;
 //              `parts` then cut what is left of it
+//   crush      the sound it gives way with, in place of its material's (a named placeholder: a channelizer's slap)
 export const DESTRUCTION = {
   table: {
     height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' },
@@ -357,6 +358,9 @@ export const DESTRUCTION = {
     parts: [{ cut: 'panel', rect: [0, 0, 0.17, 1], name: 'cabinet', fly: 0.1 }],
   },
   gate_steel: { height: 1, material: 'metal' },
+  // a channelizer post run down: its tube snaps off the base and flies, the base left glued with its stub (barely
+  // moved), its own slap (a placeholder: assets/sound/PLACEHOLDERS.md)
+  channelizer: { height: 0.9, crush: 'postSlap', pieces: [['channelizer_base', 0, 1, 0.05], ['channelizer_tube', 0, 1, 2.4]] },
   // ART DECO 1985 (data/props.js)
   palm_fan: { height: 6, drop: true, floats: ['leaf', 30], parts: [{ cut: 'wedges', n: 6 }] },
   palm_fan_small: { height: 4.5, drop: true, floats: ['leaf', 24], parts: [{ cut: 'wedges', n: 6 }] },
@@ -655,7 +659,7 @@ export function recipeFor(type, def) {
     contents: r.contents || [],
     electric: r.electric ?? !!def.sparks,
     saw: r.saw ?? MATERIAL_FX[material].saw,
-    fx: MATERIAL_FX[material],
+    fx: r.crush ? { ...MATERIAL_FX[material], crush: r.crush } : MATERIAL_FX[material],
   };
 }
 

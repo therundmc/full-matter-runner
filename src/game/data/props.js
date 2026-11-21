@@ -391,6 +391,9 @@ export const PROPS = {
   sign_speed_55: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#ece8de', sound: 'metal', bends: 6 },
   sign_toll_ahead: { overhead: true, height: 0.012, pole: ['#4a4e58', 3], static: true, material: 'metal', r: 3, hp: 4, chips: '#1c6a4c', sound: 'metal', bends: 6 },
   reflector_post: { static: true, material: 'plastic', r: 1.5, hp: 2, chips: '#e8e4da', sound: 'wood' },
+  // a channelizer post on a gore's edge (a line of them: the merge, the lane drop): meant to be driven through, torn
+  // off at no cost to the car (`cost` 0); its tube snaps off the base and flies (data/destruction.js)
+  channelizer: { static: true, material: 'plastic', r: 3, hp: 1, chips: '#ff6a1a', sound: 'wood', cost: 0 },
   // the freeway's bridge over the side street: out of reach, it fades over him as he drives under (as the railway's)
   overpass: { hung: true, lasting: true, overhead: true, height: 0, static: true, material: 'stone', w: 576, h: 256, hp: 99, chips: '#a8a49a', sound: 'stone' },
   // the toll: islands and booths never give; the roof over the lanes is out of reach (it fades over him); the wooden

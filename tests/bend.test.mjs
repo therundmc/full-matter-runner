@@ -253,7 +253,7 @@ test('bend: the camera is never turned, on whole px, never jumps a step; it foll
     most = Math.max(most, Math.hypot(f.x - was.x, f.y - was.y));
     if (d.bend && f.y > C.lanes[1] * TILE + 200) followed = true;
     was = f;
-    return false;
+    return d.legI === 1 && v.x > (C.legs[1].to - 2) * TILE; // (to the merge: the next leg's framing from there)
   });
   const step = CHASE.cruise + CHASE.bend.camera.most * Math.SQRT2 + 2 / z;
   assert.ok(most <= step, `${most.toFixed(1)} px a step at most (${step.toFixed(1)})`);
