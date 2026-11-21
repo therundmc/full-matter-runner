@@ -141,7 +141,7 @@ export default class ChaseCam {
     }
     S.beat = this.now;
     // the picture kicked toward it, shaken; the lens and the pad feel a hit
-    const T = car.tollCrash ? K.toll : K[S.tier], v = w.drive.van, a = Math.atan2(car.y - v.y, car.x - v.x);
+    const T = car.tollCrash ? K.toll : K[S.tier], v = w.drive.car, a = Math.atan2(car.y - v.y, car.x - v.x);
     w.camera?.push(Math.cos(a) * T.push, Math.sin(a) * T.push);
     w.shake?.(T.shake);
     w.events.emit('ride', { beat: 'hit', x: car.x, y: car.y });
@@ -170,7 +170,7 @@ export default class ChaseCam {
 
   // the first thing smashed in a bend ({ x, y }): the slow motion of the alley (over a bend's breath under way)
   onSmash({ x, y }) {
-    const B = CHASE.bend.smash.beat, w = this.world, v = w.drive?.van;
+    const B = CHASE.bend.smash.beat, w = this.world, v = w.drive?.car;
     if (!B || !this.live || (this.beat && this.beat.kind !== 'bend')) return;
     this.open({ kind: 'smash', tier: 'strong', ...B, shot: null, at: null });
     if (v) { const a = Math.atan2(y - v.y, x - v.x); w.camera?.push(Math.cos(a) * B.push, Math.sin(a) * B.push); }
@@ -203,7 +203,7 @@ export default class ChaseCam {
   // a toll's plaza ahead: the choosing's slow motion opened `lead` s out, once a plaza (as soon as its tells are up),
   // let go once he is committed to a wooden lane or past the gates
   choose(d) {
-    const K = this.C.choose, b = this.beat, v = d.van, car = { x: v.x, y: v.y, u: d.u };
+    const K = this.C.choose, b = this.beat, v = d.car, car = { x: v.x, y: v.y, u: d.u };
     if (b?.kind === 'choose') {
       // (or `last` s before the lanes' mouths at his speed: from there it is his to make at full speed)
       if (b.held && (tollCommitted(b.P, car, K) || (mouthX(b.P) - v.x) / Math.max(1, d.v * 60) <= K.last)) { b.held = false; b.left = 0; }
@@ -223,7 +223,7 @@ export default class ChaseCam {
   // the lorries across his road
   lorry(d) {
     const w = this.world, C = this.C.lorry, b = this.beat;
-    const v = d.van, car = { x: v.x, y: v.y, w: v.w, h: v.h, v: d.v };
+    const v = d.car, car = { x: v.x, y: v.y, w: v.w, h: v.h, v: d.v };
     for (const L of w.lorries.list) {
       if (L.state === 'wait') { L.slowed = L.shaved = false; continue; }
       if (L.state === 'home') continue;
@@ -288,6 +288,6 @@ export default class ChaseCam {
   chooseShot(b) {
     const d = this.world.drive, P = b.P, vw = d.viewW || CHASE.camera.view * 16 / 9;
     const y = P.lanes.reduce((a, r) => a + r, 0) / P.lanes.length * TILE;
-    return { name: b.shot, at: { x: d.van.x + vw * (0.5 - CHASE.camera.at + this.C.choose.ahead), y } };
+    return { name: b.shot, at: { x: d.car.x + vw * (0.5 - CHASE.camera.at + this.C.choose.ahead), y } };
   }
 }

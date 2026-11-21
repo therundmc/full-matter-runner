@@ -47,12 +47,12 @@ export function inCone(a, car, cone = CHASE.gun.cone) {
 }
 
 export default class CarGun {
-  // drive: the drive he is at (its van, his seat in it: sprite px)
-  constructor(world, van, seat) {
+  // drive: the drive he is at (its car, his seat in it: sprite px)
+  constructor(world, car, seat) {
     this.world = world;
-    this.van = van;
+    this.car = car;
     this.seat = seat;
-    this.arc = arcOf(van.w, seat[0]);
+    this.arc = arcOf(car.w, seat[0]);
     this.cool = 0;     // s before the next round
     this.aimed = null; // { a, ok }: where the hand points this step, and whether it can (the cursor, ui)
   }
@@ -65,10 +65,10 @@ export default class CarGun {
     return !!d && d.kind === 'gun' && d.hold !== 'two';
   }
 
-  get open() { return !!this.van.m.cabin; }
+  get open() { return !!this.car.m.cabin; }
 
   // where the hand turns from (world point): the seat in an open car, out of the driver's window in a closed one
-  root() { return this.van.toWorld(this.seat[0], this.open ? this.seat[1] : -CHASE.gun.reach); }
+  root() { return this.car.toWorld(this.seat[0], this.open ? this.seat[1] : -CHASE.gun.reach); }
 
   // The gun pointed along a, where the simulation has it (world points placed from the car's body): { x, y, a } its
   // muzzle and the way the barrel points, `port` its ejection port. In an open car it is the gun in his hand as the
@@ -94,14 +94,14 @@ export default class CarGun {
     const d = this.player.def, w = d.sprite ? sw(sprite(d.sprite)) : 0, [h, g] = CHASE.gun.out;
     const o = this.root(), c = Math.cos(a), s = Math.sin(a);
     const hand = { x: o.x + c * h, y: o.y + s * h }, at = { x: hand.x + c * g, y: hand.y + s * g };
-    return { sh: this.van.toWorld(this.seat[0], 1), hand, at, muzzle: onSprite(d, w, at, a, w - MUZZLE_IN), port: onSprite(d, w, at, a, d.eject ?? d.grip ?? 0) };
+    return { sh: this.car.toWorld(this.seat[0], 1), hand, at, muzzle: onSprite(d, w, at, a, w - MUZZLE_IN), port: onSprite(d, w, at, a, d.eject ?? d.grip ?? 0) };
   }
 
   // Where the muzzle is SEEN now, for what is drawn from it (its flash: fx/CombatFx.js; the start of a round's streak:
   // entities/Projectile.js `src`): the car is drawn on the picture's px, on one of its angles and on its springs, and
   // what is in it with it (Vehicle.carried / carriedAt). A draw's, never the simulation's; null with no gun out
   drawnMuzzle() {
-    const p = this.player, v = this.van;
+    const p = this.player, v = this.car;
     if (!p.alive || !this.armed) return null;
     if (!this.open) return this.aimed?.ok ? v.carriedAt(this.outOf(this.aimed.a).muzzle) : null;
     // (his gun as it was drawn last, Character.muzzlePos, with him in the car's frame on its springs)
@@ -112,7 +112,7 @@ export default class CarGun {
   // the way from the hand's root to the aim, and whether it is in his arc (an open car: all round but behind him, over
   // its windscreen and across its other seat; a closed one: out of his window)
   aimAt(aim) {
-    const v = this.van, o = this.root(), a = Math.atan2(aim.y - o.y, aim.x - o.x);
+    const v = this.car, o = this.root(), a = Math.atan2(aim.y - o.y, aim.x - o.x);
     return { a, ok: this.open ? inCone(a, v.body.angle) : inArc(a, v.body.angle, this.arc) };
   }
 
@@ -136,12 +136,12 @@ export default class CarGun {
     if (this.cool > 0) return false;
     const m = this.hand(a);
     if (Math.abs(angDiff(m.a, a)) > CHASE.gun.level) return null;
-    const from = this.van.toWorld(this.seat[0], this.seat[1]), cv = Body.getVelocity(this.van.body);
+    const from = this.car.toWorld(this.seat[0], this.seat[1]), cv = Body.getVelocity(this.car.body);
     for (let i = 0; i < d.pellets; i++) {
       const pr = new Projectile(w, m.x, m.y, a + (d.spread + CHASE.gun.spread) * spread(), d.speed, {
         team: p.team, owner: p, weapon: d, life: d.range ?? 1.1, pen: d.pen ?? 10, from, src: this,
       });
-      pr.ignore.add(this.van); // never his own car
+      pr.ignore.add(this.car); // never his own car
       pr.vx += cv.x * 60; // the round carries the car's speed (a car alongside is hit where it is aimed at)
       pr.vy += cv.y * 60;
       w.addProjectile(pr);
@@ -164,7 +164,7 @@ export default class CarGun {
   eject(d, port, a, cv) {
     const img = d.casing && spriteOpt('weapons/' + d.casing);
     if (!img || !chance(CARFX.casings * (quality().fx ?? 1))) return;
-    const v = this.van, seen = this.open ? v.carriedAt(port, ...(v.sag ?? [0, 0]), v.snapped()) : v.carriedAt(port, 0, 0, v.snapped());
+    const v = this.car, seen = this.open ? v.carriedAt(port, ...(v.sag ?? [0, 0]), v.snapped()) : v.carriedAt(port, 0, 0, v.snapped());
     const e = ejection(d, seen, a, { x: cv.x * 60, y: cv.y * 60 });
     const c = new Debris(this.world, img, e.x, e.y + e.z * e.spec.lift, e.angle, e.vx, e.vy, e.spin, {
       mask: CAT.WALL | CAT.EDGE, material: 'brass', air: 0.08, shadow: 0, kg: e.spec.kg, mu: e.spec.mu, bounce: 0.5, z: e.z, vz: e.vz, tumble: e.tumble,

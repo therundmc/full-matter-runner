@@ -218,7 +218,7 @@ test('toll: a lane\'s line runs from its row on the approach through the fan to 
 test('toll: told 1.5 s out at his speed, until he is past its gates', () => {
   const w = { props: [], events: new EventBus(), exited: false, drive: null };
   const S = new Toll(w, [T]), P = S.plazas[0], v = 13.3;
-  const drive = (x) => { w.drive = { on: true, dead: false, v, van: { x, y: T.from[2] * TILE } }; };
+  const drive = (x) => { w.drive = { on: true, dead: false, v, car: { x, y: T.from[2] * TILE } }; };
   drive(GX - reach(CHASE.toll.tell, v) - 40);
   for (let i = 0; i < 20; i++) S.step(DT);
   assert.equal(P.k, 0, 'not yet');

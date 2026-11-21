@@ -68,7 +68,7 @@ test('aim: no cue for a man who cannot aim', () => {
 
 test('aim: at the wheel the cue is his car gun\'s: from his hand in its arc, a grey stub from his seat out of it, none with no gun out', () => {
   const van = {}, p = player('uzi', { riding: {}, hidden: true });
-  const gun = { van, aimed: { a: -1, ok: true }, hand: () => ({ x: 50, y: -8 }), root: () => ({ x: 44, y: 0 }) };
+  const gun = { car: van, aimed: { a: -1, ok: true }, hand: () => ({ x: 50, y: -8 }), root: () => ({ x: 44, y: 0 }) };
   let skipped = null;
   const w = world(p, [], { drive: { on: true, gun }, traceBullet: (x0, y0, x1, y1, team, skip) => { skipped = skip; return null; } });
   const q = aimCue(w);

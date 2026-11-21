@@ -56,7 +56,7 @@ export default class Lorries {
   // what he drives (the chase's car, the lab's van), else null
   car() {
     const d = this.world.drive;
-    return d?.on && !d.dead ? d.van : null;
+    return d?.on && !d.dead ? d.car : null;
   }
 
   step(dt) {

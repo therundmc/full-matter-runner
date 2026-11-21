@@ -10,7 +10,9 @@ globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContex
 
 const { default: Lorries, backedAt, beepsBy } = await load('game/systems/Lorries.js');
 const { default: Pursuit } = await load('game/systems/Pursuit.js');
-const { default: Drive, skidOf, tearPower, finishView, onNose, nosedIn } = await load('game/systems/Drive.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { skidOf, tearPower, onNose, nosedIn } = await load('game/systems/drive/rules.js');
+const { finishView } = await load('game/ui/Continued.js');
 const { CHASE } = await load('game/data/chase.js');
 const { PROPS } = await load('game/data/props.js');
 const { WEAPONS } = await load('game/data/weapons.js');

@@ -7,7 +7,8 @@ import { ctx, quiet } from './helpers.mjs';
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Pursuit, dueEvents, lanesOf, slotOf, pickSlots, lockOf, inBand, reaches } = await load('game/systems/Pursuit.js');
-const { default: Drive, seatOf } = await load('game/systems/Drive.js');
+const { default: Drive } = await load('game/systems/Drive.js');
+const { seatOf } = await load('game/systems/drive/rules.js');
 const { arcOf, inArc, inCone } = await load('game/systems/CarGun.js');
 const { CHASE } = await load('game/data/chase.js');
 const { SEAT } = await load('game/data/feel.js');

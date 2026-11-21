@@ -181,19 +181,19 @@ test('checkpoints: reached by his car, each is kept on the game with the clock a
   const w = {
     events, level: level2a, game: {}, time: 0, runTime: 0, totalEnemies: 2, exited: false, player: { alive: true },
     scoring: { snapshot: () => ({ points: w.runTime * 10 }) }, sound: (n) => sounds.push(n),
-    drive: { on: true, dead: false, van: { x: C.van[0] * TILE, y: 0 } },
+    drive: { on: true, dead: false, car: { x: C.van[0] * TILE, y: 0 } },
   };
   const k = Checkpoints.of(w, level2a, null);
   k.step(DT);
   const legY = routeOf(C).legs[1].lanes.at(-1) * TILE;
-  w.drive.van.y = legY;
+  w.drive.car.y = legY;
   assert.equal(w.game.chaseAt.i, 0, 'the start: kept');
   assert.equal(told.length, 0, 'never told');
   assert.equal(k.view, null);
-  w.drive.van.x = CP[1].at * TILE - 1; w.runTime = 24.5; w.totalEnemies = 10;
+  w.drive.car.x = CP[1].at * TILE - 1; w.runTime = 24.5; w.totalEnemies = 10;
   k.step(DT);
   assert.equal(w.game.chaseAt.i, 0);
-  w.drive.van.x = CP[1].at * TILE + 2;
+  w.drive.car.x = CP[1].at * TILE + 2;
   k.step(DT);
   assert.deepEqual(w.game.chaseAt, { name: level2a.name, i: 1, time: 24.5, score: { points: 245 }, guards: 10 });
   assert.deepEqual(told.map((e) => e.name), ['THE ON-RAMP']);
@@ -207,12 +207,12 @@ test('checkpoints: dead at the wheel, nothing is kept', () => {
   const w = {
     events: new EventBus(), level: level2a, game: {}, time: 0, runTime: 0, totalEnemies: 2, exited: false, player: { alive: true },
     scoring: { snapshot: () => ({}) }, sound: () => {},
-    drive: { on: true, dead: false, van: { x: C.van[0] * TILE, y: 0 } },
+    drive: { on: true, dead: false, car: { x: C.van[0] * TILE, y: 0 } },
   };
   const k = Checkpoints.of(w, level2a, null);
   k.step(DT);
   w.drive.dead = true;
-  w.drive.van.x = CP[1].at * TILE + 2;
+  w.drive.car.x = CP[1].at * TILE + 2;
   k.step(DT);
   assert.equal(w.game.chaseAt.i, 0);
 });
@@ -222,7 +222,7 @@ test('checkpoints: a run through 2A records them in turn; the score earned is ke
   const s = build(null, 400, 480);
   // straight to the on-ramp's column: the car placed short of it on leg 1 (the run up to it is the other tests')
   const { d, w } = s;
-  Matter.Body.setPosition(d.van.body, { x: (CP[1].at - 3) * TILE, y: routeOf(C).legs[1].lanes.at(-1) * TILE });
+  Matter.Body.setPosition(d.car.body, { x: (CP[1].at - 3) * TILE, y: routeOf(C).legs[1].lanes.at(-1) * TILE });
   w.scoring.points = 1200; w.scoring.kills = 4; w.scoring.methods.add('wreck');
   let then = null;
   w.events.on('checkpoint', () => { then = w.scoring.points; });

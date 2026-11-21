@@ -226,14 +226,14 @@ export default class Toll {
   step(dt) {
     const C = this.C, d = this.car(), w = this.world;
     for (const P of this.plazas) {
-      const on = !!d && !w.exited && d.van.x < P.x + C.past && d.van.x >= P.x - reach(C.tell, d.v, C.least);
+      const on = !!d && !w.exited && d.car.x < P.x + C.past && d.car.x >= P.x - reach(C.tell, d.v, C.least);
       P.k = on ? Math.min(1, P.k + dt / C.fade) : Math.max(0, P.k - dt / C.fade);
       P.props.forEach((p, k) => {
         if (!p || P.gates[k] !== 'wood' || this.seen.has(p) || !(p.dying || p.dead)) return;
         this.seen.add(p);
-        const cars = [d?.van, ...(w.pursuit?.cars || []).map((c) => c.v)].filter(Boolean);
+        const cars = [d?.car, ...(w.pursuit?.cars || []).map((c) => c.v)].filter(Boolean);
         const by = cars.reduce((a, c) => (!a || Math.hypot(c.x - p.x, c.y - p.y) < Math.hypot(a.x - p.x, a.y - p.y) ? c : a), null);
-        const his = !!by && by === d?.van && Math.hypot(by.x - p.x, by.y - p.y) < by.w;
+        const his = !!by && by === d?.car && Math.hypot(by.x - p.x, by.y - p.y) < by.w;
         w.events.emit('tollGate', { kind: 'wood', car: by, his, x: p.x, y: p.y, lane: k });
       });
     }

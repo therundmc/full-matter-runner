@@ -23,7 +23,7 @@ const { OUTRO, outroBeat, spinK, wagAt, keyK, squatAt, routeSpeed, getawayPath, 
 const { TILE, PLAYER, BODY_SCALE, CAT, MASK } = await load('game/Config.js');
 const { SEAT } = await load('game/data/feel.js');
 const { CHASE } = await load('game/data/chase.js');
-const { seatOf, doorOf } = await load('game/systems/Drive.js');
+const { seatOf, doorOf } = await load('game/systems/drive/rules.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
 const { default: lab } = await load('game/data/levels/lab.js');
 

@@ -37,6 +37,18 @@ export const CHASE = {
   give: 0.3,            // what it runs at: no more than this over what it really did last step (a hit slows it)
   bounce: 2,            // a sideways bounce off what it leans on slower than this is dropped (it slides along it)
   fly: 0.05,            // s: driven, the floor's friction is not fighting the engine (refreshed each step)
+  // the wheel's grip on the speed (Drive.step): under `still` px/step it does not go sideways at all; the shove
+  // wants `shove` of the grip; out of a shove the sideways speed is its own again under `back` px/step; the slide
+  // takes the wheel over `slide` of the grip, the stick at 1 / `flick` of its throw being all of it; under
+  // CHASE.fx.from px/step the slide dies away at `calm` a second
+  hold: { still: 0.1, shove: 0.2, back: 1, slide: 0.5, flick: 1.5, calm: 6 },
+  // its front wheels as drawn (Vehicle `steer`, `most` either way): `steer` x the share of the full sideways speed
+  // he holds; in a bend `bend` x the line's turn less `slip` x the slide; a pursuer `pursuer` x its nose off the way
+  // it heads
+  wheels: { steer: 0.45, most: 0.5, bend: 0.4, slip: 0.5, pursuer: 2 },
+  // a car no longer driven (he got out of it, a pursuer wrecked, its exit over): the floor's friction back on it
+  // (`air`, `friction`) and it may sleep again (`sleep`: Matter's default sleepThreshold)
+  parked: { air: 0.02, friction: 0.6, sleep: 60 },
   // px its flank is held short of the building fronts as he steers into them (Drive.offFronts): a shop's windows and
   // doors are set back in its front, and a corner sliding along caught in one and held the car there
   front: 2,
@@ -52,7 +64,8 @@ export const CHASE = {
   // Its nose on a `lasting` thing (the lorry), it heads round the end of it that leaves room before the building fronts;
   // not `moved` px nearer to clearing it in each `after` s for `boxed` s (a car shoved into the way round and pinned
   // there), it is the crash (Drive.boxed: the QA robot calls a stall past 2 s a softlock)
-  stall: { under: 0.25, after: 0.6, steer: 0.4, moved: 4, until: 0.6, boxed: 1.2 },
+  // (which way out of it: the solid contacts' push across, over `push`, before the street's middle)
+  stall: { under: 0.25, after: 0.6, steer: 0.4, moved: 4, until: 0.6, boxed: 1.2, push: 0.3 },
   vehicle: 'convertible', // the model he drives in the chase (entities/Vehicle.js VEHICLES): THE BOSS's, roof down
   // where he sits and where its driver's door is, when the model gives none (VEHICLES[model].seat / .door, sprite px):
   // shares of its length (from the tail) and width (from the driver's side, -y; the door: px out from that side)
@@ -64,12 +77,14 @@ export const CHASE = {
   // that), then the steering again; once every `cooldown` s. What sells it: `shake`, the camera thrown `push` world px that way, the body rolled (`roll` px/s)
   // and thrown up (body.lift.shove), `smoke` puffs off each tyre, the lens (data/post.js speed.drive.kick). What it
   // does to a pursuer it meets: pursuit.shoved
-  shove: { v: 8, dur: 0.1, back: 44, cooldown: 0.7, shake: 0.2, push: 5, roll: 30, smoke: 3 },
+  // (`puff`: each of its puffs of smoke)
+  shove: { v: 8, dur: 0.1, back: 44, cooldown: 0.7, shake: 0.2, push: 5, roll: 30, smoke: 3, puff: { speed: 34, size: 5, life: 0.7 } },
   // a nose-on hit on what does not give (a wall, a building, a `lasting` prop): faster than `speed` along the nose,
   // within `cone` rad of square on, he is dead; what it hit covering less than `corner` of its width (a corner
   // clipped), it is a jolt: the speed down to `clip`; less than `graze` px of it (the next wall body along the
   // building fronts, met at their seam as it slides on them), a scrape: nothing lost
-  crash: { speed: 6, cone: (35 * Math.PI) / 180, corner: 0.2, clip: 3, graze: 6, shake: 0.9, dents: 4 },
+  // (its `dents` along the nose, `dentAt`: [px in from it, from the share of its width, over that share of it])
+  crash: { speed: 6, cone: (35 * Math.PI) / 180, corner: 0.2, clip: 3, graze: 6, shake: 0.9, dents: 4, dentAt: [3, 0.15, 0.7] },
   // what gives: a parked car is shoved aside (`aside`, below; one of theirs still driven is hit by the physics:
   // square on faster than crash.speed, his car keeps only `keep` of its speed). A bolted thing (a hydrant, a streetlight, a bench)
   // hit faster than `tear` is torn off (thrown with `power` at cruise speed, more the faster, `most` at most: over 2
@@ -79,7 +94,8 @@ export const CHASE = {
   // of its way when it crawls), `side` rad out to the side it was hit on, turning up to `spin` rad/step, off the
   // floor `fly` s; it never holds the car up.
   hit: {
-    fly: 0.3, keep: 0.35, tear: 0.8, power: 2.2, most: 3, loss: 0.03, again: 0.4, shake: 0.25, chain: 1,
+    // (torn off, it is thrown along his way up to `aim` rad off it; at a crawl, or held, with `least` of `power`)
+    fly: 0.3, keep: 0.35, tear: 0.8, power: 2.2, most: 3, least: 0.6, aim: 0.3, loss: 0.03, again: 0.4, shake: 0.25, chain: 1,
     fling: { kg: 120, v: [0.9, 1.35], least: 2, side: [0.15, 0.7], spin: 0.35, fly: [0.25, 0.55] },
   },
   // A PARKED CAR (OR A WRECK) HE HITS IS SHOVED ASIDE, never a wall (Drive.aside; the user, 2026-11-19: "elle doit se
@@ -97,6 +113,10 @@ export const CHASE = {
   aside: {
     graze: 0.15, full: 0.65, loss: [0.1, 0.5], floor: 0.35, ahead: [0.6, 1.25], side: [2.6, 4.2], spin: [0.035, 0.07],
     kg: 1300, heavy: 0.75, fly: 0.45, deflect: 1.2, least: 0.8, slow: 2.5, hold: 1, again: 0.1, dead: 8, room: 8, push: 1.6, watch: 5,
+    // (its throw across by his speed's share of the cruise, within `by`; its spin times `jitter`; pushed on toward
+    // its kerb it keeps `keep` of its speed along, the kerb its own side's once over `middle` px off the middle, and
+    // it is watched `more` s more each time)
+    by: [0.4, 1.2], jitter: [0.7, 1.2], keep: 0.9, middle: 4, more: 1,
   },
   // THE SLIDE (Drive slideStep / gripOf; pursuers too). The tyres give less of the wheel the faster it goes (`fall`
   // of the steering rate gone at `max`, as much more well under the cruise speed: understeer flat out) and while the rear is out (`under` at the most slip). The rear
@@ -115,6 +135,9 @@ export const CHASE = {
   },
   run: 2,               // a person hit faster than this is run down (one hit kills), thrown on along `throw` x speed
   throw: 1.4,
+  // how (chase/shared.js runOver): thrown `side` rad off the way the car goes to the side he was on, his body's
+  // impulse x `k` [least, most], spun up to `spin`, `cap` px/step at most, off the floor's friction `fly` s
+  runOver: { side: 0.5, k: [0.8, 1.2], spin: 0.3, cap: 14, fly: 0.25 },
   // what its speed does around it (Drive.fx). Tyres let go over `from` px/step: in a shove (all of it), steering
   // over `slide` of the full sideways speed (`steer` of it): white smoke
   // [chance a wheel a step, px, s] and rubber left on the road (`marks`); standing water under a wheel: spray [chance
@@ -122,7 +145,9 @@ export const CHASE = {
   // pigeons and cats within `r` px of the point `lead` s ahead go, the people within `people` px run; `debris`: what
   // flies off a thing hit (chips, sparks off steel, glass, sheets of paper [n, px/s]; their speed `speed` x the car's)
   fx: {
-    from: 3, slide: 0.8, steer: 0.5, smoke: [0.5, 6, 0.9],
+    // (`smokeV`: px/s of a puff off a tyre spinning as it pulls away, letting go; `canopy`: px from its middle an
+    // awning or a parasol it may tear down is looked at)
+    from: 3, slide: 0.8, steer: 0.5, smoke: [0.5, 6, 0.9], smokeV: { launch: 30, tyre: 26 }, canopy: 140,
     marks: { w: 3.2, alpha: 0.42, color: '10, 8, 14' },
     spray: [0.7, 4, 170], water: 1.4,
     scare: { every: 0.15, lead: 0.55, r: 150, people: 110 },
@@ -137,10 +162,11 @@ export const CHASE = {
     // (2026-11-19, the user: "on ne sent pas trop la vitesse": more of them, longer, from a lower speed; the lens no
     // longer smears the edges, so the speed is sold here, in the world, by things that go by)
     wind: { from: 5, n: 38, len: [16, 64], v: [0.6, 1.4], life: [0.2, 0.45], alpha: 0.55, band: [38, 210], back: 260, ahead: 620 },
-    dust: { from: 5, chance: 0.5, puff: [4, 0.14, 0.8], back: 14 },
-    wake: { from: 6, every: [0.16, 0.5], paper: 0.45, leaves: 4, v: 0.55 },
+    dust: { from: 5, chance: 0.5, puff: [4, 0.14, 0.8], back: 14, color: '#8a8494', speed: 16 },
+    // (whipped up at sprite x `at[0]` .. `at[1]` of the car, `at[2]` px inside its flanks)
+    wake: { from: 6, every: [0.16, 0.5], paper: 0.45, leaves: 4, v: 0.55, at: [-10, 20, 4] },
   },
-  // the card that closes a chase not finished yet (level `chase.next`, Game state 'continued'; Drive.finishView): the
+  // the card that closes a chase not finished yet (level `chase.next`, Game state 'continued'; ui/Continued.js): the
   // picture goes black over `fade` s, TO BE CONTINUED comes up at `title` and what is next at `name` (each over `rise`
   // s), a key passes it after `skipAfter`, the results follow at `hold`
   finish: { fade: 1.1, title: 0.9, name: 1.5, rise: 0.35, skipAfter: 1.6, hold: 5 },
@@ -149,7 +175,7 @@ export const CHASE = {
   checkpoint: { rise: 0.18, fade: 0.5, hold: 2.2 },
   // dead at the wheel (a told shot): the car runs on, losing `slow` px/step a second, drifting `drift` of its full
   // sideways speed toward the kerb (Drive.coast)
-  coast: { slow: 3.2, drift: 0.22 },
+  coast: { slow: 3.2, drift: 0.22, stop: 0.05 },
   // a flank against a wall or a car: the grind heard (and the pad's beat) every so often, from `from` px/step; the
   // van's friction against what it leans on. Its sparks are a shower for as long as it rubs (systems/CarFx.js,
   // data/carfx.js `scrape`)
@@ -203,14 +229,20 @@ export const CHASE = {
   //   (systems/ChaseCam.js 'smash': the world at `slow` for `hold` s real, the picture kicked `push` px; null: none)
   bend: {
     speed: 5.9, straight: 7.4, brake: 14, accel: 6, look: 70, radius: 6, pivot: 18, slip: 0.3, spring: [42, 7], merge: 240,
+    // (held up by what it hit, the line waits for it: its pivot projected on the line within `span` px of where it
+    // was, by `step` px; more than `k` x its speed + `slack` px behind, the line is brought back to it; a step moves
+    // it no further than `reach` [x its speed, + px]: chase/shared.js bendMove)
+    wait: { span: 96, step: 2, k: 2, slack: 8 }, reach: [1.5, 2],
     camera: { lead: [0.17, 0.2], ease: 2.4, most: 4, done: 0.5 },
     space: 170, catch: 0.06, hold: 40, clear: 320, close: [0.7, 0.55],
     apex: { slow: 0.72, in: 0.1, hold: 0.22, out: 0.3 },
     smash: {
       kg: 450, heavy: [0.45, 0.8], spin: 0.5, burst: 6, cost: 0.025, heavyCost: 0.09, floor: 0.6,
-      flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9,
-        // its first touch (Drive.flanked): [n, px/s] of sparks and of glass, the mirror torn off at [from, to] px/s
-        fx: { sparks: [18, 340], glass: [10, 200], mirror: [160, 260] } },
+      // (a dent `inset` px inside the flank)
+      flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9, inset: 3,
+        // its first touch (Drive.flanked): [n, px/s] of sparks and of glass, the mirror torn off at [from, to] px/s,
+        // `aim` rad off his way; the picture shaken `shake` of a hit's, the body thrown `bump` of a hit's
+        fx: { sparks: [18, 340], glass: [10, 200], mirror: [160, 260], aim: 0.6, shake: 0.8, bump: 0.6 } },
       jam: { asked: 2, got: 0.6, t: 0.8 },
       beat: { slow: 0.35, in: 0.05, hold: 0.6, out: 0.18, push: 5, shake: 0.3 },
     },

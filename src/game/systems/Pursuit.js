@@ -43,7 +43,7 @@ import { WEAPONS, ROUNDS } from '../data/weapons.js';
 import Vehicle from '../entities/Vehicle.js';
 import { MUZZLE_IN, onSprite } from '../entities/CharacterAnim.js';
 import { sprite, sw } from '../../engine/Assets.js';
-import { seatOf, slideStep, smashSpeed, bursts } from './Drive.js';
+import { seatOf, slideStep, smashSpeed, bursts } from './drive/rules.js';
 import { routeOf, legAt, bandOf, bendStep, enterBend, nearestLane, project } from './Route.js';
 import { dice } from './Rng.js';
 
