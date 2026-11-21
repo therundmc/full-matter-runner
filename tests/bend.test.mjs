@@ -52,8 +52,8 @@ function vehicle(w, model, x, y, a = 0) {
   return v;
 }
 
-Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined, miss = false) {
-  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style, miss });
+Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined) {
+  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style });
   if (state !== 'wait') this.loose(car);
   return car;
 };
@@ -325,13 +325,6 @@ test('bend: no pursuer drives into him in the bend: the one ahead of him goes th
   assert.equal(s.w.killed, null);
 });
 
-test('bend: a pursuer with `miss` does not take it: on into the works', () => {
-  const s = start(B.at - 30), { v, P } = s;
-  const car = P.spawn(v.x + 400, C.lanes[0] * TILE, 0, 'chase', CHASE.cruise, 'gunner', true);
-  run(s, 3, () => car.v.x > (B.at + 10) * TILE);
-  assert.ok(!car.bend && car.bendI === -1, 'past it, never in it');
-});
-
 test('lab: station 36 BEND, a car of its own route to drive round a bend', () => {
   const car = lab.props.find(([t, , , , o]) => o?.route);
   assert.ok(car && car[4].drive, 'a car to get into');
@@ -344,4 +337,20 @@ test('lab: station 36 BEND, a car of its own route to drive round a bend', () =>
     assert.ok(!map.isSolid(Math.floor(q.x / TILE), Math.floor(q.y / TILE)), `its line on the floor (${(q.x / TILE).toFixed(1)}, ${(q.y / TILE).toFixed(1)})`);
   }
   assert.equal(legAt(r.legs, car[1] * TILE), 0, 'the car on its first leg');
+});
+
+test('bend: one joining from behind with its place shut is taken back, never off the start of the leg the bend led onto', () => {
+  const L1 = C.legs[1], s = start(L1.from + 30, L1.lanes[1]), { P } = s;
+  P.blockedAt = () => ({ x: 0, p: null }); // (everywhere shut)
+  const half = CHASE.pursuit.size[0] / 2, S = CHASE.pursuit.spawn;
+  const at = (col) => P.spawnX({ x: col * TILE, y: L1.lanes[1] * TILE, vel: { x: 0, y: 0 } });
+  const x = at(L1.from + 30);
+  assert.ok(x - half >= L1.from * TILE, `on leg 1 (${(x / TILE).toFixed(1)})`);
+  assert.ok(x < (L1.from + 30) * TILE - S.behind, 'taken back as far as the leg lets it');
+  assert.equal(at(L1.from + 5), null, 'right out of the bend: nowhere behind him on this leg');
+  const far = 300;
+  assert.equal(at(far), far * TILE - S.behind - S.tries * S.back, 'on the street before the bend: back as before');
+  // legs joined by no bend are one road (the frontage road to the toll's plaza)
+  const L2 = C.legs[2];
+  assert.ok(at(L2.from + 2) !== null && at(L2.from + 2) - half < L2.from * TILE, 'back across a join with no bend');
 });

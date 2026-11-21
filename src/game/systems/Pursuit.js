@@ -32,7 +32,7 @@
 // Every one of them reaching a bend follows the same line through it as his car (bendStep, its own slide), `space`
 // px behind the one ahead of it there, no slot then; out of it, its slots again on the next leg. A car on a leg he is
 // not on sees him where the route puts him on its own leg (tgFor): ahead of him, it keeps clear of where he will come
-// out. A car with `miss` (the level's event) does not take the bend: on into what shuts the road.
+// out.
 // DOM-free but for the cars it makes (entities/Vehicle.js); render/PursuitArt.js draws the gunmen, the tells, the red
 // lanes and the tracers.
 import { TILE, CAT, MASK } from '../Config.js';
@@ -154,6 +154,7 @@ export default class Pursuit {
     this.tell = null;      // { car, t, aim, dur, harmless } the one telling now (the token)
     this.cool = 0;         // s before the next tell may start
     this.fired = new Set(); // the events done
+    this.waiting = new Map(); // an alley event -> its car waiting in the alley mouth (alleyCar)
     this.lanes = [];       // red lanes shown: { car, x, y0, y1, t, w, on }
     this.tracers = [];     // { x0, y0, x1, y1, t, car, s0, s1 }: its ends in the world and in his car's sprite (toSprite)
     this.road = null;      // the lane he is in and the other one (lanesOf), as of the last step
@@ -196,7 +197,6 @@ export default class Pursuit {
       line: null,
       bend: null,            // a bend under way (Route.enterBend's state), and the next one on its way (-1: none)
       bendI: this.route.bends.findIndex((q) => q.x > b.position.x),
-      miss: !!o.miss,        // it does not take the bends: on into what shuts the road (the level's event `miss`)
       hurt: 0,               // s it keeps its distance after a shove that did not wreck it
       slip: 0, slipV: 0,     // its rear out (Drive slideStep: the same slide as his car's)
     };
@@ -221,10 +221,10 @@ export default class Pursuit {
   }
 
   // a new pursuer's car at (x, y) facing a (world px, rad)
-  spawn(x, y, a, state, speed = 0, style = undefined, miss = false) {
+  spawn(x, y, a, state, speed = 0, style = undefined) {
     const w = this.world, v = new Vehicle(w, this.C.vehicle, x, y, a);
     w.props.push(v);
-    const car = this.add(v, state, { speed, style, miss });
+    const car = this.add(v, state, { speed, style });
     if (state !== 'wait') this.loose(car);
     return car;
   }
@@ -240,9 +240,9 @@ export default class Pursuit {
   // event 1: the car waiting in the alley mouth (facing north, its lamps on: they are told first)
   alleyCar(e) {
     const [c, r] = e.car;
-    const car = this.spawn(c * TILE, r * TILE, -Math.PI / 2, 'wait', 0, e.style, e.miss);
+    const car = this.spawn(c * TILE, r * TILE, -Math.PI / 2, 'wait', 0, e.style);
     car.event = e;
-    e.waiting = car;
+    this.waiting.set(e, car); // (never written onto the event: the level's data is shared by every run)
   }
 
   // ---------------------------------------------------------------- the step (intentions)
@@ -274,9 +274,9 @@ export default class Pursuit {
   trigger(e, tg) {
     const C = this.C, w = this.world;
     this.fired.add(e);
-    if (e.kind === 'alley' && e.waiting?.state === 'wait') {
+    if (e.kind === 'alley' && this.waiting.get(e)?.state === 'wait') {
       // the red lane now; the car comes out so as to be in his lane CHASE.alley.red s later
-      const car = e.waiting, v = car.v, A = CHASE.alley, R = this.roadAt(v.x);
+      const car = this.waiting.get(e), v = car.v, A = CHASE.alley, R = this.roadAt(v.x);
       const edge = (R.band ? R.band[1] : tg.y) + R.half; // his lane's near edge (the lanes' band + half a lane)
       const nose = v.y - v.w / 2;
       car.launch = Math.max(0, A.red - Math.max(0, nose - edge) / (C.spawn.cross * 60));
@@ -285,28 +285,41 @@ export default class Pursuit {
       w.sound('tellClick', v.x, v.y, 0.5);
     } else if (e.kind === 'behind') {
       // (C.most of them on him at once at the most: with that many still driving, one more does not join; a toll's
-      // wrong-gate car is its event: the rearmost of the others, off the picture, drops out for it)
+      // wrong-gate car is its event: the rearmost of the others, off the picture, drops out for it; none can: it
+      // joins all the same, one over the cap)
       const live = this.cars.filter((c) => !c.dummy && DRIVEN.has(c.state));
       if (live.length >= C.most) {
         if (!e.gate) return;
         const last = live.filter((c) => !this.onScreen(c.v) && c.v.x < tg.x).sort((a, b) => a.v.x - b.v.x)[0];
         if (last) this.dropOut(last);
       }
-      const y = this.sides(tg).other;
-      // behind him, just off the picture, in the lane he is not in (it comes up alongside); past the last wreck
-      // lying on the road back there when there is room (a wreck across a narrow street holds a car up a long while)
-      const back = tg.x - C.spawn.behind;
-      let x = back;
-      for (const o of this.cars) {
-        if (o.state === 'wrecked' && o.v.x > x - C.spawn.clear && o.v.x < tg.x - C.spawn.near - C.spawn.clear) x = Math.max(x, o.v.x + C.spawn.clear);
-      }
-      // (room for it: a car abreast of him already is no reason to start further back)
-      const full = (at) => this.blockedAt(null, at + 60, y, 150);
-      if (full(x)) x = back;
-      for (let k = 0; k < 4 && full(x); k++) x -= 200;
-      const car = this.spawn(x, y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over, e.style, e.miss);
+      const x = this.spawnX(tg);
+      if (x === null) return;
+      const car = this.spawn(x, this.sides(tg).other, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over, e.style);
       car.gate0 = e.gate ?? null; // (a toll's gate it will take whatever he does: 'steel', the wrong one: systems/Toll.js)
     }
+  }
+
+  // Where one joining from behind starts (x, world px; null: nowhere on his leg): just off the picture behind him, in
+  // the lane he is not in (it comes up alongside); past the last wreck lying on the road back there when there is
+  // room (a wreck across a narrow street holds a car up a long while); taken back C.spawn.back px at a time while
+  // the place is shut (C.spawn.tries times), never back off the start of the leg the bend he came out of last took
+  // him onto (there it would be on the leg before it, and come into that bend from the wrong side)
+  spawnX(tg) {
+    const S = this.C.spawn, y = this.sides(tg).other, back = tg.x - S.behind, R = this.route;
+    let k = this.legOf(tg.x);
+    while (k > 0 && !R.bends.some((b) => b.to === k)) k--; // (legs joined by no bend are one road)
+    const floor = k > 0 ? R.legs[k].from * TILE : -Infinity, half = this.C.size[0] / 2, onLeg = (at) => at - half >= floor;
+    let x = back;
+    for (const o of this.cars) {
+      if (o.state === 'wrecked' && o.v.x > x - S.clear && o.v.x < tg.x - S.near - S.clear) x = Math.max(x, o.v.x + S.clear);
+    }
+    // (room for it: a car abreast of him already is no reason to start further back)
+    const full = (at) => this.blockedAt(null, at + S.room[0], y, S.room[1]);
+    if (full(x)) x = back;
+    if (!onLeg(x)) return null;
+    for (let k = 0; k < S.tries && full(x) && onLeg(x - S.back); k++) x -= S.back;
+    return x;
   }
 
   // one of them gives up (left behind for good: Pursuit.after's `lost`)
@@ -328,7 +341,6 @@ export default class Pursuit {
   // the leg he is on (in a bend: the one it takes him to), and its lanes' band (the road the slots are on)
   get hisLeg() { const d = this.world.drive; return d?.on && d.route ? d.legI : this.legOf(this.target()?.x ?? 0); }
   get band() { return bandOf(this.route.legs[this.hisLeg]).band; }
-  get halfLane() { return bandOf(this.route.legs[this.hisLeg]).half; }
 
   // the lane he is in and the other one, now (tg: as a car on another leg sees him, its own: tgFor)
   sides(tg) { return tg.road ?? this.road ?? lanesOf(tg.y, this.band, null, this.C, bandOf(this.route.legs[this.hisLeg]).rows); }
@@ -370,7 +382,7 @@ export default class Pursuit {
     if (this.world.toll?.busy(real.x, Math.max(1, real.vel.x))) return;
     const x = real.x - this.C.spawn.near - v.w / 2, y = this.sides(real).other, L = this.route.legs[this.hisLeg];
     if (x - v.w < L.from * TILE || x + v.w > L.to * TILE) return;
-    if (this.blockedAt(car, x + 120, y, 280)) return;
+    if (this.blockedAt(car, x + R.room[0], y, R.room[1])) return;
     this.crew = '';
     car.farT = car.heldT = 0;
     car.h = 0;
@@ -527,11 +539,12 @@ export default class Pursuit {
     // his car): its own speed is kept, C.gap px off it
     const going = (hit) => (hit.p.isVehicle && !hit.p.body.isStatic && !hit.p.body.frozen ? Math.max(0, Body.getVelocity(hit.p.body).x) : 0);
     const nose = v.x + v.w / 2, here = !block && Math.abs(ty - v.y) > 6 && this.blockedAt(car, v.x, v.y, ahead, true);
-    if (block) { const bv = going(block); vx = Math.min(vx, Math.max(0, bv + (block.x - nose - (bv > 1 ? C.gap : 80)) * 0.04)); }
-    else if (here) vx = Math.min(vx, Math.max(1, going(here) + (here.x - nose - 50) * 0.05));
+    const H = C.held;
+    if (block) { const bv = going(block); vx = Math.min(vx, Math.max(0, bv + (block.x - nose - (bv > 1 ? C.gap : H.stand)) * H.gain)); }
+    else if (here) vx = Math.min(vx, Math.max(H.crawl, going(here) + (here.x - nose - H.cross) * H.crossGain));
     // the wheel follows a point that slides to the line it wants (easeLine): no jump from one line to the next
     car.lineY = easeLine(car.lineY ?? v.y, ty, dt, C);
-    if (Math.abs(car.lineY - v.y) > C.ease) car.lineY = v.y + Math.sign(car.lineY - v.y) * C.ease; // (thrown far off it)
+    if (Math.abs(car.lineY - v.y) > C.astray) car.lineY = v.y + Math.sign(car.lineY - v.y) * C.astray; // (thrown far off it)
     // (through a toll's plaza it holds its lane's line tighter: the islands leave it 60 cm a side)
     const T = car.toll ? CHASE.toll : null, lat = T ? T.steer : C.steer;
     let vy = clamp((car.lineY - v.y) * (T ? T.lateral : C.lateral), -lat, lat);
@@ -559,7 +572,7 @@ export default class Pursuit {
   // tail, so that it cuts back in only once past what it went round): the nearest of the cars and solid props whose
   // box crosses that strip (his car only with `his`), or null. No car: a strip `ahead` px either side of x (a place to spawn one).
   blockedAt(car, x, y, ahead, his = false) {
-    const w = this.world, half = (car?.v.h ?? 58) / 2 + this.C.margin, x0 = x - (car ? car.v.w / 2 - 6 : ahead), x1 = x + ahead;
+    const C = this.C, w = this.world, half = (car?.v.h ?? C.size[1]) / 2 + C.margin, x0 = x - (car ? car.v.w / 2 - C.tail : ahead), x1 = x + ahead;
     const y0 = y - half, y1 = y + half;
     const mine = his ? null : w.drive?.van;
     // (the cars and what blocks a path; never the lorry, `blind`: never seen coming; nor what hangs)
@@ -572,19 +585,18 @@ export default class Pursuit {
       if (p === car?.v || p === mine || !p.body || p.dead) continue;
       const bb = p.body.bounds;
       if (bb.max.x < x0 || bb.min.x > x1 || bb.max.y < y0 || bb.min.y > y1) continue;
-      if (!p.isVehicle && bb.max.x - bb.min.x < 22) continue; // a bin, a box: it goes over
+      if (!p.isVehicle && bb.max.x - bb.min.x < C.over) continue; // a bin, a box: it goes over
       if (!best || bb.min.x < best.x) best = { x: bb.min.x, p };
     }
     return best;
   }
 
   // ---------------------------------------------------------------- the bends (systems/Route.js)
-  // the next bend on its way reached: it takes it (one with `miss` goes on past it, into what shuts the road)
+  // the next bend on its way reached: it takes it
   toBend(car) {
     const b = this.route.bends[car.bendI], v = car.v;
     if (car.bend || !b || v.x < b.x) return;
     car.bendI = b.i + 1 < this.route.bends.length ? b.i + 1 : -1;
-    if (car.miss) return;
     car.bend = enterBend(b, v.x, v.y, v.body.angle, Math.max(car.s, 1), car.slip, car.slipV);
     car.stun = 0;
     car.thrown = false;
@@ -934,7 +946,7 @@ export default class Pursuit {
     }
     o.t += dt;
     if (o.t >= O.dur) { car.out = null; b.flyUntil = 0; b.sleepThreshold = 60; v.steer = 0; return; }
-    o.s = Math.max(0, o.s - Math.max(O.brake, T?.stop != null ? (30 * o.s * o.s) / Math.max(16, T.stop - v.x) : 0) * dt);
+    o.s = Math.max(0, o.s - Math.max(O.brake, T?.stop != null ? (O.stop[0] * o.s * o.s) / Math.max(O.stop[1], T.stop - v.x) : 0) * dt);
     const across = o.hit || Math.abs(v.y - o.y0) >= O.far ? O.press : O.side * clamp(o.t / O.bite, 0, 1);
     Body.setVelocity(b, { x: o.s, y: o.side * across });
     // (its half width across the road as it is turned now: what its tail swinging round reaches toward him)
@@ -1324,6 +1336,10 @@ export default class Pursuit {
     }
     this.lanes = this.lanes.filter((L) => (L.fade ?? 0) < 0.3);
   }
+
+  // the men still in a car that may yet be stopped (driving, waiting in an alley; not one left behind for good): a
+  // checkpoint's count leaves them out, the retry not bringing their cars back (systems/Checkpoints.js)
+  aboard() { return this.cars.reduce((n, c) => n + (c.dummy || c.state === 'lost' ? 0 : c.driver + c.gunman), 0); }
 
   // the HUD's chevrons: the pursuers still after him, off the picture
   hunters() { return this.cars.filter((c) => (c.state === 'chase' || c.state === 'limp') && c.driver); }

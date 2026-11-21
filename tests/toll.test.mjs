@@ -59,8 +59,8 @@ function vehicle(w, model, x, y, a = 0) {
   return v;
 }
 
-Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined, miss = false) {
-  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style, miss });
+Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined) {
+  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style });
   if (state !== 'wait') this.loose(car);
   return car;
 };

@@ -241,7 +241,13 @@ export const CHASE = {
   //   are no lanes (the lab); settle: px from the slot that counts as in it
   //   look: s of road ahead it looks for what stands in its lane (and `pad` px more), margin px either side; gap:
   //   px it keeps off a car going its way ahead of it, and off his nose and flanks when it has to come round him
-  //   ease: px a second the line across the road a car steers for slides to the one it wants (easeLine: no jump)
+  //   ease: px a second the line across the road a car steers for slides to the one it wants (easeLine: no jump);
+  //   astray: px it may be off the car at the most (a car thrown far off its line steers back from where it is)
+  //   held: what it brakes for (want). All its lines shut: to `stand` px off a thing standing in its way (`gap` off
+  //   one going), `gain` px/step per px of it; going across past something in its own way: `cross` px off it,
+  //   `crossGain`, never under `crawl` px/step. tail: px of its tail its strip leaves out; over: px across under
+  //   which a thing (a bin, a box) is driven over, not round (blockedAt); size: [length, width] px of a pursuer (its
+  //   sprite's), for one not made yet (where one joining may start)
   //   attack: THEY TAKE TURNS, one attack at a time, each TOLD: `round` the order they come in (the kind due, else
   //   the next one somebody can make), `cool` s between two (the gunman's own `cool` after a shot); `lone`: the slot
   //   a car alone in the chase takes, by its style (the level's events: `style`)
@@ -278,25 +284,28 @@ export const CHASE = {
   //   between them across, its tail swung round as it is, or behind him) skids round at `turn` rad/step (`spin` for
   //   a front tyre), dying away over `dur`. What lines the road stops it there (it is then held against it at `press`
   //   px/step); `far` px across from where it started it pushes no further. It never comes back into his lane; a car
-  //   crawling under `least` px/step is left where it is
+  //   crawling under `least` px/step is left where it is. Stopped on a toll's approach (Toll.wreckWay `stop`) it is
+  //   braked to a stand short of it: `stop` [k, px]: k x its speed squared over the px left (no fewer than px[1])
   //   limp: a rear tyre, it hangs on alongside him (the `abreast` slot, in his arc, never in his lane), at no more
   //   than `limp` px/step over his speed (it only just keeps up; all of its speed while still in his lane ahead of
   //   him); lost: `lost` px behind him, it is out of the chase
   //   most: how many of them drive after him at once at the most (an event's car past that does not join; the plaza
   //   held five of them when none was shot)
   //   rubber: in the chase but more than `far` px behind him for `t` s, or more than `close` px from its slot for
-  //   `held` s, off the picture: brought back up behind it, on its slot's line
+  //   `held` s, off the picture: brought back up behind it, on its slot's line (`room`: [px ahead of its middle, px
+  //   of road] that must be clear there)
   //   spawn: one joining from behind starts `behind` px back (just off the picture) at his speed + `over` (`clear`
-  //   px past a wreck lying back there, if that is still `near` px behind him: off the picture); the alley car comes
-  //   out at `cross`
-  //   px/step and turns into the far lane `radius` px before it
+  //   px past a wreck lying back there, if that is still `near` px behind him: off the picture); `room` as rubber's,
+  //   taken `back` px further back while it is shut (`tries` times), never off the start of his leg; the alley car
+  //   comes out at `cross` px/step and turns into the far lane `radius` px before it
   pursuit: {
     vehicle: 'pursuer', max: 14.5, accel: 14, brake: 14, turn: 2.6, nose: 0.18, heading: 0.45, pullOut: 0.6, close: 0.045, lateral: 0.07,
     steer: 4,
     slots: { abreast: [0, 'other'], lead: [165, 'other'], ahead: [220, 'his'], far: [340, 'other'] }, more: 175,
     shuffle: [4, 7], flip: 14, side: 80, settle: 18,
     look: 0.9, pad: 70, margin: 6, gap: 20,
-    ease: 300,
+    ease: 300, astray: 300, size: [140, 58],
+    held: { stand: 80, gain: 0.04, cross: 50, crossGain: 0.05, crawl: 1 }, tail: 6, over: 22,
     attack: { round: ['shot', 'ram', 'shot', 'brake'], cool: [1.1, 1.8], lone: { gunner: 'lead', rammer: 'abreast', blocker: 'ahead' } },
     ram: { settle: 0.5, shy: 1, wind: 0.5, flash: 0.08, back: 1, lean: 1.5, lead: 10, v: 5, dur: 0.32 },
     block: { settle: 0.6, wind: 0.45, drop: 3.2, dur: 0.9 },
@@ -305,7 +314,7 @@ export const CHASE = {
     shoved: { cost: 0.5, throw: 6, drag: 4, spin: 0.02, stun: 0.7 },
     wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight', 'traffic_light', 'street_tree', 'bus_shelter', 'bollard'] },
     rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2, tyre: { hp: 5, skip: 0.6 } },
-    out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1,
+    out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1, stop: [30, 16],
       // what its exit looks like (Pursuit.exitFx; looks only, nothing of it touches his car). `ball`: the engine
       // goes as it is stopped: [flames, px/s, the flash's radius px, its colour], and it burns from then on (`burn`);
       // while it slides: smoke off each tyre (`smoke`: [chance a wheel a step, px, s]) and rubber on the road (as
@@ -314,8 +323,8 @@ export const CHASE = {
       // air, its engine's fire-ball and the one of a burning wreck that hits the roadside: systems/CarFx.js
       fx: { ball: [26, 190, 120, '#ffb060'], burn: true, smoke: [0.6, 7, 1.1], shed: [0.16, 0.34], fling: [120, 260],
         crash: [22, 14, 3, 0.3] } },
-    limp: 0.6, lost: 1600, most: 4, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
-    spawn: { behind: 330, over: 5, clear: 260, near: 300, cross: 6.5, radius: 150 },
+    limp: 0.6, lost: 1600, most: 4, rubber: { far: 520, t: 1.2, close: 200, held: 3, room: [120, 280] },
+    spawn: { behind: 330, over: 5, clear: 260, near: 300, room: [60, 150], back: 200, tries: 4, cross: 6.5, radius: 150 },
   },
   // the gunman leaning out of a pursuer's window on the runner's side and his TOLD shot (docs/LEVEL2.md telegraphs):
   //   r: his head and arm's hit circle (px), lean: px out of the window, seat: his x in the car (share of its length:

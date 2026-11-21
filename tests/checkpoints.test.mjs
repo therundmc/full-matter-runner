@@ -59,8 +59,8 @@ function vehicle(w, model, x, y, a = 0) {
   return v;
 }
 
-Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined, miss = false) {
-  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style, miss });
+Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined) {
+  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style });
   if (state !== 'wait') this.loose(car);
   return car;
 };
@@ -294,4 +294,23 @@ test('game: resumed at a checkpoint, the level\'s card shows the part\'s name', 
   assert.equal(card(null).level.name, level2a.name);
   assert.equal(card({ name: 'THE TOLL' }).level.name, 'THE TOLL');
   assert.equal(card({ name: 'THE TOLL' }).level.subtitle, 'X');
+});
+
+test('checkpoints: the men counted at a checkpoint leave out those still in a car (the retry does not bring it back); resumed, the cars it sets off are counted on top', () => {
+  const cp = named('THE ON-RAMP');
+  const s = build(null, cp.at - 8, cp.at + 40), { w, P } = s;
+  const before = w.totalEnemies;
+  // two cars after him as he reaches it: one with both men, one with its gunman shot
+  P.spawn(s.v.x - 300, s.v.y, 0, 'chase', 5);
+  const b = P.spawn(s.v.x - 600, s.v.y, 0, 'chase', 5);
+  b.gunman = false;
+  assert.equal(w.totalEnemies, before + 4, 'two men a car, counted as it is made');
+  assert.equal(P.aboard(), before + 3, 'three of them still in their cars (and the alley cars waiting ahead)');
+  w.checkpoints.reach(cp.i);
+  assert.equal(w.game.chaseAt.guards, w.totalEnemies - P.aboard(), 'only the man out by then');
+  // the retry: what it sets off counted on top of that
+  const r = build(w.game.chaseAt, cp.at - 8, cp.at + 40);
+  assert.equal(r.w.totalEnemies, w.game.chaseAt.guards + r.P.aboard());
+  assert.ok(run(r, 1.5, () => r.P.cars.length > 0), 'the frontage road\'s pursuer set off');
+  assert.equal(r.w.totalEnemies, w.game.chaseAt.guards + r.P.aboard(), 'each of its men counted as it comes');
 });

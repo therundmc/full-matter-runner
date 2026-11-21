@@ -3,7 +3,8 @@
 // lane?: row, cruise?: px/step }], in order, one at the start of each part of the road as it was cut (the street, the
 // detour, the frontage road, the toll). A checkpoint's leg is the one holding its column (legs never overlap).
 //   reached (the car's middle at `at`): kept on the game (Game.chaseAt: { name: the level's, i, time: the run's clock
-//   then, score: Scoring.snapshot(), guards: totalEnemies }), its name stamped on the HUD a moment (`card`), told
+//   then, score: Scoring.snapshot(), guards: the men counted then but for those still in a car, Pursuit.aboard: the
+//   retry does not bring those cars back }), its name stamped on the HUD a moment (`card`), told
 //   ('checkpoint' event) with a placeholder sound. The first one, at or before the car's start, is the start itself
 //   (kept, never told)
 //   a death after it retries there (Game.retry; World builds the chase as from it: fromCheckpoint): the car on its
@@ -52,14 +53,15 @@ export default class Checkpoints {
   }
 
   // the run resumed at its checkpoint (World, once built): no opening nor grab, the clock and the score as they were
-  // when it was reached, the men of the cars set off before it still counted
+  // when it was reached; the men counted: those out by then, and those of the cars this run sets off (already
+  // counted as they are made: the alley cars waiting ahead)
   resume() {
     const w = this.world, cp = this.from;
     if (!cp) return;
     w.drive?.skipGrab();
     w.clockFrom = w.time - (cp.time || 0);
     if (cp.score) w.scoring?.restore(cp.score);
-    if (cp.guards !== undefined) w.totalEnemies = cp.guards;
+    if (cp.guards !== undefined) w.totalEnemies = (w.totalEnemies || 0) + cp.guards;
   }
 
   // a step: the next checkpoint reached by his car (never once he is dead or past the end); the card's clock
@@ -72,7 +74,8 @@ export default class Checkpoints {
 
   reach(i) {
     const w = this.world, cp = this.list[i], v = w.drive.van;
-    if (w.game) w.game.chaseAt = { name: w.level.name, i, time: w.runTime, score: w.scoring?.snapshot(), guards: w.totalEnemies };
+    const guards = (w.totalEnemies || 0) - (w.pursuit?.aboard() ?? 0);
+    if (w.game) w.game.chaseAt = { name: w.level.name, i, time: w.runTime, score: w.scoring?.snapshot(), guards };
     if (cp.at * TILE <= this.x0) return;
     this.card = { name: cp.name, t: 0 };
     w.events.emit('checkpoint', { i, name: cp.name, x: v.x, y: v.y });
