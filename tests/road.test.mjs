@@ -2,7 +2,7 @@
 // junctions under traffic lights, every piece of it with its sprite; the lamps that take turns (systems/Signals.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { load } from './setup.mjs';
 
@@ -17,7 +17,8 @@ const { default: level1 } = await load('game/data/levels/level1.js');
 
 const C = level2a.chase;
 const WORKS = [203, 231]; // the gas works' columns (tools/build_level2a.py)
-const assets = readFileSync(fileURLToPath(new URL('../src/engine/Assets.js', import.meta.url)), 'utf8');
+const { REQUIRED, OPTIONAL } = await load('engine/spritelist.js');
+const loaded = new Set([...REQUIRED, ...OPTIONAL]); // what engine/Assets.js loads (tools/sprites/registry.py)
 const png = (name) => existsSync(fileURLToPath(new URL(`../assets/sprites/props/${name}.png`, import.meta.url)));
 // half of a thing's hitbox across the street (rows), turned as it stands
 function halfAcross(type, deg) {
@@ -30,9 +31,9 @@ test('road: every prop and every piece of floor paint of the street is a known s
   const kinds = new Set([...level2a.props, ...lab.props, ...level1.props].map(([t]) => t)); // (level 1's street: tests/street1.test.mjs)
   for (const k of kinds) {
     assert.ok(PROPS[k] || VEHICLES[k], `${k} is a prop`);
-    assert.ok(png(PROPS[k]?.sprite ? 'trash_can' : k) && (PROPS[k]?.sprite || assets.includes(`'${k}'`)), `${k}: its sprite, listed in engine/Assets.js (unlisted, it is drawn as a bin)`);
+    assert.ok(png(PROPS[k]?.sprite ? 'trash_can' : k) && (PROPS[k]?.sprite || loaded.has(`props/${k}`)), `${k}: its sprite, loaded by engine/Assets.js (unlisted, it is drawn as a bin)`);
   }
-  for (const [name] of [...level2a.floor, ...level1.floor]) assert.ok(png(name) && assets.includes(`'${name}'`), `${name}: painted on the floor, listed`);
+  for (const [name] of [...level2a.floor, ...level1.floor]) assert.ok(png(name) && loaded.has(`props/${name}`), `${name}: painted on the floor, loaded`);
   for (const k of ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade']) assert.ok(png(k + '_glow'), `${k}: its emissive map`);
 });
 

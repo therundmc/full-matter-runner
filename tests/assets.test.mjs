@@ -1,17 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { load } from './setup.mjs';
 
-// engine/Assets.js needs a DOM to load: its density rules are read from the source and tried on names
-const src = readFileSync(fileURLToPath(new URL('../src/engine/Assets.js', import.meta.url)), 'utf8');
-const FINE = new RegExp(src.match(/const FINE = \/(.*)\/;/)[1]);
-const list = (name, re) => JSON.parse(src.match(re)[1].replace(/'/g, '"').replace(/,\s*\]/, ']'));
-const FINE_PROPS = new Set(list('FINE_PROPS', /const FINE_PROPS = new Set\((\[[^\]]*\])\)/));
-const FLOOR_TILES = list('FLOOR_TILES', /const FLOOR_TILES = (\[[^\]]*\]);/);
-// level 2A's street: its props and its floor paint are fine too (added to FINE_PROPS after it)
-const ROAD = [...list('ROAD_PROPS', /const ROAD_PROPS = (\[[^\]]*\]);/), ...list('ROAD_PAINT', /const ROAD_PAINT = (\[[^\]]*\]);/)];
-for (const n of ROAD) FINE_PROPS.add(n);
+// what engine/Assets.js loads and at which density (engine/spritelist.js, generated from tools/sprites/registry.py)
+const { REQUIRED, OPTIONAL, FINE } = await load('engine/spritelist.js');
+const LOADED = [...REQUIRED, ...OPTIONAL];
 
 // width / height of a sprite's PNG (IHDR)
 function png(name) {
@@ -21,23 +15,25 @@ function png(name) {
 
 test('assets: of the people only the standing characters are finer than the world, never a part of a body', () => {
   for (const n of ['characters/thug_torso', 'characters/player_torso', 'characters/civ3_torso', 'characters/dancer1_torso', 'characters/boss_head',
-    'weapons/pistol', 'weapons/tire_iron']) assert.ok(FINE.test(n), n);
+    'weapons/pistol', 'weapons/tire_iron']) assert.ok(FINE.has(n), n);
   for (const n of ['characters/thug_rag_torso', 'characters/thug_rag_torso_up', 'characters/brute_gib_torso', 'characters/thug_rag_head', 'characters/thug_down',
-    'characters/boss_gib_torso', 'weapons/rocket']) assert.ok(!FINE.test(n), n);
+    'characters/boss_gib_torso', 'weapons/rocket']) assert.ok(!FINE.has(n), n);
 });
 
 test('assets: the furniture, the lamps, the vehicles and the floors are painted at twice the world density, the neon and the walls are not', () => {
-  for (const n of ['desk', 'bar_counter', 'sofa', 'car', 'van', 'car_tire', 'dumpster', 'apt_door', 'wall_lamp', 'tube_light', 'ceiling_lamp']) assert.ok(FINE_PROPS.has(n), n);
-  for (const n of ['neon_tube_pink', 'neon_tube_cyan', 'string_lights', 'neon_sign_bar', 'neon_sign_liquor']) assert.ok(!FINE_PROPS.has(n), n);
-  for (const n of FINE_PROPS) {
-    const { w, h } = png('props/' + n);
-    assert.ok(w % 2 === 0 && h % 2 === 0, `props/${n} is ${w}x${h}`);
+  for (const n of ['desk', 'bar_counter', 'sofa', 'car', 'van', 'car_tire', 'dumpster', 'apt_door', 'wall_lamp', 'tube_light', 'ceiling_lamp',
+    'traffic_cone', 'kerb_n', 'road_arrow']) assert.ok(FINE.has('props/' + n), n);
+  for (const n of ['neon_tube_pink', 'neon_tube_cyan', 'string_lights', 'neon_sign_bar', 'neon_sign_liquor']) assert.ok(!FINE.has('props/' + n), n);
+  for (const n of [...FINE].filter((p) => p.startsWith('props/'))) {
+    const { w, h } = png(n);
+    assert.ok(w % 2 === 0 && h % 2 === 0, `${n} is ${w}x${h}`);
   }
-  for (const t of FLOOR_TILES) for (const s of ['', '_v1', '_v2']) assert.deepEqual(png(`tiles/${t}${s}`), { w: 64, h: 64 }, t + s);
-  for (const t of ['wall', 'brick', 'roof']) assert.deepEqual(png('tiles/' + t), { w: 32, h: 32 }, t);
+  const tiles = LOADED.filter((n) => n.startsWith('tiles/'));
+  for (const t of tiles.filter((n) => FINE.has(n))) assert.deepEqual(png(t), { w: 64, h: 64 }, t);
+  for (const t of ['wall', 'brick', 'roof']) assert.ok(!FINE.has('tiles/' + t) && png('tiles/' + t).w === 32, t);
+  for (const t of ['wood', 'wood_v1', 'wood_v2', 'asphalt', 'neon_floor']) assert.ok(FINE.has('tiles/' + t), t);
   // the plant on the roofs is fine too (an AC unit is 46 x 32 world px), the lit pieces are not
-  const ROOF_FINE = new Set(list('ROOF_FINE', /const ROOF_FINE = new Set\((\[[^\]]*\])\)/));
-  assert.ok(ROOF_FINE.has('ac_unit') && !ROOF_FINE.has('skylight') && !ROOF_FINE.has('bulkhead'));
+  assert.ok(FINE.has('roof/ac_unit') && !FINE.has('roof/skylight') && !FINE.has('roof/bulkhead'));
   assert.deepEqual(png('roof/ac_unit'), { w: 92, h: 64 });
   assert.deepEqual(png('roof/skylight'), { w: 46, h: 30 });
 });
@@ -51,7 +47,7 @@ test('assets: every look a level gives a guard, and every civilian look, has its
   assert.equal(level1.jobs['28,7'], 'cueball');
   assert.deepEqual(png('characters/cueball_torso'), { w: 48, h: 48 }, 'the widest shoulders in the game');
   assert.deepEqual(png('characters/cueball_head_hurt'), png('characters/cueball_head'));
-  assert.ok(FINE.test('characters/cueball_head_hurt'));
+  assert.ok(FINE.has('characters/cueball_head_hurt'));
   for (const kind of [...Object.values(level1.looks), ...Object.keys(CIVILIAN_LOOKS)]) {
     assert.ok(KINDS[kind] || CIVILIAN_LOOKS[kind], kind);
     for (const part of ['torso', 'head', 'rag_torso', 'gib_head']) assert.ok(png(`characters/${kind}_${part}`).w > 0, `${kind}_${part}`);
@@ -62,7 +58,8 @@ test('assets: every look a level gives a guard, and every civilian look, has its
 });
 
 test('assets: the street fauna is painted at the people\'s density, every frame it is drawn with on disk', () => {
-  assert.match(src, /name\.startsWith\('critters\/'\)/);
+  const critters = LOADED.filter((n) => n.startsWith('critters/'));
+  assert.ok(critters.length >= 24 && critters.every((n) => FINE.has(n)));
   for (const n of ['pigeon_idle', 'pigeon_fly1', 'pigeon_dead', 'rat_run2', 'rat_dead', 'cat_sit', 'cat_run0', 'cat_walk3', 'cat_low', 'cat_dead']) {
     const { w, h } = png('critters/' + n);
     assert.ok(w % 2 === 0 && h % 2 === 0, `critters/${n} is ${w}x${h}`);

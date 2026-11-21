@@ -12,7 +12,7 @@ const { default: Character } = await load('game/entities/Character.js');
 const { CANT, cantRows, cantHide, cantPalm } = await load('game/render/HandgunArt.js');
 
 const K = 0.5;                  // world px per sprite px: the weapons are painted at twice the density (Assets.js)
-const OUTLINE = [20, 12, 28];   // tools/generate_assets.py OUTLINE, the dark line round every sprite
+const OUTLINE = [20, 12, 28];   // tools/sprites/core.py OUTLINE, the dark line round every sprite
 const GUNS = Object.entries(WEAPONS).filter(([, d]) => d.kind === 'gun');
 
 // a sprite as the generator writes it: 8-bit RGBA, not interlaced. px(x, y) -> [r, g, b, a]

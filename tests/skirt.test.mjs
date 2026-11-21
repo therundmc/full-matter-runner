@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { load } from './setup.mjs';
 
 const { newSkirt, stepSkirt } = await load('game/entities/Skirt.js');
@@ -95,7 +94,7 @@ test('skirt: a teleport, a long frame, a stopped clock or bad numbers leave it f
   assert.ok(finite(S), 'spun wildly at the longest step');
 });
 
-test('skirt: the runner wears it, its sprites and its numbers are there', () => {
+test('skirt: the runner wears it, its sprites and its numbers are there', async () => {
   assert.equal(KINDS.player.coat, 'characters/player_tail');
   for (const k of Object.keys(KINDS)) if (k !== 'player') assert.equal(KINDS[k].coat, undefined, k);
   const l = png('characters/player_tail_l'), r = png('characters/player_tail_r');
@@ -103,11 +102,10 @@ test('skirt: the runner wears it, its sprites and its numbers are there', () => 
   assert.ok(l.w > COAT.root * 4 && l.h > 8);
   assert.ok(png('characters/player_rag_skirt').w > 0);
   // they are painted finer than the world, as the standing man is; his skirt on the floor is not
-  const src = readFileSync(fileURLToPath(new URL('../src/engine/Assets.js', import.meta.url)), 'utf8');
-  const FINE = new RegExp(src.match(/const FINE = \/(.*)\/;/)[1]);
-  assert.ok(FINE.test('characters/player_tail_l') && FINE.test('characters/player_tail_r'));
-  assert.ok(!FINE.test('characters/player_rag_skirt'));
-  for (const n of ['player_tail_l', 'player_tail_r', 'player_rag_skirt']) assert.ok(src.includes(`'characters/${n}'`), n);
+  const { FINE, REQUIRED } = await load('engine/spritelist.js');
+  assert.ok(FINE.has('characters/player_tail_l') && FINE.has('characters/player_tail_r'));
+  assert.ok(!FINE.has('characters/player_rag_skirt'));
+  for (const n of ['player_tail_l', 'player_tail_r', 'player_rag_skirt']) assert.ok(REQUIRED.includes(`characters/${n}`), n);
   // half the sprite's height apart at most: the two halves meet down his back
   assert.ok(COAT.hinge[1] * 2 <= l.h / 2 + 1e-9 && COAT.hinge[0] < 0);
 });

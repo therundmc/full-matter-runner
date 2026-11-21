@@ -1,4 +1,4 @@
-// The suburb going to Miami (tools/generate_assets.py SUBURB_PROPS / SUBURB_PAINT): every new sprite on disk, listed
+// The suburb going to Miami (tools/sprites/suburb.py): every new sprite on disk, listed
 // (unlisted, it is drawn as a bin), a prop that comes apart its own way; the three ways round the lorry on the sidewalk
 // (a fruit market, a car wash, a tyre yard) are torn or flung, never `lasting`.
 import { test } from 'node:test';

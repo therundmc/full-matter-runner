@@ -20,7 +20,8 @@ const { TILE } = await load('game/Config.js');
 const { default: level } = await load('game/data/levels/level1.js');
 const { default: lab } = await load('game/data/levels/lab.js');
 
-const assets = readFileSync(fileURLToPath(new URL('../src/engine/Assets.js', import.meta.url)), 'utf8');
+const { REQUIRED, OPTIONAL, FINE } = await load('engine/spritelist.js');
+const loaded = new Set([...REQUIRED, ...OPTIONAL]); // what engine/Assets.js loads (tools/sprites/registry.py)
 const file = (path) => fileURLToPath(new URL(`../assets/sprites/${path}.png`, import.meta.url));
 const size = (path) => { const b = readFileSync(file(path)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 
@@ -44,7 +45,7 @@ test('interiors: every new prop is data, a recipe that holds, and a sprite liste
     assert.ok(d.material && d.hp > 0 && d.chips, `${k}: material, hp, chips`);
     if (!d.static) assert.ok(d.kg > 0 && d.mu > 0, `${k} is loose: kg and mu`);
     assert.ok(existsSync(file(`props/${k}`)), `${k}: its sprite`);
-    assert.ok(assets.includes(`'${k}'`), `${k} listed in engine/Assets.js (unlisted, it is drawn as a bin)`);
+    assert.ok(loaded.has(`props/${k}`) && FINE.has(`props/${k}`), `${k} loaded by engine/Assets.js at FINE density (unlisted, it is drawn as a bin)`);
     const [w, h] = ROUND[k] || (d.r ? [d.r * 2 + 2, d.r * 2 + 2] : [d.w + 2, d.h + 2]);
     assert.deepEqual(size(`props/${k}`), [w * 2, h * 2], `${k}: its hitbox and a px of outline, painted twice as fine`);
     const rec = DESTRUCTION[k] || {};
@@ -55,9 +56,9 @@ test('interiors: every new prop is data, a recipe that holds, and a sprite liste
     if (d.seep) assert.ok(SEEPS[d.seep], `${k}: seep ${d.seep}`);
   }
   for (const k of ['tv_stack', 'soap_vend', 'cig_machine']) assert.ok(existsSync(file(`props/${k}_glow`)) && PROPS[k].light, `${k}: lit`);
-  for (const k of ['bar_mat', 'cardboard_flat']) assert.ok(existsSync(file(`props/${k}`)) && assets.includes(`'${k}'`), `${k}: floor paint`);
+  for (const k of ['bar_mat', 'cardboard_flat']) assert.ok(existsSync(file(`props/${k}`)) && loaded.has(`props/${k}`), `${k}: floor paint`);
   for (const k of ['glass_rack', 'phone', 'papers', 'mug', 'vhs', 'soap', 'folded', 'ledger', 'adding', 'ashtray_full']) {
-    assert.ok(existsSync(file(`clutter/${k}`)) && assets.includes(`'${k}'`), `${k}: a clutter sprite, listed`);
+    assert.ok(existsSync(file(`clutter/${k}`)) && loaded.has(`clutter/${k}`), `${k}: a clutter sprite, loaded`);
   }
   for (const [name, set] of Object.entries(SETS)) for (const [kind] of set) assert.ok(CLUTTER[kind], `${name}: ${kind}`);
   for (const c of Object.values(CLUTTER)) if (c.glass) assert.ok(LIQUIDS.kinds[c.glass.kind], c.sprite);

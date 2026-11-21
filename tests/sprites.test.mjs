@@ -1,6 +1,7 @@
 // The sprite folders against what uses them: every PNG is one engine/Assets.js loads or one kept in STOCK
-// (tools/generate_assets.py; none left over by a renamed or dropped sprite: the generators prune their folders), and
-// every prop sprite is placed by a level, spawned by the code or kept in STOCK for a level to come.
+// (the registry's `stock` flag, tools/sprites/registry.py, listed in engine/spritelist.js; none left over by a renamed
+// or dropped sprite: the generators prune their folders), and every prop sprite is placed by a level, spawned by the
+// code or kept in STOCK for a level to come.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -9,9 +10,8 @@ import { load } from './setup.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SPRITES = ROOT + 'assets/sprites/';
-const gen = readFileSync(ROOT + 'tools/generate_assets.py', 'utf8');
-// STOCK's names: a prop's by its name, any other still by its path (group/name)
-const STOCK = new Set([...gen.match(/^STOCK = \(([\s\S]*?)^\)/m)[1].matchAll(/'([a-z0-9_/]+)'/g)].map((m) => (m[1].includes('/') ? m[1] : `props/${m[1]}`)));
+// STOCK's paths (group/name)
+const STOCK = new Set((await load('engine/spritelist.js')).STOCK);
 const onDisk = readdirSync(SPRITES).flatMap((g) => readdirSync(SPRITES + g).filter((f) => f.endsWith('.png')).map((f) => `${g}/${f.slice(0, -4)}`));
 
 // what loadAssets asks for: a stub Image records each src and answers at once
@@ -39,12 +39,12 @@ test('sprites: every prop sprite is placed by a level, spawned by the code, or k
     else if (v && typeof v === 'object') Object.values(v).forEach(walk);
   };
   Object.values(LEVELS).forEach(walk);
-  // the code's own strings ('name' or 'props/name'), not the levels' nor the load lists'
+  // the code's own strings ('name' or 'props/name'), not the levels' nor the load lists' (engine/Assets.js, spritelist.js)
   const code = [];
   const scan = (d) => {
     for (const f of readdirSync(d, { withFileTypes: true })) {
       const p = `${d}/${f.name}`;
-      if (f.isDirectory()) { if (!p.endsWith('/levels')) scan(p); } else if (p.endsWith('.js') && !p.endsWith('engine/Assets.js')) code.push(readFileSync(p, 'utf8'));
+      if (f.isDirectory()) { if (!p.endsWith('/levels')) scan(p); } else if (p.endsWith('.js') && !/engine\/(Assets|spritelist)\.js$/.test(p)) code.push(readFileSync(p, 'utf8'));
     }
   };
   scan(ROOT + 'src');
