@@ -88,6 +88,9 @@ import TollFx from '../systems/TollFx.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
+// a sound is muffled by a wall between it and the player (walledOff) from `near` px of him (closer, it is heard
+// round the corner) to `far` px (further, too faint for the wall to matter, and not worth the ray)
+const EAR = { near: 90, far: 2400 };
 
 export default class World {
   constructor(game, level) {
@@ -362,7 +365,7 @@ export default class World {
     const p = this.player;
     if (!p || x === undefined) return false;
     const d = Math.hypot(x - p.x, y - p.y);
-    return d > 90 && d < 2400 && !this.lineOfSight(p.x, p.y, x, y);
+    return d > EAR.near && d < EAR.far && !this.lineOfSight(p.x, p.y, x, y);
   }
   // the run's clock: from `clockFrom` (0; level 2A's opening does not count: it starts as the car pulls away,
   // Drive.launch) to his death

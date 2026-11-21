@@ -44,6 +44,9 @@ function viewRect(cam, map, pad = 1.15) {
   };
 }
 
+// the devices' spots (drawUseHints): seen within `reach` tiles of him, a diamond `lift` px over the spot, `r` px across
+// (the one E would use: `on` px, beating `beat` rad/s by a px), the faint ones `faint` at their nearest
+const USE = { reach: 3, lift: 14, r: 2.5, on: 3, beat: 8, faint: 0.35 };
 const BUBBLE = { font: 9, line: 11, pad: 4, wrap: 120, lift: 24, tail: 6, pop: 0.12, type: 0.5, fade: 0.4 };
 
 // str cut into lines no wider than max px at the context's font (by words)
@@ -457,19 +460,19 @@ export default class WorldRenderer {
   // What the devices of the level offer (systems/Uses.js), seen from close by: a small diamond over each spot that can
   // be used now within a few metres, faint; the one E would use now bright, its corners pulsing round it.
   drawUseHints(ctx, pl, t) {
-    const u = this.world.uses, R = 3 * TILE;
+    const u = this.world.uses, U = USE, R = U.reach * TILE;
     ctx.save();
     ctx.lineJoin = 'round';
     for (const s of u.spots) {
       if (s.prop && (s.prop.dead || s.prop.dying)) continue;
       const { x, y } = u.at(s), d = Math.hypot(x - pl.x, y - pl.y), on = s === pl.nearUse;
       if (d > R || (!on && s.ok && !s.ok(pl))) continue;
-      const k = on ? 1 : 0.35 * (1 - d / R), r = on ? 3 + Math.sin(t * 8) : 2.5;
+      const k = on ? 1 : U.faint * (1 - d / R), r = on ? U.on + Math.sin(t * U.beat) : U.r, y0 = y - U.lift;
       for (const [width, color] of [[3, `rgba(8,4,16,${0.8 * k})`], [1.2, on ? '#ffe46a' : `rgba(255,228,106,${k})`]]) {
         ctx.lineWidth = width;
         ctx.strokeStyle = color;
         ctx.beginPath();
-        ctx.moveTo(x, y - 14 - r); ctx.lineTo(x + r, y - 14); ctx.lineTo(x, y - 14 + r); ctx.lineTo(x - r, y - 14); ctx.closePath();
+        ctx.moveTo(x, y0 - r); ctx.lineTo(x + r, y0); ctx.lineTo(x, y0 + r); ctx.lineTo(x - r, y0); ctx.closePath();
         ctx.stroke();
       }
     }
