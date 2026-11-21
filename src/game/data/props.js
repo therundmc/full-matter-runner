@@ -278,10 +278,10 @@ export const PROPS = {
   // ---- level 2A, the back road (docs/LEVEL2.md). The box lorry that backs out across the street (systems/Lorries.js
   // moves it): it never gives (`lasting`: nose-on into it is the crash), the pursuers do not see it coming (`blind`)
   lorry: { static: true, lasting: true, blind: true, material: 'metal', w: 276, h: 76, hp: 99, chips: '#d2cbb8', sparks: true, sound: 'metal', blocksPath: true },
-  // a cafe's terrace: the canvas awning hung on its front (the wall at -y) and the parasols over its tables are
-  // `canopy`: a car driven under one tears it down (systems/Drive.js); the planters along its edge
+  // a canvas awning hung on a front (the wall at -y) is a `canopy`: a car driven under one tears it down
+  // (systems/Drive.js)
   awning: { mount: 'awning', canopy: true, hung: true, overhead: true, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#e0842c', sound: 'wood' },
-  // shop awnings along the chase's fronts, the cafe's in other cloth (torn down by a car under them: Drive `canopy`)
+  // shop awnings along the chase's fronts, that one in other cloth (torn down by a car under them: Drive `canopy`)
   awning_red: { mount: 'awning', canopy: true, hung: true, overhead: true, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b82030', sound: 'wood' },
   awning_green: { mount: 'awning', canopy: true, hung: true, overhead: true, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a7a4a', sound: 'wood' },
   awning_blue: { mount: 'awning', canopy: true, hung: true, overhead: true, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a4a9a', sound: 'wood' },
@@ -294,12 +294,8 @@ export const PROPS = {
   fruit_stand: { material: 'wood', w: 34, h: 16, hp: 4, kg: 30, mu: 0.5, chips: '#8a5a32', sound: 'wood' },
   shopping_cart: { material: 'metal', w: 20, h: 12, hp: 8, kg: 16, mu: 0.12, chips: '#b8bcc8', sound: 'metal' },
   mailbox: { static: true, material: 'metal', w: 13, h: 13, hp: 6, chips: '#2a6a4a', sound: 'metal' },
-  parasol: { mount: 'pole', canopy: true, overhead: true, height: 0.03, pole: ['#8a8e98', 2], static: true, material: 'fabric', r: 2.5, hp: 3, chips: '#eadfc6', sound: 'wood' },
-  planter: { static: true, vault: true, material: 'stone', w: 40, h: 16, hp: 10, chips: '#8e8a84', dirt: true, sound: 'stone' },
   neon_sign_diner: { mount: 'wall', hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#ffa62a', sparks: true, glass: true, sound: 'glass',
     light: { r: 130, color: '#ffb04a', intensity: 0.9, flicker: 'buzz' } },
-  neon_sign_cafe: { mount: 'wall', hum: 'neon', material: 'glass', w: 32, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
-    light: { r: 110, color: '#ff4a8a', intensity: 0.85, flicker: 'buzz' } },
   // ---- level 2A's street (tools/build_level2a.py; sprites: "the road of level 2A" in tools/generate_assets.py).
   // signal = its lamps take turns (data/signals.js, systems/Signals.js): one flag a light of `light`, in order;
   // lamps = each light's slices [x, width] of the emissive map (its pixels), drawn only while it is lit.
@@ -485,7 +481,6 @@ export const PROPS = {
   chainlink_fence: { static: true, material: 'mesh', w: 128, h: 4, hp: 16, chips: '#9ea4ae', sound: 'metal' },
   chainlink_hole: { static: true, material: 'mesh', w: 128, h: 4, hp: 12, chips: '#9ea4ae', sound: 'metal' },
   guardrail_dented: { static: true, lasting: true, material: 'metal', w: 128, h: 6, hp: 99, chips: '#9aa0a8', sparks: true, sound: 'metal' },
-  crash_cushion_hit: { static: true, material: 'plastic', w: 60, h: 50, hp: 6, chips: '#e8c020', sound: 'wood' },
   call_box: { mount: 'pole', overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#e8c020', sound: 'metal', bends: 6 },
   // ---- the suburb going to Miami (generic dressing; sprites: "the suburb going to Miami" in tools/generate_assets.py).
   // Palms (a sabal's rough trunk and a young royal's are the pole, a leaning coconut palm's trunk is painted), the

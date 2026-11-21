@@ -32,7 +32,7 @@ off):
     313-356   A  (no car parked) THE YARD (north, cols 337-342): the lorry of event 2 backs out of it across both
                  lanes, KEEP CLEAR painted before its gate; THE FRUIT MARKET (south, cols 325-354): the fronts set
                  back four metres, stalls under their awnings, crates, signs, strings of bulbs on a vacant corner:
-                 the way round the lorry (it was a cafe's terrace: THE HARMONY PASS below replaces it)
+                 the way round the lorry
     357-388   A  THE LIT CORNER: the diner, all glass and light
     389-403   J  THE CROSS STREET under traffic lights (its roadway cols 393-398): the last car comes out of it
     404-449   C  the way to the freeway (its sign over the road), DETOUR told from col 418
@@ -94,7 +94,7 @@ BEHIND_STYLE = ('rammer', 'blocker', 'gunner')
 CROSS_AT = 368              # the last one, out of the cross street ahead of him, as early (about 0:22)
 FRONTAGE_AT = 468           # one more from behind on the frontage road, out of the detour (leg 1)
 ALLEY_W = 4
-ALLEYS = (22, 105, EVENT_ALLEY, 190, 232, 272, 418)   # south (none just before the terrace: he comes at it along the sidewalk)
+ALLEYS = (22, 105, EVENT_ALLEY, 190, 232, 272, 418)   # south (none just before the market: he comes at it along the sidewalk)
 N_ALLEY = (99, 100)         # a passage through the north block (people come and go by it)
 CORAL = (50, 57)            # the first street across: its sidewalks' columns; the roadway between them
 CROSS = (392, 399)          # the second one
@@ -105,8 +105,7 @@ WORKS = (203, 231)          # the gas works in its parking row
 BUS = (247, 271)            # the bus stop's stretch
 YARD = (337, 342)           # the lorry's yard, north (cols, inclusive)
 LORRY_AT = 303              # event 2 told with the car's middle at this column (about 0:18)
-TERRACE = (325, 354)        # the open ground the lorry is dodged through, south (cols, inclusive): the fruit market
-                            # (the cafe's terrace until the harmony pass, which keeps its geometry)
+MARKET = (325, 354)         # the open ground the lorry is dodged through, south (cols, inclusive): the fruit market
 DINER = (358, 388)
 # the three cross-sections by column (inclusive spans): the first row of road north (the sidewalk above it), the
 # first row of sidewalk south, the south facade's row; anything else is A
@@ -129,7 +128,20 @@ SHOPS = {   # kind: (floor, what stands inside)
 SIGN_KIND = {'neon_sign_liquor': 'liquor', 'neon_sign_video': 'video', 'neon_sign_wash': 'wash', 'neon_sign_bar': 'bar',
              'neon_sign_beer': 'bar', 'neon_sign_bay': 'bar', 'neon_sign_lips': 'bar'}
 
-rng = random.Random(2026)
+
+
+def dice(at):
+    """The dice of one section of the street: each section throws its own, so adding, dropping or changing one never
+    re-rolls another. The sections of the first build keep their layout: their dice are the stream of Random(2026)
+    from word `at` on, where they fell when the whole street drew from that one stream (a 32-bit word a getrandbits
+    draw of up to 32 bits, two a random()). A new section seeds its own: random.Random('<its name>')."""
+    r = random.Random(2026)
+    if at:
+        r.getrandbits(32 * at)
+    return r
+
+
+rng = dice(0)
 lv = Level(W, H)
 
 
@@ -149,7 +161,7 @@ def s_kerb(col):
 
 def s_face(col):
     """The row of the south fronts."""
-    return 21 if TERRACE[0] <= col <= TERRACE[1] else 19 if within(col, FACE_19) else 18
+    return 21 if MARKET[0] <= col <= MARKET[1] else 19 if within(col, FACE_19) else 18
 
 
 def roadway(x):
@@ -196,8 +208,8 @@ for _ in range(90):
         lv.put(x + 1, y, '"')
 # the yard the lorry backs out of: concrete from the back wall to the sidewalk
 lv.fill(YARD[0], 1, YARD[1], 7, '_')
-T0, T1 = TERRACE
-lv.fill(T0, 22, T1, 22, '.')                            # the cafe behind its front
+T0, T1 = MARKET
+lv.fill(T0, 22, T1, 22, '.')                            # the fruteria behind its front
 
 boxes = []      # what stands on the ground so far, in tiles: (x0, y0, x1, y1)
 
@@ -229,7 +241,7 @@ def side(north, x0, x1, signs, blind=0.25):
     if north:
         keep += [(LOT[0] - 1, LOT[1] + 1), (YARD[0] - 1, YARD[1] + 1), (N_ALLEY[0] - 1, N_ALLEY[1] + 1)]
     else:
-        keep += [(a - 1, a + ALLEY_W) for a in ALLEYS] + [(TERRACE[0] - 1, TERRACE[1] + 1), (DINER[0] - 1, DINER[1] + 1)]
+        keep += [(a - 1, a + ALLEY_W) for a in ALLEYS] + [(MARKET[0] - 1, MARKET[1] + 1), (DINER[0] - 1, DINER[1] + 1)]
     x = x0
     shops = []
     while x < x1 - 5:
@@ -259,8 +271,10 @@ def side(north, x0, x1, signs, blind=0.25):
 
 
 lv.area('north shops')
+rng = dice(455)
 north_shops = side(True, 1, DARK[0] - 2, list(SIGNS_1)) + side(True, DARK[1] + 2, WS - 4, list(SIGNS_2), 0.2)
 lv.area('south shops')
+rng = dice(838)
 south_shops = side(False, 1, DARK[0] - 2, list(SIGNS_1S)) + side(False, DARK[1] + 2, WS - 4, list(reversed(SIGNS_2)), 0.2)
 
 
@@ -292,6 +306,7 @@ def dress_shop(x, w, kind, door, face, north):
     lv.prop('ceiling_lamp', x + w / 2, lamp_row)
 
 
+rng = dice(1248)
 for s in north_shops:
     dress_shop(*s, True)
 for s in south_shops:
@@ -323,44 +338,13 @@ for x in range(D0 + 5, D1 - 1, 6):
 lv.patron('civ1', D0 + 11.5, 20.85, 90, 'drink')
 lv.patron('civ3', D0 + 19.5, 20.85, 90, 'drink')
 
-# ---------------------------------------------------------------- the cafe and its terrace (south, set back)
-# (LAID THEN TAKEN AWAY: the harmony pass puts the fruit market there. It is still laid here because its tables draw
-# from the street's dice: the parked cars and the shops after it stay where they were)
-lv.area('the cafe: its front, the awnings')
+# ---------------------------------------------------------------- the front set back on the south side (cols T0-T1)
+# four metres back from the kerb (row 21), open ground before it: the fruit market's (HARMONY 3 below dresses it)
 for x in range(T0 + 1, T1):
     lv.put(x, 21, 'G')
 for x in (T0 + 2, T0 + 3, T1 - 3, T1 - 2):
     lv.put(x, 21, 'X')
 lv.put(T0 + 12, 21, 'L')
-lv.prop('neon_sign_cafe', T0 + 3.0, 20.91)
-lv.prop('neon_sign_cafe', T1 - 2.0, 20.91)
-for c in (T0 + 7.0, T0 + 16.5, T0 + 20.5):
-    lv.prop('awning', c, 20.44, 180)
-for x in range(T0 + 2, T1, 5):
-    lv.prop('ceiling_lamp', x + 0.5, 22.3)
-    lv.prop('wall_lamp', x + 2.5, 20.9, 180)
-lv.area('the terrace: planters and bollards along its kerb, tables, chairs, parasols (everything flies)')
-for c in (T0 + 1.6, T0 + 5.2, T0 + 8.8, T0 + 12.4, T0 + 16.0, T0 + 19.6, T0 + 23.2):     # planters along the kerb,
-    must('planter', c, 16.32)                         # a steel bollard between two: the cars kept off it
-    must('bollard', c + 1.8, 16.3)
-for c in (T0 + 26.4, T0 + 27.9, T0 + 29.4):
-    must('bollard', c, 16.3)
-must('planter', T0 + 0.35, 18.0, 90)
-must('planter', T1 + 0.65, 18.0, 90)
-n = 0
-for (row, shift) in ((17.35, 0.0), (18.75, 1.7), (19.9, 0.4)):
-    c = T0 + 2.2 + shift
-    while c < T1 - 0.5:
-        tc, tr = c + rng.uniform(-0.3, 0.3), row + rng.uniform(-0.12, 0.12)
-        if put('table_round', tc, tr):
-            n += 1
-            for (dx, dy, deg) in ((-0.74, 0.1, 0), (0.74, -0.1, 180), (0.05, 0.76, 90))[:2 + n % 2]:
-                put('chair', tc + dx + rng.uniform(-0.06, 0.06), tr + dy, deg + rng.randint(-25, 25))
-            if n % 3 != 2:
-                put('parasol', tc + 0.6, tr - 0.6)
-        c += rng.uniform(2.9, 3.7)
-lv.patron('civ2', T0 + 6.4, 18.85, 180, 'drink')
-lv.patron('civ4', T0 + 20.7, 17.45, 180, 'drink')
 
 # ---------------------------------------------------------------- the two junctions
 # A street across under traffic lights. Its four corners are rounded (the sidewalks come out to the lanes there: no
@@ -449,6 +433,7 @@ must('car', CORAL[1] - 1.5, 2.2, 90, on='=')
 # ---------------------------------------------------------------- the parking rows
 # a row of bays six metres long, a white tee where two meet; a meter at each on the sidewalk; cars in some
 lv.area('parking: cars (lights off), meters')
+rng = dice(1616)
 N_BAYS = [(14, 44, 0.6), (110, 146, 0.55), (158, 200, 0.28), (234, 240, 0.5), (358, 382, 0.6)]   # (first tee, last tee, how full)
 S_BAYS = [(64, 88, 0.62), (278, 308, 0.6)]
 LOADING = (88, 100)         # two bays on our side kept for deliveries: hatched, a yellow kerb, nobody parked
@@ -582,7 +567,7 @@ def clear_of(col, spans, pad=1.5):
 
 
 JUNCTIONS = [(CORAL[0] - 4, CORAL[1] + 4), (CROSS[0] - 4, CROSS[1] + 4)]
-MOUTHS_S = [(a, a + ALLEY_W - 1) for a in ALLEYS] + JUNCTIONS + [TERRACE]
+MOUTHS_S = [(a, a + ALLEY_W - 1) for a in ALLEYS] + JUNCTIONS + [MARKET]
 MOUTHS_N = [YARD, N_ALLEY, (BUS[0] + 6, BUS[0] + 18), BRIDGE] + JUNCTIONS
 for col in range(12, WS - 4, 12):
     north = (col // 12) % 2 == 1
@@ -633,6 +618,7 @@ def doors_of(shops):
 
 
 lv.area('north sidewalk: against the walls (the wide ones)')
+rng = dice(1795)
 doors = doors_of(north_shops)
 for (a, b) in ((62, 98), (276, 312), (404, 446)):
     col = a + 2.0
@@ -646,6 +632,7 @@ for (a, b) in ((62, 98), (276, 312), (404, 446)):
         col += rng.uniform(4.5, 7.5)
 
 lv.area('south sidewalk: against the walls')
+rng = dice(1833)
 S_WALL = ['sandwich_board', 'bench', 'vending', 'plant', 'fruit_stand', 'trash_can', 'ash_urn', 'cardboard_box', 'bench',
           'paper_bundle', 'fruit_stand', 'crate', 'shopping_cart', 'phone_booth', 'bench', 'trash_can', 'sandwich_board']
 S_DARK = ['bin_bag', 'bin_bag', 'crate', 'crate', 'trash_can', 'bin_bag', 'cardboard_box']   # (no barrel on his way: a death nobody
@@ -675,6 +662,7 @@ for (kind, c, r, deg) in (('phone_booth', D0 - 1.6, 17.5, 180), ('news_box', D0 
     put(kind, c, r, deg)
 # shop awnings over the windows (never over the pier and its sign): torn down by a car along the fronts (Drive `canopy`)
 lv.area('shop awnings')
+rng = dice(2070)
 AWNINGS = ('awning_red', 'awning_green', 'awning_blue', 'awning_wine')
 for (north, shops) in ((True, north_shops), (False, south_shops)):
     for (x, w, kind, door, face) in shops:
@@ -700,6 +688,7 @@ for (kind, c, r, deg, opt) in (('dumpster', LOT[0] + 4.0, 5.0, 12, {}), ('car2',
                                ('car', LOT[0] + 62.0, 5.2, 160, {'lights': False})):
     put(kind, c, r, deg, on='~"', **opt)
 lv.area('the dark stretch: the blind walls (south)')
+rng = dice(2101)
 x = DARK[0] + 2.0
 while x < DARK[1] - 4:
     kind = rng.choice(('flyers', 'flyers', 'conduit', 'pipe_steam', 'wall_vent', 'pipe_water'))
@@ -1107,7 +1096,7 @@ must('royal_palm', 468.0, 42.0, on='"')
 must('royal_palm_b', 493.6, 41.8, on='"')
 lv.prop('billboard_tan', 477.0, 42.3 - 50 / 32)                          # (hung: its legs on the bank, its face over the rail)
 lv.prop('billboard_radio', 511.0, 42.3 - 50 / 32)
-must('crash_cushion_hit', 522.4, 42.1, 0, on='"=')
+must('crash_cushion_narrow', 522.4, 42.1, 0, on='"=')                  # the plaza's own kind at the bank's nose
 lv.paint('litter_a', 518.6, 42.3)                                         # (off the WRONG WAY's foot)
 lv.area('miami: the cold store, the motel\'s back, the used car lot (south)')
 lv.put(464, R1 + 3, 'L')                                                  # the cold store's office door, under its canopy
@@ -1513,17 +1502,15 @@ lv.paint('sabal_frond_fallen', 288.6, 10.4, 60)
 lv.paint('sabal_frond_fallen', 310.6, 10.35, 200)
 
 # ---------------------------------------------------------------- 3: THE FRUIT MARKET (the lorry's dodge, cols 325-354)
-# The cafe's terrace is gone (the user: "les terrasses comme ca, pas sur ... peut-etre autre chose"). Of the three sets
+# No cafe terrace here (the user: "les terrasses comme ca, pas sur ... peut-etre autre chose"). Of the three sets
 # painted for it the fruit market is the one that reads at night and from the wheel: its stalls are lit (a bulb each,
 # strings of them along its front), its awnings and fruit are the brightest things of the block, its signs are the
 # street's Spanglish, and everything in it is torn or flung (stalls torn, their fruit and coconuts all over the road,
 # crates and signs thrown: nothing `lasting`, nothing bolted but the stalls). The tyre yard is black rubber on a dark
 # lot (and round things by a road were what read as kegs); the car wash has too little to send flying. The geometry
-# is the terrace's: the fronts four metres back (row 21), open ground from the kerb to them, the way round the lorry
+# is the one set back above: the fronts four metres back (row 21), open ground from the kerb to them, the way round the lorry
 # at col 340 (the event's `gap`). Its ground: the sidewalk's row along the kerb, then beaten earth: a vacant corner.
 lv.area('harmony 3: the fruit market (everything flies)')
-drop(lambda k, c, r: T0 - 0.7 < c < T1 + 1.3 and 16 <= r < 23)           # the terrace, the cafe's signs and lamps
-lv.patrons[:] = [p for p in lv.patrons if not (T0 < p[1] < T1 and 16 < p[2] < 21)]
 lv.fill(T0, 17, T1, 20, '~')
 lv.prop('neon_sign_palm', T0 + 3.0, 20.91)                                # the fruteria behind it
 lv.prop('neon_sign_open', T1 - 2.0, 20.91)
@@ -1645,9 +1632,6 @@ lv.paint('palm_frond_fallen', 468.4, 48.5, 200)
 lv.paint('sabal_frond_fallen', 495.2, 43.4, 40)
 if drop(lambda k, c, r: k == 'oil_drum' and abs(c - (DOCK_S[1] + 0.3)) < 0.2 and abs(r - (R1 + 2.6)) < 0.2):
     must('bin_bag', DOCK_S[1] + 0.3, R1 + 2.6)
-# the cushion at the bank's nose: the plaza's own kind (it was two burst sand barrels: drums by a road again)
-if drop(lambda k, c, r: k == 'crash_cushion_hit'):
-    must('crash_cushion_narrow', 522.4, 42.1, 0, on='"=')
 # the toll's approach and the freeway's start were bare asphalt in the dark (their verges are off the picture): the
 # ramp's slabs carried on (a joint every 6 m, oil down the lanes), rubber, rain standing with the plaza's neon in it,
 # sodium between the tall lamps
@@ -1822,6 +1806,7 @@ lay_kerbs()
 
 # ---------------------------------------------------------------- the roofs of the blind buildings
 lv.area('roofs')
+rng = dice(2152)
 for row in (2.0, 5.5, 20.0, 22.4):
     col = 2.0
     while col < WS - 3:

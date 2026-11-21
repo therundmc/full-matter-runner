@@ -69,7 +69,7 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'deco_canopy_peach', 'deco_canopy_lavender', 'awning_pink', 'awning_mint', 'awning_peach', 'awning_lavender',
   'pole_sign_motel', 'pole_sign_autos', 'billboard_tan', 'billboard_radio', 'lot_light', 'pennant_string', 'car_burnt',
   'billboard_tan_bare', 'billboard_tan_frame', 'billboard_radio_bare', 'billboard_radio_frame',
-  'tent_tarp', 'barrel_fire', 'chainlink_fence', 'chainlink_hole', 'guardrail_dented', 'crash_cushion_hit', 'call_box', 'sign_gantry',
+  'tent_tarp', 'barrel_fire', 'chainlink_fence', 'chainlink_hole', 'guardrail_dented', 'call_box', 'sign_gantry',
   'produce_crates', 'box_stack', 'fruit_cart', 'news_stand', 'laundry_line', 'laundry_shirt', 'laundry_towel', 'laundry_sheet',
   'neon_box_pink', 'neon_box_cyan', 'scooter_mint', 'scooter_pink', 'domino_table', 'dumpster_mint', 'dumpster_pink',
   'dumpster_aqua', 'stucco_trim_pink', 'stucco_trim_mint', 'stucco_trim_peach', 'ac_drip', 'fire_escape', 'palm_fronds',
@@ -158,13 +158,13 @@ export const OPTIONAL_LIST = [
   ...CLUTTER_SPRITES.map((n) => `clutter/${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_mirage', 'neon_sign_open', 'neon_sign_beer', 'neon_sign_bay',
     'neon_sign_lips'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
-  // level 2A's back road: the lorry, the cafe's terrace, two more signs
-  ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  // level 2A's back road: the lorry, a sign
+  ...['lorry', 'neon_sign_diner'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   // Miami's wall neon (at the world's density, as the other neon signs)
   ...['neon_sign_motel', 'neon_sign_vacancy', 'neon_sign_flamingo'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   // Miami's neon (generate_assets.py ALLEY_NEON: light, at the world's density)
   ...['neon_sign_botanica', 'neon_sign_cocktail'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
-  ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
+  'props/awning',
   ...[...ROAD_PROPS, ...ROAD_PAINT, ...ROAD_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...DECO_PROPS, ...DECO_PAINT, ...DECO_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...INTERIOR_PROPS, ...INTERIOR_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
@@ -219,7 +219,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid', 'sandwich_board', 'ash_urn', 'entry_mat',
   'frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'dartboard', 'pay_phone', 'coat_hooks', 'towel_dispenser',
   'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag',
-  'lorry', 'awning', 'parasol', 'planter']);
+  'lorry', 'awning']);
 for (const n of [...ROAD_PROPS, ...ROAD_PAINT]) FINE_PROPS.add(n); // level 2A's street, all of it
 for (const n of [...DECO_PROPS, ...DECO_PAINT]) FINE_PROPS.add(n); // the art deco dressing too
 for (const n of INTERIOR_PROPS) FINE_PROPS.add(n); // level 1's interiors too

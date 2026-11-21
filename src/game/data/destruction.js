@@ -266,9 +266,8 @@ export const DESTRUCTION = {
   sandwich_board: { height: 1, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   ash_urn: { height: 0.9, parts: [{ cut: 'wedges', n: 4 }] },
   neon_sign_wash: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
-  // level 2A's back road: the cafe's terrace, two more signs
+  // level 2A's back road: a sign, the awnings
   neon_sign_diner: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
-  neon_sign_cafe: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
   awning: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   awning_red: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   awning_green: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
@@ -281,8 +280,6 @@ export const DESTRUCTION = {
   fruit_stand: { height: 0.9, parts: [{ cut: 'planks', n: 4, axis: 'long', snap: true }], contents: [{ bit: 'fruit', n: 14, on: 'break' }, { bit: 'fruit', n: 2, on: 'hit', perHit: 1 }] },
   shopping_cart: { height: 1, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
   mailbox: { height: 1.1, floats: ['paper', 8], parts: [{ cut: 'grid', cols: 2, rows: 2 }], contents: [{ bit: 'sheet', n: 5, on: 'break' }] },
-  parasol: { height: 2.3, drop: true, parts: [{ cut: 'wedges', n: 8 }] },
-  planter: { height: 0.5, spill: 'soil', parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   neon_sign_palm: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_bar: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_arrow: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },
@@ -405,7 +402,6 @@ export const DESTRUCTION = {
   chainlink_fence: { height: 1.8, material: 'metal', parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   chainlink_hole: { height: 1.8, material: 'metal', parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   guardrail_dented: { height: 0.7, material: 'metal' },
-  crash_cushion_hit: { height: 0.9, powder: '#c8b080', parts: [{ cut: 'wedges', n: 6 }] },
   call_box: { height: 1.4, drop: true },
   // the suburb going to Miami (nothing `lasting` but the aerial up on its roof)
   sabal_palm: { height: 6, drop: true, floats: ['leaf', 30], parts: [{ cut: 'wedges', n: 7 }] },

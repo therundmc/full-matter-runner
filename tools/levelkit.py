@@ -53,7 +53,7 @@ SIZES = dict(
     coat_hooks=None, towel_dispenser=None, neon_sign_beer=None, neon_sign_bay=None,
     poster_pinup=None, poster_revue=None, mirror_strip=None, neon_sign_lips=None, cocktail_table=(24, 24),
     conduit=None, flyers=None,
-    lorry=(276, 76), awning=None, parasol=(5, 5), planter=(40, 16), neon_sign_diner=None, neon_sign_cafe=None,
+    lorry=(276, 76), awning=None, neon_sign_diner=None,
     awning_red=None, awning_green=None, awning_blue=None, awning_wine=None, traffic_cone=(10, 10), sawhorse=(38, 8),
     cardboard_box=(15, 13), paper_bundle=(13, 9), fruit_stand=(34, 16), shopping_cart=(20, 12), mailbox=(13, 13),
     # level 2A's street (a post's hitbox: the post, not its plate or its arm)
@@ -79,7 +79,7 @@ SIZES = dict(
     royal_palm=(16, 16), royal_palm_b=(16, 16), hibiscus_hedge=(92, 20), hibiscus_hedge_pink=(92, 20), billboard_tan=None,
     billboard_radio=None, pole_sign_motel=(8, 8), pole_sign_autos=(8, 8), car_burnt=(136, 54), tent_tarp=(64, 44),
     barrel_fire=(20, 20), chainlink_fence=(128, 4), chainlink_hole=(128, 4), guardrail_dented=(128, 6),
-    crash_cushion_hit=(60, 50), call_box=(5, 5), pennant_string=None, lot_light=(6, 6), sign_gantry=None, awning_pink=None, awning_mint=None,
+    call_box=(5, 5), pennant_string=None, lot_light=(6, 6), sign_gantry=None, awning_pink=None, awning_mint=None,
     awning_peach=None, awning_lavender=None, deco_canopy_pink=None, deco_canopy_mint=None, deco_canopy_peach=None,
     deco_canopy_lavender=None, neon_sign_motel=None, neon_sign_vacancy=None, neon_sign_flamingo=None,
     # Miami, 1986, the alley (generate_assets.py ALLEY_PROPS): the city's own; what hangs on a wall face or overhead: None
@@ -126,7 +126,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26, frame_photo=10, frame_gold=12, poster_fight=14,
                poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24,
                poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22, conduit=46, flyers=24,
-               neon_sign_diner=44, neon_sign_cafe=32,
+               neon_sign_diner=44,
                security_mirror=10, cig_rack=26, price_board=22, tape_rack=28, notice_board=20, coin_changer=10, hand_dryer=8,
                graffiti=26, wall_clock=7, cleaning_rack=20,
                boiler=14, mirror_cracked=12, mailboxes=24, calendar=7, roller_door=96,
