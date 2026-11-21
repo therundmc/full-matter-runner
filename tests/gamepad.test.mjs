@@ -157,7 +157,11 @@ test('controls: every action has a cap for each device; the pad binds what the b
   assert.equal(keyLabel('reload', 'pad'), 'Y');
   assert.equal(keyLabel('attack', 'pad'), 'RB');
   assert.equal(keyLabel('throw', 'pad'), 'LB');
-  assert.equal(keyLabel('look', 'pad'), 'LT');
+  // one word a meaning: RETRY on the death screen (the pad's A), RESTART on the results (R / Y: Y plays R)
+  assert.equal(keyLabel('retry', 'pad'), 'A');
+  assert.equal(keyLabel('restart', 'pad'), 'Y');
+  assert.equal(PAD_BINDINGS.Y, 'KeyR');
+  assert.equal(keyLabel('look', 'pad'), 'look', 'no prompt asks for it: not an action of the prompts');
   assert.equal(keyLabel('attack', 'kbm'), 'LMB');
   assert.equal(keyLabel('nothing', 'pad'), 'nothing');
   assert.deepEqual(PAD_BINDINGS, { A: 'Space', X: 'KeyE', Y: 'KeyR', Start: 'Escape', RB: 'Mouse0', LB: 'Mouse2', RT: 'Mouse0', LT: 'ShiftLeft' });
