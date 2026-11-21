@@ -1291,7 +1291,7 @@ export default class Drive {
     const on = skid > 0 ? rear : null;
     if (on) {
       // (their rubber smoke in the air: systems/CarFx.js; all four in a shove)
-      w.events.emit('tyres', { car: v, at: this.shoveT > 0 ? wheels : on, k: skid });
+      w.events.emit('tyres', { car: v, at: this.shoveT > 0 ? wheels : on, k: skid, dt });
       for (const r of on) if (chance(F.smoke[0] * skid)) w.particles.smoke(r.x, r.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
       if (this.ruts?.length === on.length) {
         const from = this.ruts, xs = [...on, ...from].map((r) => r.x), M = F.marks;

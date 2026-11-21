@@ -482,7 +482,7 @@ export default class Pursuit {
     b.flyUntil = w.time + CHASE.fly;
     car.set = set;
     v.steer = clamp(angDiff(b.angle, car.h) * 2, -0.5, 0.5);
-    if (Math.abs(car.slip) > CHASE.slide.smoke && car.s > CHASE.fx.from) w.events.emit('tyres', { car: v, at: v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy)), k: clamp(Math.abs(car.slip) / CHASE.slide.most, 0, 1) });
+    if (Math.abs(car.slip) > CHASE.slide.smoke && car.s > CHASE.fx.from) w.events.emit('tyres', { car: v, at: v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy)), k: clamp(Math.abs(car.slip) / CHASE.slide.most, 0, 1), dt });
     v.bob = Math.sin(w.time * 9 + car.n) * 0.3 * Math.min(1, car.s / CHASE.cruise);
   }
 
@@ -645,7 +645,7 @@ export default class Pursuit {
     car.slipV = st.slipV;
     v.steer = clamp(pose.q.turn * 0.4 - st.slip * 0.5, -0.5, 0.5);
     v.bob = Math.sin(w.time * 9 + car.n) * 0.3 * Math.min(1, st.v / CHASE.cruise);
-    if (Math.abs(st.slip) > CHASE.slide.smoke && st.v > CHASE.fx.from) w.events.emit('tyres', { car: v, at: v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy)), k: clamp(Math.abs(st.slip) / CHASE.slide.most, 0, 1) });
+    if (Math.abs(st.slip) > CHASE.slide.smoke && st.v > CHASE.fx.from) w.events.emit('tyres', { car: v, at: v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy)), k: clamp(Math.abs(st.slip) / CHASE.slide.most, 0, 1), dt });
     if (st.p < b.length) return;
     // out: driven as on any leg from here
     car.bend = null;
@@ -825,9 +825,13 @@ export default class Pursuit {
     }
     // the men in it: the driver, unless he was shot (his kill told then), and the gunman if still in it
     this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck', undefined, crew);
+    // (stopped on a toll's steel boom: THE CRASH, its own fire-ball in place of the engine's: systems/Toll.js,
+    // decided now and done before the event, so that whoever hears it knows)
+    const boom = w.toll?.boomOf(v) ?? null;
     // (in a bend's narrow way there is no exit: it piles up where it is, slewed round, most of its speed gone)
     if (inBend) this.pileUp(car);
-    else this.leave(car);
+    else this.leave(car, !boom);
+    if (boom) w.toll.crash(v, boom);
     // (the chase's kill beat: systems/ChaseCam.js; how: 'shoved' when his car threw it there: the strong beat)
     w.events.emit('pursuerWreck', { car: v, x: v.x, y: v.y, how: w.time - car.by < AGAIN ? 'shoved' : 'wrecked' });
   }
@@ -857,8 +861,9 @@ export default class Pursuit {
 
   // ---------------------------------------------------------------- the exit
   // It starts: the side away from him (dead level with him: the side of the street with more room), its speed along
-  // the road (his at most); none for a car that was standing (the alley car shot as it waits); the lab's dummy loosened for it
-  leave(car) {
+  // the road (his at most); none for a car that was standing (the alley car shot as it waits); the lab's dummy loosened
+  // for it. ball: the engine's fire-ball (none for a toll's crash: the boom's is the one)
+  leave(car, ball = true) {
     const v = car.v, b = v.body, tg = this.target(), O = this.C.out;
     if (car.gone || !tg) return;
     const vel = Body.getVelocity(b);
@@ -873,10 +878,12 @@ export default class Pursuit {
     // the engine goes: a ball of fire off the hood, a flash, and it burns from here on (looks: O.fx)
     const F = O.fx, w = this.world;
     if (v.exploded || !F) return;
-    const hood = v.toWorld(v.w * 0.82, v.h / 2);
-    w.particles.fire?.(hood.x, hood.y, F.ball[0], F.ball[1], { size: [4, 10], heat: 0 });
-    w.particles.smoke?.(hood.x, hood.y, 6, 8, { speed: 50, size: 10, life: 1.4, dark: true });
-    w.light?.(hood.x, hood.y, F.ball[2], F.ball[3], 0.25);
+    if (ball) {
+      const hood = v.toWorld(v.w * 0.82, v.h / 2);
+      w.particles.fire?.(hood.x, hood.y, F.ball[0], F.ball[1], { size: [4, 10], heat: 0 });
+      w.particles.smoke?.(hood.x, hood.y, 6, 8, { speed: 50, size: 10, life: 1.4, dark: true });
+      w.light?.(hood.x, hood.y, F.ball[2], F.ball[3], 0.25);
+    }
     // (alight for the look of it, no fuse: it blows up later only if it had caught for real: wreck.fire)
     if (F.burn && !v.burning && !v.armoured) { v.burning = true; v.fuse = Infinity; }
   }
@@ -899,7 +906,7 @@ export default class Pursuit {
     }
     if (o.hit || sp < 1.5) { o.ruts = null; return; }
     for (const q of wheels) if (chance(F.smoke[0])) w.particles.smoke(q.x, q.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
-    w.events.emit('tyres', { car: v, at: wheels, k: 1 }); // (their rubber smoke in the air, the sparks from under it: systems/CarFx.js)
+    w.events.emit('tyres', { car: v, at: wheels, k: 1, dt }); // (their rubber smoke in the air, the sparks from under it: systems/CarFx.js)
     if (o.ruts) {
       const from = o.ruts, xs = [...wheels, ...from].map((q) => q.x);
       w.decals?.paint?.((g) => {

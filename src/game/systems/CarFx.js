@@ -7,7 +7,7 @@
 // 'explosion', 'carBlast') and looks at the cars and their contacts once a step, after the physics.
 // LOOKS ONLY: it never moves a car, nothing it throws can touch one (its burning pieces meet walls only), and what it
 // draws is scaled by the QUALITY option (data/quality.js `fx`, `fxLights`) under the budgets of CARFX.budget. DOM-free.
-import { CAT } from '../Config.js';
+import { CAT, FIXED_DT } from '../Config.js';
 import { CARFX } from '../data/carfx.js';
 import { quality } from './Quality.js';
 import { rand, chance, clamp } from '../../engine/math.js';
@@ -68,7 +68,8 @@ export default class CarFx {
     on('carPart', (e) => this.part(e));
     on('carStruck', (e) => this.struck(e));
     on('ride', (e) => this.ride(e));
-    on('pursuerWreck', ({ car }) => { if (car && !car.exploded) this.boom('engine', this.hood(car), Body.getVelocity(car.body), car); });
+    // (a toll's crash has the boom's fire-ball instead: TollFx on 'tollCrash'; marked before the event, Pursuit.wreck)
+    on('pursuerWreck', ({ car }) => { if (car && !car.exploded && !car.tollCrash) this.boom('engine', this.hood(car), Body.getVelocity(car.body), car); });
     on('pursuerCrash', ({ car, x, y }) => { if (car?.burning && !car.exploded) this.boom('crash', { x, y }, null, car); });
     on('explosion', ({ x, y, source }) => { if (source === 'car') this.boom('car', { x, y }); else if (source === 'fuel') this.pop(x, y); });
     on('carBlast', ({ pieces }) => { for (const d of pieces || []) this.alight(d, rand(2, 4)); });
@@ -301,10 +302,11 @@ export default class CarFx {
 
   // ---------------------------------------------------------------- the world's events
   // tyres letting go at the points `at` of `car`, k 0..1 of it: rubber smoke in the air
-  tyres({ car, at, k = 1 }) {
+  tyres({ car, at, k = 1, dt = FIXED_DT }) {
     const w = this.world, T = this.C.tyres;
     if (!w.smoke || !car || !at) return;
-    const vel = Body.getVelocity(car.body), sp = Math.hypot(vel.x, vel.y), dt = 1 / 60, E = T.puff;
+    // (told once a step: dt the step's, slowed down with the world; sp: px it covers in it)
+    const vel = Body.getVelocity(car.body), sp = Math.hypot(vel.x, vel.y) * dt / FIXED_DT, E = T.puff;
     const hx = Math.cos(car.body.angle), hy = Math.sin(car.body.angle);
     for (const q of at) {
       for (const [kind, rate, trail] of T.lay) w.smoke.lay(kind, q.x, q.y, q.x, q.y, T.r, (rate * dt + trail * sp) * k, T.cap, 0.4);

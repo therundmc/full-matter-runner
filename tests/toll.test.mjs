@@ -604,3 +604,35 @@ test('pursuit: no more than CHASE.pursuit.most of them drive after him at once; 
   assert.equal(level2a.chase.end, 656, 'the level ends well before the map\'s edge (44 columns to run on in the dark)');
   assert.ok(level2a.tiles[0].length - level2a.chase.end >= 40);
 });
+
+test('toll: the crash on a steel boom is ONE fire-ball (the boom\'s) and the strong beat, whoever hears the wreck first', async () => {
+  const { default: CarFx } = await load('game/systems/CarFx.js');
+  const { default: TollFx } = await load('game/systems/TollFx.js');
+  const k = T.gates.indexOf('steel'), s = start(T.fan[0] - 26, T.from[3], { speed: 13.3 }), { w, P } = s;
+  // the listeners made in the other order than World makes them: the camera and the car's looks before the toll's
+  const events = new EventBus();
+  for (const k2 of ['tollGate', 'pursuerWreck', 'chaseBeat', 'tollCrash']) events.on(k2, (e) => w.told.push({ k: k2, ...e }));
+  w.events = events;
+  w.chaseCam = new ChaseCam(w);
+  w.carFx = new CarFx(w);
+  w.toll = Toll.of(w, level2a);
+  w.tollFx = new TollFx(w);
+  const booms = [];
+  w.carFx.boom = (name) => booms.push(name);
+  let balls = 0;
+  w.particles = new Proxy({}, { get: (t, n) => (n === 'fire' ? () => { balls++; } : () => {}) });
+  w.chaseCam.S = { strong: w.chaseCam.now, beat: -Infinity, kill: -Infinity, tier: 'strong', on: false };
+  const car = P.spawn(GX - 70 - 4, laneY(T, k, GX) + 6, 0, 'chase', 0, 'gunner');
+  Matter.Body.setVelocity(car.v.body, { x: 10, y: 0 });
+  P.wreck(car);
+  assert.ok(car.v.tollCrash, 'marked before the event');
+  assert.deepEqual(booms, ['toll'], 'the boom\'s fire-ball only: no engine\'s');
+  assert.equal(balls, 0, 'nor the exit\'s ball off its hood');
+  assert.equal(w.chaseCam.beat?.tier, 'strong', 'the strong beat');
+  // a wreck anywhere else: the engine's, as ever
+  const other = P.spawn(GX - 20 * TILE, T.from[0] * TILE, 0, 'chase', 0, 'gunner');
+  Matter.Body.setVelocity(other.v.body, { x: 10, y: 0 });
+  P.wreck(other);
+  assert.deepEqual(booms, ['toll', 'engine']);
+  assert.ok(balls > 0, 'and the ball off its hood');
+});

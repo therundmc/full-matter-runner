@@ -423,3 +423,18 @@ test('carfx: looks only: his car\'s speed and place and the pursuer\'s path are 
   const last = on.trace[on.trace.length - 1];
   assert.ok(last[0] > 20 * TILE + 5 * 60 * 5, 'and he did drive on');
 });
+
+test('carfx: tyre smoke goes by the step\'s time: a second of slow motion lays no more than a second at full speed', () => {
+  const lay = (scale) => {
+    const w = world(), car = vehicle(w, 'pursuer', 600, 400);
+    Body.setVelocity(car.body, { x: 6, y: 0 });
+    let amount = 0;
+    w.smoke.lay = (kind, x0, y0, x1, y1, r, a) => { amount += a; };
+    const at = car.m.wheels.slice(0, 2).map(([sx, sy]) => car.toWorld(sx, sy)), dt = DT * scale;
+    for (let t = 0; t < 1; t += dt) w.events.emit('tyres', { car, at, k: 1, dt });
+    return amount;
+  };
+  const full = lay(1), slow = lay(0.25);
+  assert.ok(full > 0);
+  assert.ok(Math.abs(slow - full) / full < 0.05, `${slow.toFixed(2)} in slow motion, ${full.toFixed(2)} at full speed`);
+});

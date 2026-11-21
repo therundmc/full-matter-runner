@@ -107,7 +107,6 @@ export default class Toll {
       P.props = P.lanes.map((r) => world.props.find((p) => KINDS[p.type] && Math.abs(p.x - P.x) < TILE && Math.abs(p.y - r * TILE) < TILE) || null);
     }
     this.seen = new Set(); // the arms already told torn
-    world.events?.on('pursuerWreck', (e) => this.onWreck(e));
   }
 
   // his car (the drive's, alive), or null
@@ -183,37 +182,43 @@ export default class Toll {
     return T.k === T.his ? tg.x + this.C.follow : null;
   }
 
-  // One of theirs stopped for good on a steel boom (Pursuit's 'pursuerWreck', from the physics' blow): THE CRASH, once
-  // a car. Thrown back off the boom (`back` px/step) and out to the side its nose was (`across`), spinning (`spin`
-  // rad/step), its nose folded (`dents` blows to its front), its front lamps and windscreen gone, `parts` of it
-  // lost; the boom bent (its sprite gate_steel_bent, still across the lane). Told on 'tollCrash' (the looks:
-  // systems/TollFx.js, the kill's strong beat: systems/ChaseCam.js reads `tollCrash` on the car)
-  onWreck({ car: v }) {
-    const K = this.C.crash, w = this.world;
-    if (!v || v.tollCrash || v.exploded) return;
+  // the steel boom car v stands on, stopped there: { P (its plaza), k (its lane) }, or null (once a car: one that
+  // crashed already, or blew up, has none)
+  boomOf(v) {
+    if (!v || v.tollCrash || v.exploded) return null;
     for (const P of this.plazas) {
-      P.gates.forEach((g, k) => {
-        if (v.tollCrash || !onBoom(P, k, v.x + v.w / 2, v.y, v.w)) return;
-        const gate = P.props[k], gy = laneY(P, k, P.x), side = v.y < gy ? -1 : 1;
-        v.tollCrash = true;
-        const b = v.body;
-        Body.setVelocity(b, { x: -K.back, y: side * K.across });
-        Body.setAngularVelocity(b, side * K.spin);
-        b.flyUntil = w.time + K.fly;
-        // (the nose folded on the boom: blows across its front, both lamps, the windscreen)
-        for (let i = 0; i < K.dents; i++) v.scar?.(v.w - 2 - Math.random() * 18, 3 + Math.random() * (v.h - 6), Math.PI, 'blunt');
-        v.breakLamp?.(0, 0);
-        v.breakLamp?.(1, 0);
-        v.hitWindow?.('wind', v.w * 0.7, v.h / 2, 0);
-        for (let i = 0; i < K.parts; i++) v.shed?.(v.x + v.w / 2, v.y, Math.PI + side * (0.3 + Math.random()), 140 + Math.random() * 160, true);
-        if (gate && !gate.bent) {
-          gate.bent = true;
-          gate.img = spriteOpt('props/gate_steel_bent') || gate.img;
-        }
-        w.shake?.(K.shake);
-        w.events.emit('tollCrash', { car: v, gate, x: P.x - 4, y: v.y, side, lane: k });
-      });
+      const k = P.gates.findIndex((_, i) => onBoom(P, i, v.x + v.w / 2, v.y, v.w));
+      if (k >= 0) return { P, k };
     }
+    return null;
+  }
+
+  // One of theirs stopped for good on a steel boom (Pursuit.wreck, from the physics' blow, before it tells
+  // 'pursuerWreck': at: boomOf's): THE CRASH, once a car. Thrown back off the boom (`back` px/step) and out to the
+  // side its nose was (`across`), spinning (`spin` rad/step), its nose folded (`dents` blows to its front), its front
+  // lamps and windscreen gone, `parts` of it lost; the boom bent (its sprite gate_steel_bent, still across the lane).
+  // Marked `tollCrash` (so that the kill's strong beat, systems/ChaseCam.js, and its looks, CarFx / TollFx, are the
+  // toll's whoever hears 'pursuerWreck' first) and told on 'tollCrash' (systems/TollFx.js)
+  crash(v, at = this.boomOf(v)) {
+    const K = this.C.crash, w = this.world;
+    if (!at) return;
+    const { P, k } = at, gate = P.props[k], gy = laneY(P, k, P.x), side = v.y < gy ? -1 : 1, b = v.body;
+    v.tollCrash = true;
+    Body.setVelocity(b, { x: -K.back, y: side * K.across });
+    Body.setAngularVelocity(b, side * K.spin);
+    b.flyUntil = w.time + K.fly;
+    // (the nose folded on the boom: blows across its front, both lamps, the windscreen)
+    for (let i = 0; i < K.dents; i++) v.scar?.(v.w - 2 - Math.random() * 18, 3 + Math.random() * (v.h - 6), Math.PI, 'blunt');
+    v.breakLamp?.(0, 0);
+    v.breakLamp?.(1, 0);
+    v.hitWindow?.('wind', v.w * 0.7, v.h / 2, 0);
+    for (let i = 0; i < K.parts; i++) v.shed?.(v.x + v.w / 2, v.y, Math.PI + side * (0.3 + Math.random()), 140 + Math.random() * 160, true);
+    if (gate && !gate.bent) {
+      gate.bent = true;
+      gate.img = spriteOpt('props/gate_steel_bent') || gate.img;
+    }
+    w.shake?.(K.shake);
+    w.events.emit('tollCrash', { car: v, gate, x: P.x - 4, y: v.y, side, lane: k });
   }
 
   // A step: how far each plaza is told (his car `tell` s from its gates, until he is `past` them; faded in over
