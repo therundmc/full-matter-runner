@@ -53,8 +53,9 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
 // then the suburb going to Miami (SUBURB_PROPS / SUBURB_PAINT, from sabal_palm / palm_frond_fallen on: palms, the
 // suburb's furniture, the homeless's things, a fruit market, a car wash, a tyre yard)
 // then 2A's sprites' second pass (from mailbox_post_b on: a number a house, the houses' windows and doors, the rails'
-// ends either side, a one-arm lamp); a billboard's `_bare` and `_frame` are what its face is torn down to
-// (entities/Board.js, render/BoardArt.js)
+// ends either side, a one-arm lamp), then the channelizer posts of a gore or a lane drop and the two pieces a car
+// tears one into (generate_assets.py CHANNEL_PROPS); a billboard's `_bare` and `_frame` are what its face is torn
+// down to (entities/Board.js, render/BoardArt.js)
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
@@ -81,7 +82,8 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'wash_bucket', 'hose_reel', 'tyre_stack', 'tyre_pile', 'tyre_loose', 'tyre_rack', 'tyre_sign', 'garden_wall_pink',
   'garden_wall_mint', 'garden_wall_cream',
   'mailbox_post_b', 'mailbox_post_c', 'mailbox_post_d', 'house_window', 'house_window_lit', 'house_door', 'guardrail_end_r',
-  'guardrail_end_trail', 'guardrail_end_trail_r', 'highway_lamp_single'];
+  'guardrail_end_trail', 'guardrail_end_trail_r', 'highway_lamp_single',
+  'channelizer', 'channelizer_tube', 'channelizer_base'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
@@ -105,7 +107,8 @@ const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade'
   'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop',
   'billboard_tan', 'billboard_radio', 'pole_sign_motel', 'pole_sign_autos', 'barrel_fire', 'lot_light', 'sign_gantry', 'deco_canopy_pink',
   'deco_canopy_mint', 'deco_canopy_peach', 'deco_canopy_lavender', 'neon_box_pink', 'neon_box_cyan',
-  'payphone_pastel', 'pole_sign_strip', 'market_stall', 'market_stall_coco', 'house_window_lit', 'house_door', 'highway_lamp_single'];
+  'payphone_pastel', 'pole_sign_strip', 'market_stall', 'market_stall_coco', 'house_window_lit', 'house_door', 'highway_lamp_single',
+  'channelizer'];
 // ART DECO 1985 (tools/generate_assets.py DECO_PROPS / DECO_PAINT): generic dressing for Sunset Bay's roads (palms,
 // hibiscus, deco planters and lamp, an office, a trooper's car, a motel's billboard; puddles with the neon in them) and the
 // toll's own states (its attendant ducked, a boom bent: systems/TollFx.js, systems/Toll.js); the lit ones' emissive maps

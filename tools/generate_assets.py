@@ -18260,6 +18260,100 @@ CHASE_SIZES.update(SUBURB_SIZES)
 ROAD_GLOWING += SUBURB_GLOWING
 
 
+# ---------------------------------------------------------------- level 2A: the channelizers (a gore, a lane drop)
+# The flexible delineator posts of an American junction ("channelizers"), a line of them along a gore's edge: an
+# orange tube 0.9 m tall and 0.1 m across glued to the asphalt on a black rubber base, two white reflective bands
+# round its top. Seen from above: the base, the tube's cap and the bands round it (they catch the light: a faint
+# emissive map). A car runs them down (data/destruction.js): the tube snaps off its base and flies, lying
+# (channelizer_tube, its snapped end ragged), the base left with its stub (channelizer_base).
+CHANNEL_ORANGE = ramp('#ff6a1a', 0.5, 0.26, 0.28)
+CHANNEL_BAND = ramp('#f4f2ea', 0.42, 0.2, 0.12)
+
+
+def channel_base(cv, c, rng):
+    """The rubber base from above (0.3 m round): its bevelled rim, the moulded ring round the tube's socket, rubber
+    left on it by the tyres that ran it over."""
+    fill_shape(cv, c, c, 4.7, 4.7, lambda u, v, L: shade(RUBBER, 0.25 + L * 0.55), bevel=1.4)
+    ring(cv, c, c, 3.3, 3.8, lambda dx, dy, d: shade(RUBBER, 0.15 + light(-dx / 3.8, -dy / 3.8) * 0.4))
+    smudge(cv, rng, 3, (c - 4, c - 4, c + 4, c + 4), (0.8, 1.6), 0.25)
+
+
+def p_channelizer():
+    """A channelizer post from above, 12 x 12 world px: the base, the orange tube's cap in its middle, the two white
+    reflective bands showing round it as a collar (the tube flexes: its top is never quite over its foot), lit from
+    the top left; the emissive map holds the bands' faint glint (they send the lamps' light back)."""
+    S = 12
+    c = S / 2
+    cv, gl = Cv(S, S), Cv(S, S)
+    channel_base(cv, c, random.Random(10801))
+    # (the tube's shadow down and to the right of it, on the base)
+    fill_shape(cv, c + 0.9, c + 0.9, 2.4, 2.4, lambda u, v, L: shade(RUBBER, 0.02))
+
+    def band(dx, dy, d):
+        L = light(dx / 3.2, dy / 3.2) * 0.6 + 0.4
+        return shade(CHANNEL_BAND, L) if 1.9 <= d < 2.75 else shade(CHANNEL_ORANGE, 0.2 + L * 0.5)   # (orange round it)
+    ring(cv, c - 0.25, c - 0.25, 0.0, 3.25, band)
+    fill_shape(cv, c - 0.25, c - 0.25, 1.9, 1.9, lambda u, v, L: shade(CHANNEL_ORANGE, 0.3 + L * 0.7))    # the cap
+    cv.dot(c - 0.25, c - 0.25, dk(CHANNEL_ORANGE[1], 0.3))                                               # its dimple
+    cv.dot(c - 1.9, c - 1.9, lt(CHANNEL_BAND[3], 0.6))                                                  # the glint
+    cv.dot(c - 1.4, c - 2.4, lt(CHANNEL_BAND[3], 0.4))
+    cv.outline()
+    ring(gl, c - 0.25, c - 0.25, 1.9, 2.75, lambda dx, dy, d: alpha(hx('#fff6e0'), 150 if dx + dy < 0 else 100))
+    return cv, gl
+
+
+def p_channelizer_tube():
+    """A channelizer's tube snapped off its base, lying (it flies): 0.9 m of orange plastic, its cap and the two white
+    bands at one end, a scuff of tyre rubber across it, the other end torn ragged."""
+    W, H = 28, 6
+    cv = Cv(W, H)
+    rng = random.Random(10802)
+    snap = [rng.uniform(0.0, 1.6) for _ in range(H * cv.s)]
+
+    def tube(x, y, cur):
+        j = int(y * cv.s)
+        if x < 1.0 + snap[min(j, len(snap) - 1)]:
+            return None                                                     # the snapped end, ragged
+        L = light(0, (y - H / 2) / (H / 2 - 0.8))
+        if W - 2.0 <= x:
+            return shade(CHANNEL_ORANGE, 0.2 + L * 0.6)                    # the cap
+        if W - 6.5 <= x < W - 4.5 or W - 10.5 <= x < W - 8.5:
+            return shade(CHANNEL_BAND, 0.35 + L * 0.65)                     # the reflective bands
+        return shade(CHANNEL_ORANGE, 0.3 + L * 0.7)
+    px_paint(cv, 0, 1.2, W - 1, H - 1.2, tube)
+    px_paint(cv, 1.5, 1.2, 4.5, H - 1.2, lambda x, y, cur: dk(cur, 0.35) if cur and cur[3] else None)   # torn: darker
+    smudge(cv, rng, 2, (8, 1, 16, H - 1), (1.0, 2.0), 0.35)                 # tyre rubber across it
+    cv.outline()
+    return cv
+
+
+def p_channelizer_base():
+    """What a car leaves of a channelizer: its rubber base still glued down, a ragged orange stub of the tube in its
+    socket."""
+    S = 12
+    c = S / 2
+    cv = Cv(S, S)
+    rng = random.Random(10803)
+    channel_base(cv, c, rng)
+
+    def stub(dx, dy, d):
+        a = math.atan2(dy, dx)
+        if d > 1.7 + 0.35 * math.sin(a * 3 + 1.3) + 0.2 * math.sin(a * 7):
+            return None
+        return dk(shade(CHANNEL_ORANGE, 0.3 + light(dx / 2, dy / 2) * 0.5), 0.15 if d > 0.8 else 0.5)
+    ring(cv, c, c, 0.0, 2.2, stub)
+    cv.outline()
+    return cv
+
+
+CHANNEL_PROPS = dict(channelizer=p_channelizer, channelizer_tube=p_channelizer_tube, channelizer_base=p_channelizer_base)
+CHANNEL_SIZES = dict(channelizer=(12, 12), channelizer_tube=(28, 6), channelizer_base=(12, 12))
+assert not set(CHANNEL_SIZES) & set(CHASE_SIZES), set(CHANNEL_SIZES) & set(CHASE_SIZES)
+CHASE_PROPS.update(CHANNEL_PROPS)
+CHASE_SIZES.update(CHANNEL_SIZES)
+ROAD_GLOWING += ['channelizer']
+
+
 GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
            'car', 'car2', 'van', 'convertible', 'pursuer']
 # furniture at real scale (1 m = 32 px): sprite = hitbox in data/props.js + 1 px of outline on each side

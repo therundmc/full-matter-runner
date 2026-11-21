@@ -249,7 +249,8 @@ export default {
     ['toll_island', 169.969, 43, 0], ['toll_booth', 171, 43, 0], ['crash_cushion_narrow', 164.637, 47.5, 0],
     ['toll_island', 169.969, 47.5, 0], ['toll_booth', 171, 47.5, 0], ['lane_signal_go', 167.4, 47.5, 0],
     ['crash_cushion_narrow', 164.637, 52, 0], ['toll_island', 169.969, 52, 0], ['lane_signal_stop', 167.4, 52, 0],
-    ['gate_arm_wood', 174.1, 44.9062, 90], ['gate_steel', 174.1, 49.375, 90], ['highway_lamp', 160.5, 41.6, 90],
+    ['gate_arm_wood', 174.1, 44.9062, 90], ['channelizer', 156.5, 47.5, 0], ['channelizer', 159.5, 47.5, 0],
+    ['channelizer', 162.5, 47.5, 0], ['gate_steel', 174.1, 49.375, 90], ['highway_lamp', 160.5, 41.6, 90],
     ['highway_lamp', 176.5, 53.4, 90], ['traffic_cone', 195.5, 45.6, 0], ['traffic_cone', 195.5, 47, 0],
     ['traffic_cone', 195.5, 48.4, 0],
     // 38 billboard: two billboards on the lower road's verge, to shoot to shreds

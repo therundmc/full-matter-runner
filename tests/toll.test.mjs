@@ -239,14 +239,16 @@ test('toll: told 1.5 s out at his speed, until he is past its gates', () => {
 });
 
 // ---------------------------------------------------------------- his car
-test('toll: from leg 1 on into the approach and the plaza with no bend: his row kept, no jump, the view eased across', () => {
-  const legs = legsOf(C), k1 = legAt(legs, (T.fan[0] - 10) * TILE);
+test('toll: from leg 1 on through the merge into the approach and the plaza with no bend: his row kept, no jump, the view eased across', () => {
+  const legs = legsOf(C), k1 = legAt(legs, (T.fan[0] - 10) * TILE), km = legAt(legs, (T.at - 60) * TILE);
   assert.ok(legs[k1].lanes.includes(C.legs[1].lanes[0]) && legs[k1].lanes.includes(C.legs[1].lanes[1]), 'the approach holds leg 1\'s two lanes');
-  assert.equal(legs[k1].from, C.legs[1].to, 'right after leg 1');
+  assert.equal(km, 2, 'the merge: the leg after leg 1');
+  assert.equal(legs[km].from, C.legs[1].to, 'right after leg 1');
+  assert.equal(legs[k1].from, legs[km].to, 'the approach right after the merge');
   assert.ok(!(C.bends || []).some((b) => b.to > 1), 'no bend into the toll');
-  const row = C.legs[1].lanes[1], s = start(legs[k1].from - 8, row), { d, v } = s, z = 3, viewW = 640;
+  const row = C.legs[1].lanes[1], s = start(legs[km].from - 8, row), { d, v } = s, z = 3, viewW = 640;
   let was = d.frame(viewW, z), wasY = v.y, most = 0, drift = 0, legsSeen = new Set();
-  run(s, 1.4, { each: () => {
+  run(s, 3, { each: () => {
     const f = d.frame(viewW, z);
     most = Math.max(most, Math.abs(f.y - was.y));
     drift = Math.max(drift, Math.abs(v.y - wasY));
@@ -254,7 +256,7 @@ test('toll: from leg 1 on into the approach and the plaza with no bend: his row 
     was = f;
     return v.x > (T.fan[0] - 4) * TILE;
   } });
-  assert.ok(legsSeen.has(1) && legsSeen.has(k1), 'leg 1, then the approach');
+  assert.ok(legsSeen.has(1) && legsSeen.has(km) && legsSeen.has(k1), 'leg 1, the merge, then the approach');
   assert.ok(drift < 1, `his row kept (${drift.toFixed(2)} px)`);
   assert.ok(most <= CHASE.camera.across.most + 1, `the view never jumps across (${most.toFixed(1)} px a step)`);
   assert.ok(Math.abs(d.v - legs[k1].cruise) < 0.6, `the toll's cruise picked up (${(d.v * CHASE.kmh).toFixed(0)} km/h)`);
@@ -483,6 +485,47 @@ test('toll: the roof over the plaza fades over his car as the railway bridge doe
 });
 
 // ---------------------------------------------------------------- past the gates: where the road narrows
+test('merge: steered north across the gore past the end of the freeway\'s rail, he reaches the freeway\'s lanes (held off the bank only beside it)', () => {
+  // (the freeway's rail along the top of the bank, its last length's end: the bank's hold ends there, not at the toll)
+  const rails = level2a.props.filter(([k, , r]) => k === 'guardrail' && Math.abs(r - 41.15) < 0.01);
+  const end = Math.max(...rails.map(([, c]) => c + 2));
+  const s = start(end - 12, C.legs[1].lanes[0]), { d, v, w, input } = s;
+  let beside = Infinity, slowest = Infinity;
+  run(s, 3, { each: () => {
+    // (W held from just short of the rail's end until he is over the freeway's near lane)
+    if (v.x > (end - 6) * TILE && v.y > 41.75 * TILE) input.held.add('KeyW');
+    else input.held.clear();
+    // (alongside the rail its whole body stays off the bank: below row 42.6)
+    if (v.body.bounds.min.x < end * TILE) beside = Math.min(beside, v.body.bounds.min.y);
+    else slowest = Math.min(slowest, d.v);
+    return v.x > 558 * TILE;
+  } });
+  assert.ok(w.player.alive && !d.dead, 'alive');
+  assert.ok(beside >= 42.6 * TILE - 1, `beside the rail held off the bank (top at row ${(beside / TILE).toFixed(2)})`);
+  assert.ok(v.y < 41.75 * TILE + 8, `on the freeway's lanes by col 558 (row ${(v.y / TILE).toFixed(2)})`);
+  assert.ok(slowest > 0.9 * d.cruise, `never held up across the gore (${(slowest / d.cruise * 100).toFixed(0)} % of his speed)`);
+});
+
+test('merge: the gore is channelized, a line of posts along each edge on its paint; driven through, each is torn off at no cost', () => {
+  const posts = level2a.props.filter(([k]) => k === 'channelizer');
+  const ramp = posts.filter(([, , r]) => Math.abs(r - 42.72) < 0.01), fwy = posts.filter(([, , r]) => r < 42.6);
+  assert.ok(ramp.length >= 6 && fwy.length >= 4, `two lines (${ramp.length} along the ramp's edge, ${fwy.length} along the freeway's)`);
+  assert.ok(posts.every(([, c]) => c > C.legs[1].to && c < T.at - 40), 'on the merge only');
+  for (let i = 1; i < ramp.length; i++) assert.ok(Math.abs(ramp[i][1] - ramp[i - 1][1] - 3) < 1e-6, '3 m apart');
+  const def = PROPS.channelizer;
+  assert.ok(def.static && !def.lasting && def.cost === 0, 'bolted, torn off, at no cost');
+  // his car run along the ramp's line of them (from past the bank's nose: beside it, it is held off the bank)
+  const x0 = ramp[1][1] - 1, s = start(x0, 42.72), { d, v, w } = s;
+  const mine = w.props.filter((p) => p.type === 'channelizer' && Math.abs(p.y - 42.72 * TILE) < 2 && p.x > x0 * TILE);
+  let slowest = Infinity;
+  run(s, 2.5, { each: () => { slowest = Math.min(slowest, d.v); return v.x > (ramp.at(-1)[1] + 4) * TILE; } });
+  assert.equal(mine.length, ramp.filter(([, c]) => c > x0).length);
+  assert.ok(mine.every((p) => p.dying || p.dead), `all torn off (${mine.filter((p) => p.dying || p.dead).length} of ${mine.length})`);
+  assert.ok(slowest > 0.99 * d.cruise, `never slowed (${(slowest / d.cruise * 100).toFixed(1)} % of his speed)`);
+  assert.ok(Math.abs(v.y - 42.72 * TILE) < 6, 'never pushed off his line');
+  assert.ok(!d.dead && w.killed === null);
+});
+
 test('toll: steered out wide past the gates and on to where the outer lanes end, the wheel is brought in ahead of the narrowing: never stopped on a rail\'s end', () => {
   // (out of the outer wooden lane, the wheel held to the outside: the fan back's crash cushions and the rail behind
   // them at col 627, the lane drop's at col 652; nose-on to the rail's end the car stood at 3 % of its speed)
