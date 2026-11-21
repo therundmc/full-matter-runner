@@ -8,7 +8,5 @@ export const KG = 0.0056;   // Matter mass units per kilogram (an 80 kg person =
 export const G = 9.81;      // m/s2
 export const STEP = 1 / 60; // Matter's base step (s)
 
-export const m = (meters) => meters * PX_PER_M;
-// px/step <-> m/s
+// px/step -> m/s
 export const toMps = (pxPerStep) => (pxPerStep / STEP) / PX_PER_M;
-export const fromMps = (mps) => mps * PX_PER_M * STEP;

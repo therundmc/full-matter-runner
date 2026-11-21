@@ -4,17 +4,16 @@
 // The numbers (alphas, phases, the light floor) are pure functions, unit-tested.
 import { BODY_SCALE } from '../Config.js';
 import { READABILITY } from '../data/readability.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, smooth } from '../../engine/math.js';
 
 const R = READABILITY;
-const smooth = (x) => x * x * (3 - 2 * x);
 
 // cues show in play only: not in a cinematic, the title, the pause menu or the intro banner, nor while a level's
 // staged scene plays (systems/Tutorial.js `scene`)
 export const cuesOn = (state, staged = false) => state === 'play' && !staged;
 
 // 1 within `near` px of the player .. 0 from `far` on
-export const fadeAt = (d, F = R.fade) => 1 - smooth(clamp((d - F.near) / (F.far - F.near), 0, 1));
+export const fadeAt = (d, F = R.fade) => 1 - smooth((d - F.near) / (F.far - F.near));
 
 // the catch-light on a floor weapon of phase `seed` (0..1) at time t: null between two runs, else where it is along
 // the weapon (s 0..1) and how bright (a)

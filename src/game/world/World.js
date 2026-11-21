@@ -580,7 +580,7 @@ export default class World {
       }
       if (o.ruts) {
         const xs = [...rear, ...o.ruts].map((r) => r.x), M = O.marks, from = o.ruts;
-        this.decals.paint?.((g) => {
+        this.decals.paint((g) => {
           g.strokeStyle = `rgba(${M.color}, ${spin > 0 ? M.spin : M.slide})`;
           g.lineWidth = M.w;
           g.lineCap = 'round';
@@ -715,7 +715,7 @@ export default class World {
     if (this.drive) {
       // what the van ran into, the end of the road; its engine heard
       this.drive.after(dt);
-      Audio.motor('drive', this.drive?.motor(dt) ?? null);
+      Audio.motor('drive', this.drive.motor(dt));
     }
     P?.begin('chase');
     this.pursuit?.after(dt);

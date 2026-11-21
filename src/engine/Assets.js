@@ -169,7 +169,7 @@ export const OPTIONAL_LIST = [
   ...[...DECO_PROPS, ...DECO_PAINT, ...DECO_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...INTERIOR_PROPS, ...INTERIOR_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...[...FLAT_PROPS, ...FLAT_PAINT].map((n) => `props/${n}`),
-  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
+  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare',
     // what the player's melee weapons break into (data/weapons.js parts)
     'bat_head', 'bat_handle', 'knife_blade', 'knife_handle'].map((n) => `weapons/${n}`),

@@ -19,6 +19,13 @@ export const bump = (k, a = 0, b = 1) => (k <= a || k >= b ? 0 : Math.sin((Math.
 // 0..1 noise of a number (the sin hash): the same n, the same value
 export const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
+// 0..1 of a whole-number cell (x, y), well mixed (no visible lattice, unlike a plain x*a ^ y*b); s: another draw
+export function cellHash(x, y, s = 0) {
+  let h = (x * 374761393 + y * 668265263 + s * 974711) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 // FNV-1a of a string, unsigned 32 bits (a seed from a name)
 export function hashString(str) {
   let h = 2166136261;

@@ -2,7 +2,7 @@
 // has a thickness (a film the floor shows through -> where it stands thick), generated once from seeded noise and
 // reused rotated by MapRenderer. Each stamp exists in three ages (wet crimson, tacky, dried brown-red).
 // The pools under the bodies are liquid on the floor (render/LiquidArt.js takes its blood colours from RAMPS).
-import { TAU, pick, seeded } from '../../engine/math.js';
+import { TAU, pick, seeded, cellHash } from '../../engine/math.js';
 
 const FILM = 1, THIN = 2, BODY = 3, DEEP = 4, CORE = 5;
 
@@ -16,13 +16,6 @@ export const RAMPS = [
 export const SPECK = ['#7e1214', '#680e10', '#8c1618'];
 
 const level = (t) => (t <= 0 ? 0 : t < 0.2 ? FILM : t < 0.45 ? THIN : t < 0.75 ? BODY : t < 0.92 ? DEEP : CORE);
-
-// per-pixel noise in [0, 1)
-function hash(x, y, s) {
-  let h = (x * 374761393 + y * 668265263 + s * 974711) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
 
 // an irregular closed outline: radius multiplier by direction (a few sine lobes around 1)
 function lobes(rnd, amp, n = 4) {
@@ -64,7 +57,7 @@ function spot(r, seed) {
   const rnd = seeded(seed), edge = lobes(rnd, 0.4), n = Math.ceil(r * 1.6) + 1, top = depth(r);
   return build(n * 2, n * 2, n, n, (dx, dy, x, y) => {
     const d = Math.hypot(dx, dy) / (r * edge(Math.atan2(dy, dx)));
-    return d >= 1 ? 0 : 0.14 + (1 - d) ** 0.7 * (top - 0.14) + (hash(x, y, seed) - 0.5) * 0.3;
+    return d >= 1 ? 0 : 0.14 + (1 - d) ** 0.7 * (top - 0.14) + (cellHash(x, y, seed) - 0.5) * 0.3;
   });
 }
 
@@ -90,7 +83,7 @@ function streak(w, len, seed) {
       if (Math.abs(dy - Math.sin(dx * 0.8 + ph) * wob * k * 2) < b * 0.5 * (1 - k) + 0.4) t = Math.max(t, 0.42 - k * 0.15);
     }
     for (const [px, py, r] of sats) if (Math.hypot(dx - px, dy - py) < r) t = Math.max(t, 0.4);
-    return t && t + (hash(x, y, seed) - 0.5) * 0.3;
+    return t && t + (cellHash(x, y, seed) - 0.5) * 0.3;
   });
 }
 
@@ -120,7 +113,7 @@ function splat(r, seed) {
       if (q.drop && Math.hypot(u - q.len, v) < q.drop) t = Math.max(t, 0.5);
     }
     for (const [px, py, sr] of sats) if (Math.hypot(dx - px, dy - py) < sr) t = Math.max(t, 0.38);
-    return t && t + (hash(x, y, seed) - 0.5) * 0.3;
+    return t && t + (cellHash(x, y, seed) - 0.5) * 0.3;
   });
 }
 
