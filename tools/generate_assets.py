@@ -8,7 +8,7 @@ Conventions
 - 1 px = 1 world px, top-down camera, directional sprites face +x.
 - Light comes from the top-left (-x, -y, +z).
 - Characters / weapons / props get a 1 px dark outline; tiles wrap seamlessly.
-Only depends on Pillow (no numpy). Output is fully deterministic (seeded RNG).
+Only depends on Pillow (no numpy). Output is fully deterministic (every painter seeds its own random.Random).
 """
 import math
 import os
@@ -34,7 +34,6 @@ STOCK = (
     'parking_bay', 'plaza_line', 'plaza_stripes', 'road_arrow_turn', 'road_only', 'gore_hatch', 'expansion_joint',
     'velvet_rope', 'entry_carpet', 'bed', 'dj_booth',                                            # a club, a flat
 )
-RNG = random.Random(1337)
 
 # --------------------------------------------------------------------------
 # Colour helpers
@@ -324,7 +323,7 @@ def ring(cv, cx, cy, r0, r1, fn):
 class VNoise:
     """Smooth value noise that wraps on a w x h canvas (cell must divide w, h)."""
 
-    def __init__(self, w, h, cell, rng=RNG):
+    def __init__(self, w, h, cell, rng):
         self.nx, self.ny, self.cell = max(1, w // cell), max(1, h // cell), cell
         self.v = [[rng.random() for _ in range(self.nx)] for _ in range(self.ny)]
 
@@ -393,7 +392,7 @@ def wood_fine(cv, x0, y0, x1, y1, base, plank, rng, vertical, mask):
             cv.p[i, j] = c
 
 
-def wood_fill(cv, x0, y0, x1, y1, base, plank=5, rng=RNG, vertical=False, mask=None):
+def wood_fill(cv, x0, y0, x1, y1, base, plank=5, *, rng, vertical=False, mask=None):
     """Planks with seams, grain streaks and subtle noise."""
     if cv.s > 1:
         return wood_fine(cv, x0, y0, x1, y1, base, plank, rng, vertical, mask)
@@ -13385,7 +13384,7 @@ def _crate(cv, rng, x0, y0, x1, y1, wood, r, rad, leaf=None):
 
 
 ORANGES, MANGOS, LIMES = ramp('#ff8a1a', 0.5, 0.25, 0.3), ramp('#f0a830', 0.5, 0.26, 0.32), ramp('#6aa82a', 0.5, 0.25, 0.3)
-TOMATOES, PAPAYAS = ramp('#d8302a', 0.5, 0.26, 0.3), ramp('#f0c040', 0.5, 0.25, 0.3)
+TOMATOES = ramp('#d8302a', 0.5, 0.26, 0.3)
 LEAF = hx('#3a7a2a')
 
 
@@ -15831,16 +15830,11 @@ def build():
 # MIAMI_PROPS stand, MIAMI_PAINT is floor paint (levelkit FLOOR), MIAMI_NEON are neon signs on a wall (the world's
 # density, as the other neon signs). Colour variants where they cost nothing: the canopies, the hedges, the awnings,
 # the palms, the billboards, the pole signs.
-FONT_SHOP.setdefault('T', ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."])
-FONT_SHOP.setdefault('Y', ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."])
-FONT_SHOP.setdefault('B', ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."])
-FONT_SHOP.setdefault('K', ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"])
 FONT_STENCIL.setdefault('.', [".....", ".....", ".....", ".....", ".....", ".....", "..#.."])
 FONT_STENCIL.setdefault('-', [".....", ".....", ".....", ".###.", ".....", ".....", "....."])
 FONT_STENCIL.setdefault('Z', ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"])
 STUCCO = dict(pink='#f0a8c0', mint='#9edcc6', peach='#f6c49c', lavender='#c2b0e4')
 NEON_OF = dict(pink=NEON_CYAN, mint=NEON_PINK, peach=NEON_PINK, lavender=NEON_CYAN)   # the tube each colour wears
-PALM_GREY = ramp('#a8a49a', 0.5, 0.26, 0.3)
 
 
 def tube_text(ne, x, y, text, col, k=2):
