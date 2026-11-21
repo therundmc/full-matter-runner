@@ -108,7 +108,7 @@ export default class ChaseCam {
   // time, `most` times the sideways speed; null: the wheel as usual
   get wheel() {
     const b = this.beat;
-    return b?.kind === 'lorry' || b?.kind === 'choose' ? { rate: 1 / clamp(this.scale, 0.1, 1), most: this.C[b.kind].wheel } : null;
+    return b?.kind === 'lorry' || b?.kind === 'choose' ? { rate: 1 / clamp(this.scale, this.C.least, 1), most: this.C[b.kind].wheel } : null;
   }
 
   // 0..1: how far the toll's choosing has slowed the world (its tells pop with it: render/PursuitArt.js)
@@ -129,7 +129,7 @@ export default class ChaseCam {
     if (!tier || (b && (b.kind === 'lorry' || b.kind === 'choose'))) return; // (those slow motions are not cut into)
     if (tier === 'more') {
       b.hold += K.more;
-      b.slow = Math.max(0.1, b.slow - K.deep);
+      b.slow = Math.max(this.C.least, b.slow - K.deep);
       b.left = -1;
       b.at = car;
     } else {

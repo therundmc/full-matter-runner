@@ -94,7 +94,7 @@ export default class Lorries {
       } else if (L.state === 'out' && L.lab) {
         // the lab: it stays out a while, then goes back in once he is clear of its way
         L.stay += dt;
-        const clear = !car || Math.hypot(car.x - L.p.x, car.y - L.p.y) > L.p.def.w * 0.75;
+        const clear = !car || Math.hypot(car.x - L.p.x, car.y - L.p.y) > L.p.def.w * C.lab.clear;
         if (L.stay > C.lab.stay && clear) L.state = 'home';
       } else if (L.state === 'home') {
         this.move(L, Math.max(0, L.done - C.speed * dt));

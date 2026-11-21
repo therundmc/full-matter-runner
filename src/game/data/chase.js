@@ -408,7 +408,8 @@ export const CHASE = {
   // its reversing lamps every `beep` s, the lamps' flash `lamp`), then backing at `speed` px/s; `shake` as it stops;
   // the red lane where its tail sweeps is `pad` px wider than it each side; the lab's backs out with a driven car
   // within `range` px, stays `stay` s, and goes back in
-  lorry: { tell: 0.9, beep: 0.3, speed: 115, shake: 0.2, pad: 6, lamp: { r: 70, color: '#fff4e0' }, lab: { range: 420, stay: 2.5 } },
+  // (the lab's goes back in once he is `lab.clear` of its length away)
+  lorry: { tell: 0.9, beep: 0.3, speed: 115, shake: 0.2, pad: 6, lamp: { r: 70, color: '#fff4e0' }, lab: { range: 420, stay: 2.5, clear: 0.75 } },
   // THE TOLL (event 3, systems/Toll.js; the level's `chase.toll`). Its gates told `tell` s before them at his speed
   // (`least` px out at least): bone arrows run down the wooden lanes (every `every` px, at `run` px/s, from `from` px
   // ahead of his middle; `fade` s in; `pop` times bigger at the height of the choosing's slow motion), each lane's
@@ -435,6 +436,10 @@ export const CHASE = {
   toll: {
     tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, follow: -240, lateral: 0.14, steer: 5, every: 46, run: 110, from: 70, fade: 0.15,
     pop: 1.5, sign: 30,
+    // (the plaza keeps the rest quiet `breath` s more than its tell; a car within `margin` px of his lane's width is
+    // in it; the steel lane for the one sent the wrong way: `pick` its costs, a lane away from his, crossing him,
+    // crossing one of theirs)
+    breath: 0.5, margin: 8, pick: { lane: 1000, his: 500, other: 300 },
     beat: { slow: 0.4, in: 0.04, hold: 0.2, out: 0.18, push: 5, shake: 0.22 },
     arm: { splinters: 28, chips: 32, bits: 8, speed: 320, flash: [110, '#ffe2b0', 0.14], duck: 1.8 },
     crash: { back: 2.6, across: 3.2, spin: 0.2, fly: 0.9, dents: 14, parts: 4, shake: 0.55, sparks: 45, bits: 8, clear: 2.5 },
@@ -489,7 +494,9 @@ export const CHASE = {
   // Times in REAL s (the camera does not slow down with the game) unless said; a beat's clock eases down to `slow`
   // over `in` s, is held, and comes back over `out` s (a whip, not a fade). Any zoom is a cut between two whole
   // zooms (Direction.update `cut`), the lens stays flat: no blur.
+  // (`least`: the slowest a beat's clock runs)
   cinema: {
+    least: 0.1,
     // a pursuer stopped for good by him (wrecked, its driver shot, a tyre, blown up: Pursuit's 'pursuerWreck').
     //   strong: the first of a run, and any one `again` s after the last strong one: the cut in (SHOTS chaseKill)
     //   toward the wreck, slow motion, a hit-stop of `stop` s, the picture kicked `push` px its way and shaken
