@@ -66,14 +66,14 @@ export function wallMount(map, x, y, angle, len, depth) {
 
 // a prop of the level is hung on its wall (the level loader: what is dropped in later hangs on nothing)
 export function hang(map, prop) {
-  if (ON_WALL.has(prop.type)) prop.mount = wallMount(map, prop.x, prop.y, prop.body.angle, prop.def.w, prop.def.h);
+  if (ON_WALL.has(prop.type)) prop.wallTiles = wallMount(map, prop.x, prop.y, prop.body.angle, prop.def.w, prop.def.h);
 }
 
 // What the tile (cx, cy) giving way takes with it: the windows built into it, the doors hinged on it,
 // the locked doors whose bolt was shot into it (they are simply free to swing), and what hung on it (`hung`).
 export function heldBy(world, cx, cy) {
   return {
-    hung: (world.props || []).filter((p) => !p.dead && p.mount?.some((t) => holds(t, cx, cy))),
+    hung: (world.props || []).filter((p) => !p.dead && p.wallTiles?.some((t) => holds(t, cx, cy))),
     windows: world.windows.filter((g) => g.supports.some((t) => holds(t, cx, cy))),
     doors: world.doors.filter((d) => holds(d.support, cx, cy)),
     unbolted: world.doors.filter((d) => d.locked && holds(d.strike, cx, cy) && !holds(d.support, cx, cy)),

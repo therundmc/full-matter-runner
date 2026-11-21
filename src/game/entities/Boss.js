@@ -18,6 +18,7 @@ import { impulse } from '../../engine/physics/Body.js';
 import { sprite, spriteOpt } from '../../engine/Assets.js';
 import { inHand } from '../ai/Carry.js';
 import { bodyFrame } from './CharacterAnim.js';
+import { mountOf } from '../data/mounts.js';
 import { drawWound, drawClutch, drawGlint } from '../render/BossArt.js';
 
 const { Body } = Matter;
@@ -232,7 +233,7 @@ export default class Boss extends Enemy {
   clearWay() {
     const S = this.traits.shove, w = this.world, a = this.moveAngle;
     for (const p of w.props) {
-      if (p.dead || p.isVehicle || p.def.high || !p.body || p.body.isStatic && !p.body.frozen && !p.def.flips) continue;
+      if (p.dead || p.isVehicle || !mountOf(p.def).blows || !p.body || p.body.isStatic && !p.body.frozen && !p.def.flips) continue;
       const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
       if (d > S.reach + Math.min(p.def.w ?? 0, p.def.h ?? 0) / 2 || Math.abs(angDiff(a, Math.atan2(dy, dx))) > S.cone) continue;
       this.shoveT = S.every;

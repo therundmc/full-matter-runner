@@ -4,7 +4,7 @@
 import { WEAPONS } from '../data/weapons.js';
 
 const REACH = 1400;                          // px
-const CLEAR = ['glass', 'item', 'debris'];   // what the beam goes through or over
+const CLEAR = ['glass', 'item', 'debris', 'overhead'];   // what the beam goes through or over (a billboard's face)
 
 // colour of the beam `ch` is pointing right now, or null
 export function laserOf(ch) {

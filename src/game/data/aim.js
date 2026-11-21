@@ -10,7 +10,7 @@ export const AIM = {
   hot: '#f6fffa',        // a man in the line: white
   off: '#8a8494',        // the car gun out of its arc
   reach: 300,            // how far the line of fire is looked along (a little past the screen's edge)
-  clear: ['glass', 'item', 'debris'], // what a round goes through or over: the line does too
+  clear: ['glass', 'item', 'debris', 'overhead'], // what a round goes through or over (a billboard's face): the line does too
   melee: 6,              // px past a blade's or a fist's range the cue of a melee weapon ends
   under: 0.55,           // alpha of the dark edge
   // LOCK: no line of fire (where the rounds go is the player's to judge); a worn chevron on the floor `chevron.at` px

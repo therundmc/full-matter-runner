@@ -138,6 +138,9 @@ export const META = {
   // ... a toll's plaza hit (systems/TollFx.js): placeholders
   armCrack: { pri: 2, dur: 0.4, gap: 0.1, max: 2, gain: 0.75 }, boomCrash: { pri: 4, dur: 1.2, gap: 0.3, max: 1, gain: 1, duck: 0.5 },
   coinSpray: { pri: 1, dur: 0.5, gap: 0.3, max: 1, gain: 0.5 },
+  // ... a billboard shot to shreds (entities/Board.js): placeholders
+  boardHole: { pri: 1, dur: 0.2, gap: 0.05, max: 3, gain: 0.5 }, boardLamp: { pri: 2, dur: 0.4, gap: 0.1, max: 2, gain: 0.7 },
+  boardTear: { pri: 2, dur: 0.6, gap: 0.2, max: 1, gain: 0.7 }, boardFall: { pri: 3, dur: 1.2, gap: 0.5, max: 1, gain: 0.9 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
@@ -472,6 +475,12 @@ const FOLEY = {
   armCrack: [['woodBreak', 0.9, 1.1], ['click', 0.5, 0.8, 0.01]],
   boomCrash: [['sheet', 1, 0.6], ['thud', 1, 0.5], ['metalBreak', 0.8, 0.7, 0.02], ['glass', 0.6, 1, 0.05]],
   coinSpray: [['click', 0.5, 2.2], ['click', 0.4, 2.6, 0.04], ['click', 0.3, 2.4, 0.09]],
+  // PLACEHOLDERS for a billboard shot to shreds (entities/Board.js): a round through its face, a lamp on it shot out,
+  // its paper torn off in sheets, the face coming down off its frame
+  boardHole: [['sheet', 0.35, 1.4], ['soft', 0.2, 1.6, 0.01]],
+  boardLamp: [['glassHit', 0.7, 1.1], ['click', 0.4, 1.8, 0.02]],
+  boardTear: [['soft', 0.8, 1.3], ['swish', 0.5, 0.9, 0.03], ['soft', 0.4, 1.1, 0.12]],
+  boardFall: [['sheet', 0.8, 0.6], ['soft', 0.9, 0.9, 0.05], ['swish', 0.6, 0.7, 0.1], ['metal', 0.4, 0.7, 0.3]],
   // PLACEHOLDERS for the back road (systems/Lorries.js, Drive.fx): the lorry's reversing beeper and its air brakes,
   // an awning or a parasol torn down, tyres letting go (faint: the motor's own squeal covers it), spray out of a puddle
   lorryBeep: [['click', 0.7, 1.9], ['click', 0.5, 1.9, 0.06]],

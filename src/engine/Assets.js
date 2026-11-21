@@ -53,7 +53,8 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
 // then the suburb going to Miami (SUBURB_PROPS / SUBURB_PAINT, from sabal_palm / palm_frond_fallen on: palms, the
 // suburb's furniture, the homeless's things, a fruit market, a car wash, a tyre yard)
 // then 2A's sprites' second pass (from mailbox_post_b on: a number a house, the houses' windows and doors, the rails'
-// ends either side, a one-arm lamp)
+// ends either side, a one-arm lamp); a billboard's `_bare` and `_frame` are what its face is torn down to
+// (entities/Board.js, render/BoardArt.js)
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
@@ -66,6 +67,7 @@ const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle',
   'royal_palm', 'royal_palm_b', 'hibiscus_hedge', 'hibiscus_hedge_pink', 'deco_canopy_pink', 'deco_canopy_mint',
   'deco_canopy_peach', 'deco_canopy_lavender', 'awning_pink', 'awning_mint', 'awning_peach', 'awning_lavender',
   'pole_sign_motel', 'pole_sign_autos', 'billboard_tan', 'billboard_radio', 'lot_light', 'pennant_string', 'car_burnt',
+  'billboard_tan_bare', 'billboard_tan_frame', 'billboard_radio_bare', 'billboard_radio_frame',
   'tent_tarp', 'barrel_fire', 'chainlink_fence', 'chainlink_hole', 'guardrail_dented', 'crash_cushion_hit', 'call_box', 'sign_gantry',
   'produce_crates', 'box_stack', 'fruit_cart', 'news_stand', 'laundry_line', 'laundry_shirt', 'laundry_towel', 'laundry_sheet',
   'neon_box_pink', 'neon_box_cyan', 'scooter_mint', 'scooter_pink', 'domino_table', 'dumpster_mint', 'dumpster_pink',
@@ -108,7 +110,8 @@ const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade'
 // hibiscus, deco planters and lamp, an office, a trooper's car, a motel's billboard; puddles with the neon in them) and the
 // toll's own states (its attendant ducked, a boom bent: systems/TollFx.js, systems/Toll.js); the lit ones' emissive maps
 const DECO_PROPS = ['palm_fan', 'palm_fan_small', 'hibiscus_bush', 'hibiscus_bush_red', 'planter_deco_pink', 'planter_deco_teal',
-  'police_car', 'deco_office_pink', 'deco_office_teal', 'billboard_motel', 'deco_lamp', 'toll_booth_duck',
+  'police_car', 'deco_office_pink', 'deco_office_teal', 'billboard_motel', 'billboard_motel_bare', 'billboard_motel_frame',
+  'deco_lamp', 'toll_booth_duck',
   'gate_steel_bent'];
 const DECO_PAINT = ['puddle_neon', 'puddle_neon_b'];
 const DECO_GLOWING = ['deco_office_pink', 'deco_office_teal', 'billboard_motel', 'deco_lamp', 'toll_booth_duck'];
@@ -144,7 +147,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend', 'toll'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend', 'toll', 'billboard'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),

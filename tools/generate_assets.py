@@ -7115,7 +7115,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
                   arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS', throw='27 THROW', killcam='28 KILL CAM', shield='29 SHIELD',
                   signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS', propane='35 PROPANE', bend='36 BEND',
-                  toll='37 TOLL')   # (in the order they were added, not by number: each keeps its seed)
+                  toll='37 TOLL', billboard='38 BILLBOARD')   # (in the order they were added, not by number: each keeps its seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -13175,12 +13175,75 @@ def deco_office(paint, seed, sign='OFFICE'):
 SUN_BANDS = ('#2c1648', '#5a1e6a', '#a0287a', '#e8407a', '#ff7a5a', '#ffb24a')
 
 
-def billboard_ad(head, sub, small, seed, scene='motel'):
+def board_sheets(cv, x0, y0, x1, y1, step, stuff, rng):
+    """A billboard's face with its paper torn off (entities/Board.js bares it down to this): the sheets it was pasted
+    on, `step` px wide, steel ('steel': galvanised, a seam a sheet and one across, rivets along them, a streak of rust
+    under some) or plywood ('wood': its grain along x, the sheets' joints); the paste gone yellow in blotches, scraps
+    of old paper left on it, grime down its foot."""
+    n, fine_n = VNoise(cv.w, cv.h, 16, rng), VNoise(cv.w, cv.h, 2, rng)
+    ym = round((y0 + y1) / 2)
+    steel = stuff == 'steel'
+    base = ramp('#868c96', 0.45, 0.22, 0.3) if steel else ramp('#a07a52', 0.5, 0.25, 0.3)
+
+    def sheet(x, y, cur):
+        k = int((x - x0) // step)
+        L = 0.5 + (0.05 if k % 2 else -0.03) + (n(x, y) - 0.5) * 0.1
+        if not steel:
+            L += (fine_n(x * 0.2, y * 2.5) - 0.5) * 0.16                      # the grain, along the sheet
+        c = shade(base, L)
+        if (x - x0) % step < 0.5 or abs(y - ym) < 0.5:
+            c = dk(c, 0.45)                                                  # the joints
+        elif (x - x0) % step < 1.0 or 0.5 <= y - ym < 1.0:
+            c = mix(c, hx('#e8ecf0') if steel else hx('#d0b08a'), 0.25)   # their lit lip
+        if n(x * 1.3 + 40, y * 1.3) > 0.74:
+            c = mix(c, hx('#c8b87a'), 0.16)                                  # the paste, gone yellow
+        if y > y1 - 9:
+            c = dk(c, (y - (y1 - 9)) / 9 * 0.3)                              # grime down its foot
+        return c
+    px_paint(cv, x0, y0, x1, y1, sheet)
+    if steel:
+        for x in range(int(x0), int(x1) + 1, step):
+            for y in range(int(y0) + 4, int(y1) - 2, 9):
+                for (rx, ry) in ((x + 1.5, y), (x - 1.5, y)):
+                    if x0 < rx < x1:
+                        cv.dot(rx, ry, hx('#d8dce2'))                        # rivets either side of a joint
+                        if rng.random() < 0.15:
+                            frect(cv, rx - 0.5, ry + 0.5, rx, ry + rng.uniform(3, 8), lambda c: mix(c, hx('#8a4a2a'), 0.45))
+    for _ in range(9):                                                       # scraps of the paper left stuck on
+        sx, sy = rng.uniform(x0 + 2, x1 - 8), rng.uniform(y0 + 2, y1 - 6)
+        w, h = rng.uniform(2, 7), rng.uniform(1.5, 4)
+        tone = mix(hx('#ece6d4'), hx('#c8a8c8'), rng.random() * 0.5)
+        px_paint(cv, sx, sy, sx + w, sy + h, lambda x, y, c, sx=sx, w=w, t=tone: t if (x - sx) < w * (0.6 + 0.4 * n(x * 3, y * 3)) else None)
+
+
+def board_lattice(ly, x0, y0, x1, y1, step, steel, rim):
+    """What is left of a billboard's face when its sheets are torn out too: the frame round it (rim px), the uprights
+    every `step` px, two stringers across, a brace in each bay; nothing between (what is under it shows)."""
+    frect(ly, x0 - 3, y0 - 3, x1 + 3, y0 - 3 + rim, shade(steel, 0.45))
+    frect(ly, x0 - 3, y0 - 3, x1 + 3, y0 - 2, shade(steel, 0.8))
+    frect(ly, x0 - 3, y1 + 3 - rim, x1 + 3, y1 + 3, shade(steel, 0.3))
+    frect(ly, x0 - 3, y0, x0 - 3 + rim, y1, shade(steel, 0.45))
+    frect(ly, x1 + 3 - rim, y0, x1 + 3, y1, shade(steel, 0.35))
+    sy = (y0 + (y1 - y0) * 0.3, y0 + (y1 - y0) * 0.68)
+    for y in sy:                                                             # the stringers
+        frect(ly, x0, y - 1, x1, y + 1, shade(steel, 0.5))
+        frect(ly, x0, y - 1, x1, y - 0.5, shade(steel, 0.8))
+    ups = [x for x in range(int(x0) + step, int(x1) - 8, step)]
+    for x in ups:                                                            # the uprights
+        frect(ly, x - 1, y0, x + 1, y1, shade(steel, 0.42))
+        frect(ly, x - 1, y0, x - 0.5, y1, shade(steel, 0.75))
+    for a, b in zip([x0] + ups, ups + [x1]):                                 # a brace in each bay
+        fill_capsule(ly, [(a + 1, sy[1]), (b - 1, sy[0])], 0.6, lambda k, L, s, i, t: shade(steel, 0.3 + L * 0.3))
+
+
+def billboard_ad(head, sub, small, seed, scene='motel', face='poster'):
     """A roadside billboard from above, 12 m long, laid back to be read (as the signs are): the board in its white
     frame on its catwalk and two steel legs, four lamps on goosenecks along its top lighting it (the emissive map:
     their bulbs and the face they light). Its face: an eighties sunset (flat bands, the striped sun) with palm
     silhouettes and a flamingo (scene 'motel') or a pair of shades (any other) on the left, the name in neon pink
-    (head), a line in teal (sub), a line in bone (small) on violet."""
+    (head), a line in teal (sub), a line in bone (small) on violet. face: 'poster' (whole), 'bare' (the paper gone: the
+    plywood it was pasted on) or 'frame' (the plywood gone too: the steel lattice behind the white frame), the layers
+    entities/Board.js tears it down to (no emissive map)."""
     def make():
         W, H = 384, 112
         cv, gl = Cv(W, H), Cv(W, H)
@@ -13192,10 +13255,24 @@ def billboard_ad(head, sub, small, seed, scene='motel'):
         frect(cv, fx0 + 4, fy1, fx1 - 4, fy1 + 6, shade(ZINC, 0.4))
         for x in range(fx0 + 6, fx1 - 4, 3):
             frect(cv, x, fy1 + 1, x + 1, fy1 + 5, shade(ZINC, 0.7))
+        if face != 'poster':
+            if face == 'frame':
+                for (a, b, c, d) in ((fx0, fy0, fx1, fy0 + 2), (fx0, fy1 - 2, fx1, fy1), (fx0, fy0, fx0 + 2, fy1), (fx1 - 2, fy0, fx1, fy1)):
+                    frect(cv, a, b, c, d, hx('#ece8de'))                      # the white frame, empty
+                layer(cv, lambda ly: board_lattice(ly, fx0 + 5, fy0 + 5, fx1 - 5, fy1 - 5, 64, STEEL_L, 3))
+            else:
+                frect(cv, fx0, fy0, fx1, fy1, hx('#ece8de'))
+                board_sheets(cv, fx0 + 2, fy0 + 2, fx1 - 2, fy1 - 2, 64, 'wood', random.Random(seed + 11))
+            for x in (60, 150, 240, 330):                                   # the lamps, as on the whole board
+                frect(cv, x - 0.5, 1, x + 0.5, fy0, shade(STEEL_L, 0.5))
+                fill_shape(cv, x, 2.5, 3.0, 2.0, lambda u, v, L: shade(ZINC, 0.3 + L * 0.6), kind='rect', corner=0.8)
+                frect(cv, x - 2, 3.5, x + 2, 4.5, hx('#fff4d8'))
+            cv.outline()
+            return cv
         frect(cv, fx0, fy0, fx1, fy1, hx('#ece8de'))                         # the frame
         sx1, hor = 128, 58
 
-        def face(x, y, cur):
+        def poster(x, y, cur):
             if x < sx1:
                 if y >= hor:                                                # the sea, the sun's road on it
                     k = int((y - hor) // 5)
@@ -13205,7 +13282,7 @@ def billboard_ad(head, sub, small, seed, scene='motel'):
                     return hx('#ffd04a') if y < hor - 14 else hx('#ff8a3a')  # the striped sun
                 return hx(SUN_BANDS[min(5, int((y - fy0 - 2) / ((hor - fy0) / 6)))])
             return hx('#2a1640')                                            # the violet panel
-        px_paint(cv, fx0 + 2, fy0 + 2, fx1 - 2, fy1 - 2, face)
+        px_paint(cv, fx0 + 2, fy0 + 2, fx1 - 2, fy1 - 2, poster)
 
         def silhouettes(ly):
             ink = hx('#140a1c')
@@ -13297,6 +13374,9 @@ DECO_PROPS = dict(palm_fan=palm_fan(10101), palm_fan_small=palm_fan(10102, 0.8),
                    police_car=p_police_car, deco_office_pink=deco_office(PASTEL_PINK, 10131),
                    deco_office_teal=deco_office(PASTEL_TEAL, 10132),
                    billboard_motel=billboard_ad('FLAMINGO', 'MOTEL', 'VACANCY  COLOR TV  POOL', 10151, 'motel'),
+                   # what entities/Board.js tears its face down to: the bare plywood, then the lattice
+                   billboard_motel_bare=billboard_ad('', '', '', 10151, 'motel', 'bare'),
+                   billboard_motel_frame=billboard_ad('', '', '', 10151, 'motel', 'frame'),
                    deco_lamp=p_deco_lamp,
                    # the toll's own states (systems/TollFx.js, systems/Toll.js): the attendant ducked, the boom bent
                    toll_booth_duck=p_toll_booth_of(True), gate_steel_bent=gate_steel(True))
@@ -13304,6 +13384,7 @@ DECO_PAINT = dict(puddle_neon=(puddle_neon(96, 48, 10161), (96, 48)), puddle_neo
 DECO_SIZES = dict(palm_fan=(96, 96), palm_fan_small=(96, 96), hibiscus_bush=(32, 32), hibiscus_bush_red=(32, 32),
                    planter_deco_pink=(48, 48), planter_deco_teal=(48, 48), police_car=(140, 58),
                    deco_office_pink=(160, 96), deco_office_teal=(160, 96), billboard_motel=(384, 112),
+                   billboard_motel_bare=(384, 112), billboard_motel_frame=(384, 112),
                    deco_lamp=(32, 32), toll_booth_duck=(96, 44), gate_steel_bent=(112, 20))
 DECO_GLOWING = ['deco_office_pink', 'deco_office_teal', 'billboard_motel', 'deco_lamp', 'toll_booth_duck']
 DECO_PROPS.update((n, fn) for n, (fn, _) in DECO_PAINT.items())
@@ -16141,12 +16222,14 @@ def poster_palm(cv, base, top, size, ink, rng):
     fill_shape(cv, tx, ty + size * 0.06, size * 0.11, size * 0.09, lambda u, v, L: ink)   # the nuts' cluster
 
 
-def billboard(kind):
+def billboard(kind, face='poster'):
     def make():
         """A billboard on its catwalk from above, laid back to be read, 8 m: the poster in its steel frame (`tan`: a
         sun-tan oil over a striped sunset and the sea, a palm cut out against it; `radio`: a station's sunset over a
         neon grid), paper peeling at a seam, grime down its foot; the catwalk's grating and rail under it, four lamps
-        on their arms leaning up over the poster (the emissive map: their lenses)."""
+        on their arms leaning up over the poster (the emissive map: their lenses). face: 'poster' (whole), 'bare'
+        (the paper gone: the steel sheets it was pasted on) or 'frame' (the sheets gone too: the lattice behind),
+        the layers entities/Board.js tears it down to (no emissive map)."""
         W, H = 256, 112
         cv, gl = Cv(W, H), Cv(W, H)
         rng = random.Random(9990 + len(kind))
@@ -16156,74 +16239,80 @@ def billboard(kind):
         def frame(ly):
             frect(ly, x0 - 3, y0 - 3, x1 + 3, y1 + 3, shade(STEEL_L, 0.35))
             frect(ly, x0 - 3, y0 - 3, x1 + 3, y0 - 2, shade(STEEL_L, 0.8))
-        layer(cv, frame)
-        if kind == 'tan':
-            sky = [(0.0, hx('#8a6ad0')), (0.35, hx('#e070b0')), (0.62, hx('#ff9a8a')), (0.78, hx('#ffc070'))]
-            hz = 64.0
-
-            def poster(x, y, cur):
-                t = (y - y0) / (hz - y0)
-                if y >= hz:
-                    w = math.floor((y - hz) / (y1 - hz) * 4) / 3.0           # the sea in four flat bands
-                    c = mix(hx('#2aa0b0'), hx('#165a80'), min(1.0, w))
-                    if abs(x - 188) < 30 - w * 10 and int(y * 2) % 3 == 0:
-                        c = mix(c, hx('#ffd080'), 0.55 - w * 0.4)          # the sun's road on the sea
-                    return c
-                t = (math.floor(t * 9) + 0.5) / 9                          # the sky in nine flat bands (a print)
-                for (a, ca), (b, cb) in zip(sky, sky[1:] + [(1.0, hx('#ffd890'))]):
-                    if t <= b:
-                        return mix(ca, cb, (t - a) / (b - a))
-                return sky[-1][1]
-            px_paint(cv, x0, y0, x1, y1, poster)
-
-            def sun(x, y, cur):
-                d = math.hypot(x - 188, y - hz)
-                if d > 28 or y > hz:
-                    return None
-                if y > hz - 16 and int((hz - y) / 2.5) % 2 == 1:
-                    return None                                            # the retro bands cut through it
-                return mix(hx('#fff080'), hx('#ff7a3a'), math.floor((y - (hz - 28)) / 7) / 3.0)   # in flat bands
-            px_paint(cv, 160, hz - 30, 218, hz, sun)
-            poster_palm(cv, (34, y1), (56, 22), 24, hx('#3a1a4a'), random.Random(9995))
-            words(cv, 160 - 66, 10, 'COCOA GOLD', hx('#3a1a4a'), 2.0)      # its shadow, then the words
-            words(cv, 160 - 67, 9, 'COCOA GOLD', hx('#fff4e0'), 2.0)
-            words(cv, 160 - 30, 28, 'TANNING OIL', hx('#3a1a4a'), 1.0)
-            fill_shape(cv, 112, 62, 7.0, 15.0, lambda u, v, L: shade(ramp('#c87a2a', 0.5, 0.26, 0.35), 0.3 + L * 0.7), kind='rect', corner=3.0)
-            frect(cv, 109, 44, 115, 48, hx('#f4f0e0'))                    # the bottle: its cap, its label
-            frect(cv, 106.5, 57, 117.5, 69, hx('#fff4e0'))
-            words(cv, 112, 59, 'SPF', hx('#c8242c'), 0.5, centre=True)
-            words(cv, 112, 64, '4', hx('#c8242c'), 0.5, centre=True)
+        if face == 'frame':
+            layer(cv, lambda ly: board_lattice(ly, x0, y0, x1, y1, 48, STEEL_L, 3))
         else:
-            hz = 58.0
+            layer(cv, frame)
+        if face == 'bare':
+            board_sheets(cv, x0, y0, x1, y1, 48, 'steel', random.Random(9970 + len(kind)))
+        elif face == 'poster':
+            if kind == 'tan':
+                sky = [(0.0, hx('#8a6ad0')), (0.35, hx('#e070b0')), (0.62, hx('#ff9a8a')), (0.78, hx('#ffc070'))]
+                hz = 64.0
 
-            def poster(x, y, cur):
-                if y < hz:
-                    return mix(hx('#2a1050'), hx('#d0408a'), math.floor((y - y0) / (hz - y0) * 8) / 7.0)   # flat bands
-                w = (y - hz) / (y1 - hz)
-                c = mix(hx('#1a0830'), hx('#2a0a40'), w)
-                gx = (x - W / 2) / (1.0 + w * 4.0)
-                if abs((gx + 300) % 14 - 7) < 0.6 + w * 0.4 or int((w ** 0.5) * 9 * 4) % 4 == 0:
-                    c = mix(c, NEON_CYAN, 0.7)                             # the neon grid running away
-                return c
-            px_paint(cv, x0, y0, x1, y1, poster)
+                def poster(x, y, cur):
+                    t = (y - y0) / (hz - y0)
+                    if y >= hz:
+                        w = math.floor((y - hz) / (y1 - hz) * 4) / 3.0           # the sea in four flat bands
+                        c = mix(hx('#2aa0b0'), hx('#165a80'), min(1.0, w))
+                        if abs(x - 188) < 30 - w * 10 and int(y * 2) % 3 == 0:
+                            c = mix(c, hx('#ffd080'), 0.55 - w * 0.4)          # the sun's road on the sea
+                        return c
+                    t = (math.floor(t * 9) + 0.5) / 9                          # the sky in nine flat bands (a print)
+                    for (a, ca), (b, cb) in zip(sky, sky[1:] + [(1.0, hx('#ffd890'))]):
+                        if t <= b:
+                            return mix(ca, cb, (t - a) / (b - a))
+                    return sky[-1][1]
+                px_paint(cv, x0, y0, x1, y1, poster)
 
-            def sun(x, y, cur):
-                d = math.hypot(x - W / 2, y - hz)
-                if d > 34 or y > hz or (y > hz - 20 and int((hz - y) / 3) % 2 == 1):
-                    return None
-                return mix(hx('#ffe060'), hx('#ff3a8a'), math.floor((y - (hz - 34)) / 34 * 5) / 4.0)
-            px_paint(cv, W / 2 - 36, hz - 36, W / 2 + 36, hz, sun)
-            words(cv, W / 2 + 1, 13, 'WAVE 98', hx('#1a0830'), 3.0, centre=True)
-            words(cv, W / 2, 12, 'WAVE 98', hx('#fff0f8'), 3.0, centre=True)
-            words(cv, W / 2 + 0.5, 36.5, 'FM  THE HOTTEST HITS', hx('#1a0830'), 1.0, centre=True)   # its shadow: read over the sun
-            words(cv, W / 2, 36, 'FM  THE HOTTEST HITS', NEON_CYAN, 1.0, centre=True)
-        # paper and weather: the seams of the sheets, a peeled strip, grime down its foot, droppings on its top
-        for x in range(x0 + 48, x1, 48):
-            px_paint(cv, x, y0, x + 0.5, y1, lambda x_, y_, c: dk(c, 0.12))
-        px_paint(cv, x1 - 30, y0, x1, y0 + 14, lambda x, y, c: (hx('#e8e2d0') if (x - (x1 - 30)) + (y - y0) * 1.6 > 18 + n(x, y) * 6 else None))
-        for y in range(int(y1) - 10, int(y1)):
-            px_paint(cv, x0, y, x1, y + 1, lambda x, y_, c: dk(c, (y_ - (y1 - 10)) / 10 * 0.35 * n(x, y_)))
-        smudge(cv, rng, 8, (x0, y0, x1, y0 + 4), (0.5, 1.0), 0.6, hx('#ece8dc'))
+                def sun(x, y, cur):
+                    d = math.hypot(x - 188, y - hz)
+                    if d > 28 or y > hz:
+                        return None
+                    if y > hz - 16 and int((hz - y) / 2.5) % 2 == 1:
+                        return None                                            # the retro bands cut through it
+                    return mix(hx('#fff080'), hx('#ff7a3a'), math.floor((y - (hz - 28)) / 7) / 3.0)   # in flat bands
+                px_paint(cv, 160, hz - 30, 218, hz, sun)
+                poster_palm(cv, (34, y1), (56, 22), 24, hx('#3a1a4a'), random.Random(9995))
+                words(cv, 160 - 66, 10, 'COCOA GOLD', hx('#3a1a4a'), 2.0)      # its shadow, then the words
+                words(cv, 160 - 67, 9, 'COCOA GOLD', hx('#fff4e0'), 2.0)
+                words(cv, 160 - 30, 28, 'TANNING OIL', hx('#3a1a4a'), 1.0)
+                fill_shape(cv, 112, 62, 7.0, 15.0, lambda u, v, L: shade(ramp('#c87a2a', 0.5, 0.26, 0.35), 0.3 + L * 0.7), kind='rect', corner=3.0)
+                frect(cv, 109, 44, 115, 48, hx('#f4f0e0'))                    # the bottle: its cap, its label
+                frect(cv, 106.5, 57, 117.5, 69, hx('#fff4e0'))
+                words(cv, 112, 59, 'SPF', hx('#c8242c'), 0.5, centre=True)
+                words(cv, 112, 64, '4', hx('#c8242c'), 0.5, centre=True)
+            else:
+                hz = 58.0
+
+                def poster(x, y, cur):
+                    if y < hz:
+                        return mix(hx('#2a1050'), hx('#d0408a'), math.floor((y - y0) / (hz - y0) * 8) / 7.0)   # flat bands
+                    w = (y - hz) / (y1 - hz)
+                    c = mix(hx('#1a0830'), hx('#2a0a40'), w)
+                    gx = (x - W / 2) / (1.0 + w * 4.0)
+                    if abs((gx + 300) % 14 - 7) < 0.6 + w * 0.4 or int((w ** 0.5) * 9 * 4) % 4 == 0:
+                        c = mix(c, NEON_CYAN, 0.7)                             # the neon grid running away
+                    return c
+                px_paint(cv, x0, y0, x1, y1, poster)
+
+                def sun(x, y, cur):
+                    d = math.hypot(x - W / 2, y - hz)
+                    if d > 34 or y > hz or (y > hz - 20 and int((hz - y) / 3) % 2 == 1):
+                        return None
+                    return mix(hx('#ffe060'), hx('#ff3a8a'), math.floor((y - (hz - 34)) / 34 * 5) / 4.0)
+                px_paint(cv, W / 2 - 36, hz - 36, W / 2 + 36, hz, sun)
+                words(cv, W / 2 + 1, 13, 'WAVE 98', hx('#1a0830'), 3.0, centre=True)
+                words(cv, W / 2, 12, 'WAVE 98', hx('#fff0f8'), 3.0, centre=True)
+                words(cv, W / 2 + 0.5, 36.5, 'FM  THE HOTTEST HITS', hx('#1a0830'), 1.0, centre=True)   # its shadow: read over the sun
+                words(cv, W / 2, 36, 'FM  THE HOTTEST HITS', NEON_CYAN, 1.0, centre=True)
+            # paper and weather: the seams of the sheets, a peeled strip, grime down its foot, droppings on its top
+            for x in range(x0 + 48, x1, 48):
+                px_paint(cv, x, y0, x + 0.5, y1, lambda x_, y_, c: dk(c, 0.12))
+            px_paint(cv, x1 - 30, y0, x1, y0 + 14, lambda x, y, c: (hx('#e8e2d0') if (x - (x1 - 30)) + (y - y0) * 1.6 > 18 + n(x, y) * 6 else None))
+            for y in range(int(y1) - 10, int(y1)):
+                px_paint(cv, x0, y, x1, y + 1, lambda x, y_, c: dk(c, (y_ - (y1 - 10)) / 10 * 0.35 * n(x, y_)))
+            smudge(cv, rng, 8, (x0, y0, x1, y0 + 4), (0.5, 1.0), 0.6, hx('#ece8dc'))
         cv.outline()
 
         def catwalk(ly):
@@ -16239,7 +16328,7 @@ def billboard(kind):
             fill_shape(cv, x, y1 - 8, 5.0, 2.6, lambda u, v, L: shade(ramp('#4e5362', 0.5, 0.25, 0.4), 0.2 + L * 0.6), kind='rect', corner=1.0)
             frect(cv, x - 4, y1 - 8, x + 4, y1 - 6.5, hx('#fff6dc'))
             frect(gl, x - 4, y1 - 8, x + 4, y1 - 6.5, hx('#fff0d0'))
-        return cv, gl
+        return (cv, gl) if face == 'poster' else cv
     return make
 
 
@@ -16768,6 +16857,9 @@ MIAMI_PAINT = dict(   # floor paint (levelkit FLOOR): name -> (painter, size in 
 MIAMI_PROPS = dict(royal_palm=royal_palm(10161, 16, 2), royal_palm_b=royal_palm(10162, 14, 4),
                    hibiscus_hedge=hibiscus_hedge('#e8283c', 10171), hibiscus_hedge_pink=hibiscus_hedge('#ff6fa8', 10172),
                    billboard_tan=billboard('tan'), billboard_radio=billboard('radio'),
+                   # what entities/Board.js tears their faces down to: the bare steel sheets, then the lattice
+                   billboard_tan_bare=billboard('tan', 'bare'), billboard_tan_frame=billboard('tan', 'frame'),
+                   billboard_radio_bare=billboard('radio', 'bare'), billboard_radio_frame=billboard('radio', 'frame'),
                    pole_sign_motel=pole_sign('motel'), pole_sign_autos=pole_sign('autos'),
                    car_burnt=p_car_burnt, tent_tarp=p_tent_tarp, barrel_fire=p_barrel_fire,
                    chainlink_fence=chainlink(0), chainlink_hole=chainlink(1), guardrail_dented=p_guardrail_dented,
@@ -16780,7 +16872,8 @@ MIAMI_PROPS = dict(royal_palm=royal_palm(10161, 16, 2), royal_palm_b=royal_palm(
 for _c in STUCCO:
     MIAMI_PROPS['deco_canopy_' + _c] = deco_canopy(_c)
 MIAMI_SIZES = dict(royal_palm=(160, 160), royal_palm_b=(160, 160), hibiscus_hedge=(96, 26), hibiscus_hedge_pink=(96, 26),
-                   billboard_tan=(256, 112), billboard_radio=(256, 112), pole_sign_motel=(80, 56), pole_sign_autos=(80, 56),
+                   billboard_tan=(256, 112), billboard_radio=(256, 112), billboard_tan_bare=(256, 112),
+                   billboard_tan_frame=(256, 112), billboard_radio_bare=(256, 112), billboard_radio_frame=(256, 112), pole_sign_motel=(80, 56), pole_sign_autos=(80, 56),
                    car_burnt=(140, 58), tent_tarp=(72, 52), barrel_fire=(24, 24), chainlink_fence=(128, 14),
                    chainlink_hole=(128, 14), guardrail_dented=(128, 10), crash_cushion_hit=(64, 56), call_box=(18, 20),
                    pennant_string=(112, 16), lot_light=(72, 24), sign_gantry=(80, 448), awning_pink=(98, 38), awning_mint=(98, 38),

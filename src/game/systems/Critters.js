@@ -13,6 +13,7 @@ import { TILE, CRITTERS as C } from '../Config.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { rand, randi, chance, angDiff, TAU } from '../../engine/math.js';
 import { openAir } from './Weather.js';
+import { parallaxOf } from '../data/mounts.js';
 
 const { Body } = Matter;
 const SHUT = 'GDLF'; // windows, doors and fences stop them like walls
@@ -350,7 +351,7 @@ export default class Critters {
     this.open ??= openAir(map);
     for (const p of this.lit) {
       if (p.dead || p.lightsOut) continue; // a lamp gone dark (power cut) lets them go
-      const a = p.body.angle, cos = Math.cos(a), sin = Math.sin(a), lift = p.def.height || 0;
+      const a = p.body.angle, cos = Math.cos(a), sin = Math.sin(a), lift = parallaxOf(p.def);
       M.at[p.type].forEach(([x, y, n, r], i) => {
         const bx = p.x + cos * x - sin * y, by = p.y + sin * x + cos * y, cx = Math.floor(bx / TILE), cy = Math.floor(by / TILE);
         if (cx < 0 || cy < 0 || cx >= map.w || cy >= map.h || !this.open[cy * map.w + cx]) return;

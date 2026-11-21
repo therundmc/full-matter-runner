@@ -197,6 +197,13 @@ export default class Projectile {
         if (p.isVehicle && !p.dead) p.exitWound(out.x, out.y, a, clamp(0.7 + this.energy0 / 60, 0.8, 2.2));
         return { x: out.x, y: out.y, a: this.deflect(cost) };
       }
+      case 'overhead': {
+        // a billboard's face (entities/Board.js): its line through it holed, a lamp on it shot out, and it flies on
+        const kind = this.weapon?.pellets > 1 ? 'pellet' : this.weapon?.ammo === '762' ? 'rifle' : 'bullet';
+        h.target.board.shot(kind, h.x, h.y, a);
+        this.ignore.add(h.target);
+        return false;
+      }
       case 'door': {
         const d = h.target;
         d.hit(h.x, h.y, a, heavy ? 3 : 1, 'bullet');
