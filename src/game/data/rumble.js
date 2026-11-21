@@ -36,6 +36,7 @@ export const RUMBLE = {
     clip: { strong: 0.5, weak: 0.3, ms: 120 },     // a corner clipped on what does not give: most of the speed gone
     torn: { strong: 0.2, weak: 0.25, ms: 80 },     // a stall, a hoarding torn through
     scrape: { strong: 0.12, weak: 0.3, ms: 90 },   // a flank grinding along a wall (repeats while it lasts)
+    kerb: { strong: 0.08, weak: 0.2, ms: 60 },     // a wheel up or down a kerb: a light knock
     crash: { strong: 1, weak: 0.9, ms: 700 },      // nose-on into what does not give: the end of him
     lorry: { strong: 0.3, weak: 0.2, ms: 150, near: 96, far: 420 }, // the lorry backed out stops dead across the street
     start: { strong: 0.3, weak: 0.15, ms: 180 },   // the getaway's engine catches

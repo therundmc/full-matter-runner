@@ -234,3 +234,19 @@ test('rumble: Game feels through engine Input: no pad, no actuator, no throw', a
     });
   }
 });
+
+test('rumble: every beat the world tells on \'ride\' has its effect (a kerb too)', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const { RUMBLE: R } = await load('game/data/rumble.js');
+  const root = new URL('../src/game/', import.meta.url), beats = new Set();
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const u = new URL(e.name + (e.isDirectory() ? '/' : ''), dir);
+      if (e.isDirectory()) walk(u);
+      else if (e.name.endsWith('.js')) for (const m of readFileSync(u, 'utf8').matchAll(/emit\('ride', \{ beat: '(\w+)'/g)) beats.add(m[1]);
+    }
+  };
+  walk(root);
+  assert.ok(beats.has('kerb') && beats.size >= 5, [...beats].join());
+  for (const b of beats) assert.ok(R.ride[b], `ride beat '${b}' has no RUMBLE.ride entry`);
+});
