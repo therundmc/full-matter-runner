@@ -192,9 +192,9 @@ src/
                           of Smoke.js, which carries it (a passing car tears it along)
       Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
                           soaked by the rain, heavier and darker; `drop` adds sheets that fell out of something
-      Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is
-                          off): which tiles see the sky, where puddles lie in the open (Liquids fills their hollows),
-                          drip spots (only if it falls). The drops are not stored (render/WeatherArt.js). DOM-free, seeded
+      Weather.js          the wet after an earlier rain (level `wet` / `soundscape.rain`, RAIN in data/atmosphere.js; no
+                          rain falls): which tiles see the sky, where puddles lie in the open (Liquids fills their
+                          hollows). DOM-free, seeded
       Smoke.js            the air as a fluid and what it carries (SMOKE): grey smoke, black soot, white powder, steam;
                           walls, doors and panes, sources (shots and their ejection ports, blasts, what burns, jets, the
                           smokers' threads and breaths, puffs), stirring (walkers, cars, rounds, fans, drafts,
@@ -338,7 +338,6 @@ src/
                           ink round it), the brass rod and rings on top; painted again only when it moved
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
-      WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
       FireArt.js          the standing flames of what burns (Fires.lit()): a bed of embers and a few tongues a fire, flat
                           squares flickering in steps, nothing stored
       Murk.js             thick smoke about the player closes his view in, in flat rings of soot (SMOKE.murk; no blur)
@@ -1094,13 +1093,10 @@ falls silent when its customers panic, the radio and the hums stop with the powe
 
 All of it is a look but for thick smoke, which hides from the guards (the smoke is no obstacle). Readability
 first: it is the lamps that make it show. (The rain's puddles are liquid on the floor: see Liquids above.)
-- Rain: the user wants none falling, so `RAIN.falls` is off: what is left is the wet of an earlier rain (puddles,
-  floors in the open mirroring the lights, a light mist, soaked paper, thicker steam). How wet is the level's
-  `soundscape.rain` times `RAIN.look`. Only where the sky is (Weather.skyGrid: open floors not in `AMBIENCE.indoors`, outer walls and roofs; never a room nor its walls).
-  A drop is hashed from its cell, its slot and its cycle (render/WeatherArt.js, worked out once a frame): a short
-  streak sprite crossing the picture with the wind, then a crown where it lands, rings where it lands in water.
-  Drawn before the lighting (the light map colours it: it glitters under a streetlight) and the drops in the air
-  once more, faint (`RAIN.after`), over the lit scene (not the crowns and rings: they would lie over people). Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
+- Rain: the user wants none falling (the falling rain was deleted): what is left is the wet of an earlier rain
+  (puddles, floors in the open mirroring the lights, a light mist, soaked paper, thicker steam). How wet is the
+  level's `wet` (else `soundscape.rain`) times `RAIN.look`. Only where the sky is (Weather.skyGrid: open floors not in
+  `AMBIENCE.indoors`, outer walls and roofs; never a room nor its walls). Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
   a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`LIQUIDS.look.kinds.rain.sky`).
 - Smoke (systems/Smoke.js over engine/physics/Fluid.js, `SMOKE`): every smoke, steam and dust cloud of the game is
   this one simulation. The air of the whole map is a coarse fluid seen from above, the layer under the ceilings:

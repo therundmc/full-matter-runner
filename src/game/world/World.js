@@ -166,7 +166,7 @@ export default class World {
     this.tipping = new Tipping(this);             // street bins run into go over
     this.propPhysics = new PropPhysics(this);     // loose furniture pushed with its weight, scuffing the floor
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
-    this.weather = new Weather(this, level);               // the rain: open sky, its puddles, drips off the eaves
+    this.weather = new Weather(this, level);               // the wet of an earlier rain: open sky, its puddles
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
     this.smoke = new Smoke(this, level);                   // the air and what it carries: smoke, soot, powder, steam
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
@@ -754,7 +754,6 @@ export default class World {
     this.papers.update(dt);
     this.litter.update(dt);
     this.curtains.update(dt);
-    this.weather.update();
     P?.begin('smoke');
     this.smoke.update(dt);
     P?.end('smoke');

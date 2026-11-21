@@ -68,25 +68,20 @@ test('weather: the sky is over the open floors and the outer walls, never over a
   assert.equal(at(0, 0), 1, 'an outer wall');
 });
 
-test('weather: no rain, nothing laid; rain, puddles in the open only, in the same places every time', () => {
-  const world = () => ({ map: new TileMap(ROWS), events: new EventBus(), props: [], chars: [], particles: { drops() {} } });
+test('weather: dry, nothing laid; wet, puddles in the open only, in the same places every time', () => {
+  const world = () => ({ map: new TileMap(ROWS), events: new EventBus(), props: [], chars: [] });
   assert.equal(new Weather(world(), { name: 'x' }).k, 0);
   assert.equal(new Weather(world(), { name: 'x' }).puddles.length, 0);
   const level = { name: 'yard', soundscape: { rain: 0.4 } };
-  const cfg = { ...RAIN, falls: true, puddles: { ...RAIN.puddles, per: 12, gap: 20 } };
+  const cfg = { ...RAIN, puddles: { ...RAIN.puddles, per: 12, gap: 20 } };
   const a = new Weather(world(), level, cfg), b = new Weather(world(), level, cfg);
   assert.ok(a.k > 0 && a.k <= 1);
   assert.ok(a.puddles.length >= 2, `${a.puddles.length} puddles`);
   assert.deepEqual(a.puddles.map((p) => [p.x, p.y, p.r]), b.puddles.map((p) => [p.x, p.y, p.r]));
   for (const p of a.puddles) assert.ok(a.open(p.x, p.y), 'under the sky');
-  a.update();
-  assert.ok(a.drips.length > 0);
-  for (const d of a.drips) assert.ok(a.open(d.x, d.y), 'drips fall in the open');
-  assert.ok(!a.open(6.5 * TILE, 4.5 * TILE), 'no rain in the room');
-  const dry = new Weather(world(), level, { ...cfg, falls: false });
-  dry.update();
-  assert.equal(dry.drips.length, 0, 'nothing falls when the rain is off');
-  assert.ok(dry.puddles.length > 0, 'the puddles of an earlier rain are still there');
+  assert.ok(!a.open(6.5 * TILE, 4.5 * TILE), 'no sky over the room');
+  // no rain falls (the user): nothing of it is left to draw or to switch back on
+  assert.deepEqual(Object.keys(RAIN).sort(), ['headlight', 'look', 'mist', 'papers', 'puddles', 'wet']);
 });
 
 // a small bar (wood floor, a zone of the soundscape) with a door onto a yard, its power, a player standing outside

@@ -9,12 +9,10 @@ import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawClutter, drawLitter } from './ClutterArt.js';
 import { drawPapers, drawButts } from './StreetArt.js';
-import { drawRainGround, drawRainAir, viewRect } from './WeatherArt.js';
 import SmokeArt from './SmokeArt.js';
 import { drawFlames } from './FireArt.js';
 import LiquidArt from './LiquidArt.js';
 import Cues from './Readability.js';
-import { RAIN } from '../data/atmosphere.js';
 import { EXIT, BEAT } from '../data/staging.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
@@ -37,6 +35,15 @@ const OUTLINE = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // a stamp's 1 px dark outli
 const CARD = { font: 14, drop: 30, slam: 0.14, from: 2.4, tilt: -0.07, fade: 0.3, pad: 4 };
 // a hint whose object is off the picture is kept `inset` px inside it, an arrow of `arrow` px toward the object
 const HINT = { inset: 14, arrow: 6 };
+// the part of the world worth drawing: the camera's view, padded, inside the map
+function viewRect(cam, map, pad = 1.15) {
+  const v = cam.viewRadius(), cx = cam.x, cy = cam.y;
+  return {
+    x0: Math.max(0, cx - v.x * pad), y0: Math.max(0, cy - v.y * pad),
+    x1: Math.min(map.widthPx, cx + v.x * pad), y1: Math.min(map.heightPx, cy + v.y * pad),
+  };
+}
+
 const BUBBLE = { font: 9, line: 11, pad: 4, wrap: 120, lift: 24, tail: 6, pop: 0.12, type: 0.5, fade: 0.4 };
 
 // str cut into lines no wider than max px at the context's font (by words)
@@ -106,7 +113,6 @@ export default class WorldRenderer {
     P?.begin('wet');
     this.liquid.draw(ctx, view);
     P?.end('wet');
-    drawRainGround(ctx, w.weather, view, t);
     P?.begin('map');
     D.drawFlesh(ctx, fx0, fy0, fx1, fy1);
     P?.end('map');
@@ -148,7 +154,6 @@ export default class WorldRenderer {
 
     w.particles.draw(ctx);
     this.smoke.drawThreads(ctx, w.smoke, vis);
-    drawRainAir(ctx, w.weather, view, t);
     // night + coloured lights + wall shadows multiplied over the scene (skipped in the F3 overview)
     const lit = w.lighting.active(cam);
     let l0 = performance.now();
@@ -163,7 +168,6 @@ export default class WorldRenderer {
     let lightMs = performance.now() - l0;
     if ((w.cleared || w.level.exit?.open) && w.level.exit && !w.outro) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
-    if (lit) drawRainAir(ctx, w.weather, view, t, RAIN.after); // in the air only: crowns and rings would lie over people
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
     drawCarSmoke(ctx, w); // the billows of a car in trouble (its engine, its tyres), seen in the dark
     drawChaseWind(ctx, w); // the air past his car at speed

@@ -1,30 +1,15 @@
-// The air of a level, as it is seen: the wet of a street after the rain, and the rain itself if it is ever wanted
-// back (systems/Weather.js, render/WeatherArt.js; the user: "there is no rain", so `falls` is off), the smoke in
-// the air (systems/Smoke.js, render/SmokeArt.js) and the faults of a few neon tubes (render/Flicker.js). Everything
-// here is a look setting: readability first, so it stays thin and it is the lamps that make it show (rain and smoke
-// are lit by the lighting, never glowing by themselves).
+// The air of a level, as it is seen: the wet of a street after an earlier rain (systems/Weather.js; no rain falls:
+// the user), the smoke in the air (systems/Smoke.js, render/SmokeArt.js) and the faults of a few neon tubes
+// (render/Flicker.js). Everything here is a look setting: readability first, so it stays thin and it is the lamps
+// that make it show (the wet and the smoke are lit by the lighting, never glowing by themselves).
 // Lengths in world px, times in seconds, alphas 0..1.
 
-// ---- rain. How wet the open air is comes from the level (`soundscape.rain`, 0..1); `look` turns that into what is
-// seen. Nothing falls unless `falls` is on (drops, crowns, rings in the water, drips off the eaves): by default it
-// has rained earlier, and what is left is the puddles, the wet floors mirroring the neons and the beams, a light
-// mist round the lamps, soaked paper, thicker steam. Only where there is sky: never under a roof (AMBIENCE.indoors).
+// ---- the wet. How wet the open air is comes from the level (`wet`, else `soundscape.rain`, 0..1); `look` turns that
+// into what is seen. It has rained earlier, and what is left is the puddles, the wet floors mirroring the neons and
+// the beams, a light mist round the lamps, soaked paper, thicker steam. Only where there is sky: never under a roof
+// (AMBIENCE.indoors).
 export const RAIN = {
-  falls: false,            // the user does not want rain falling: keep it off
   look: 1.5,               // seen strength per unit of the level's rain (capped at 1)
-  // drops: the sky is cut into square cells, each with its own drops on a cycle; nothing is stored, a drop's
-  // place and timing are hashed from its cell, its slot and its cycle
-  cell: 64,                // px of a cell
-  drops: 14,               // slots per cell at full strength
-  fall: [0.14, 0.24],      // s a drop is seen falling
-  run: 22,                 // px it crosses the picture while it falls (blown by the wind)
-  wind: 1.9,               // rad: the way it falls across the picture (pi/2 = straight down the screen)
-  len: [5, 10],            // px of streak
-  streak: { color: 'rgba(205,220,255,1)', alpha: [0.25, 0.5], width: 0.8 },
-  // where it lands: a crown of a few pixels thrown out (not every drop: some land on something dark)
-  splash: { life: 0.2, size: 2.6, odds: 0.55, color: '#e4ecff', alpha: 0.32 },
-  // standing water: rings spreading where drops land in it
-  ripple: { per: 260, life: 0.85, size: [2.5, 6.5], color: 'rgba(200,220,255,1)', alpha: 0.32, width: 0.6 },
   // puddles of rain lying in the open (where: the water is liquid on the floor, kind `rain` in data/liquids.js, poured
   // into a hollow there): how many per 100 tiles of open floor, their radius, the floors they lie on, how close to
   // each other. The user (2026-11-17): the puddles did not look good, so none are laid (`per` 0); the wet sheen stays
@@ -32,19 +17,9 @@ export const RAIN = {
     per: 0, r: [9, 21], gap: 70, floors: ['asphalt', 'asphalt_line', 'sidewalk', 'concrete', 'dirt'],
     lobes: 9, squash: [0.5, 0.75], // ragged outline, flattened
   },
-  // drips: water running off the eaves and any ladder out in the open, a drop every few seconds on the same spots
-  drips: {
-    per: 5,                // spots per 100 wall faces along an open floor
-    every: [0.6, 2.4],     // s between two drops of a spot
-    fall: 0.3,             // s a drop is seen coming down
-    size: 1.4,             // px of the drop, at the bottom of its fall
-    ladder: 3,             // spots under each ladder out in the open
-    color: '#dfe8ff', alpha: 0.6,
-  },
   // the wet: floors in the open mirror the lights harder (Lighting.post, x (1 + wet)), and the beams of the cars
   // lie on the road as a long sheen
   wet: 0.7,
-  after: 0.3,              // the drops in the air again over the lit scene, this faint: the dark is not quite dry
   headlight: { gain: 0.45, len: 0.8, width: 0.18 }, // of the beam's reach
   mist: 0.14,              // haze in the open air at full rain (it catches the streetlights; render/SmokeArt.js)
   // loose paper (systems/Papers.js): soaked, it lies heavier and darker
