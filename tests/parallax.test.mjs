@@ -18,3 +18,13 @@ test('parallax: rigid overhead structures stay put over the ground and walls the
     if (d.overhead && d.hung && d.lasting && !d.pole && (d.w || 0) >= 64 && !/palm/.test(k)) assert.equal(d.height || 0, 0, k);
   }
 });
+
+test('wobble: a round or a blast never sets a rigid structure swinging; a ceiling lamp still swings, an awning only shudders', async () => {
+  const { default: Prop } = await load('game/entities/Prop.js');
+  const fake = (def) => Object.assign(Object.create(Prop.prototype), { def, kick: { x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0 }, flash: 0 });
+  const bridge = fake(PROPS.overpass), gantry = fake(PROPS.sign_gantry), board = fake(PROPS.billboard_tan);
+  for (const p of [bridge, gantry, board]) { p.recoil(0.3, 2); assert.deepEqual([p.kick.vx, p.kick.vy, p.kick.vr], [0, 0, 0], 'still'); }
+  const lamp = fake(PROPS.ceiling_lamp), awning = fake(PROPS.awning);
+  lamp.recoil(0, 1); awning.recoil(0, 1);
+  assert.ok(lamp.kick.vx > awning.kick.vx, 'the lamp swings harder than the awning shudders');
+});

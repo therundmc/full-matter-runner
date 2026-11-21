@@ -53,6 +53,8 @@
 - Parallax (prop `height`, Prop.js): only for things on a pole (palms, lamps, signs: the pole ties top to foot) and
   hanging lights; a rigid structure fixed to the ground or a wall (bridge, gantry, the toll's roof, billboard, awning,
   fire escape, washing line) has none, or it slides over its abutments like a lamp on a wire (tests/parallax.test.mjs).
+  Only what hangs from a ceiling (`high`: lamps, the fan, the mirror ball, bulb strings) swings when shot or blown;
+  a hung `lasting` structure never moves (Prop.recoil), anything else only shudders stiffly.
 - Walk and hands: entities/Gait.js (cadence and stride grow with speed, planted feet), arms and hands painted in
   render/LimbArt.js; long guns shouldered with `grip`, `fore`, `butt` (data/weapons.js); heads are their own sprite.
 - `BODY_SCALE` = 1.3 (Config): a standing pose is drawn 1.3 x about the feet (CharacterAnim `bodyFrame`; pose numbers

@@ -299,8 +299,13 @@ export default class Prop {
   }
 
   // little recoil of the struck object (bolted furniture just shudders)
+  // What swings on like a pendulum is only what truly hangs from a ceiling (`high`: lamps, the fan, the mirror ball,
+  // strings of bulbs); a structure that is hung only in the sense it has no body (a bridge, a gantry, a billboard, the
+  // toll's roof: `lasting`) takes a round or a blast without moving at all; anything else gives a stiff shudder.
   recoil(dirA, power) {
-    const k = this.kick, amt = clamp(power, 0.3, 2.5) * (this.def.hung ? 60 : this.def.static ? 40 : 20);
+    const d = this.def;
+    if (d.hung && d.lasting && !d.high) { this.flash = 0.06; return; }
+    const k = this.kick, amt = clamp(power, 0.3, 2.5) * (d.high ? 60 : d.static || d.hung ? 40 : 20);
     k.vx += Math.cos(dirA) * amt; k.vy += Math.sin(dirA) * amt;
     k.vr += rand(-1, 1) * 0.6 * clamp(power, 0.3, 2) * (this.def.static ? 0.5 : 1);
     this.flash = 0.06;
@@ -316,8 +321,8 @@ export default class Prop {
   update(dt) {
     const k = this.kick;
     if (k.x || k.y || k.vx || k.vy || k.r || k.vr) {
-      // stiff damped spring back to rest; what hangs from the ceiling swings on like a pendulum
-      const hung = this.def.hung, ks = hung ? 45 : 700, cs = hung ? 1.1 : 24, kr = hung ? 60 : 500, cr = hung ? 2.5 : 20;
+      // stiff damped spring back to rest; what hangs from the ceiling (`high`) swings on like a pendulum
+      const hung = this.def.high, ks = hung ? 45 : 700, cs = hung ? 1.1 : 24, kr = hung ? 60 : 500, cr = hung ? 2.5 : 20;
       k.vx += (-ks * k.x - cs * k.vx) * dt; k.vy += (-ks * k.y - cs * k.vy) * dt; k.vr += (-kr * k.r - cr * k.vr) * dt;
       k.x += k.vx * dt; k.y += k.vy * dt; k.r += k.vr * dt;
       if (Math.abs(k.x) + Math.abs(k.y) + Math.abs(k.vx) + Math.abs(k.vy) + Math.abs(k.r) * 50 + Math.abs(k.vr) < 0.02) {
