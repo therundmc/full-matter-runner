@@ -8,6 +8,8 @@
 // touched yet, the first connected one that can rumble. `canRumble`: a connected pad has an actuator this browser
 // drives (Chrome / Edge: vibrationActuator; Firefox has none).
 
+import { clamp01 } from './math.js';
+
 // standard mapping: button index -> name
 export const BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right', 'Home'];
 // the four directions menus are walked with, from the d-pad or the left stick
@@ -160,6 +162,5 @@ export default class Gamepad {
   }
 }
 
-const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0);
 // a promise the browser may reject (an effect cut short by the next one): never an unhandled rejection
 const quiet = (r) => { if (r && typeof r.catch === 'function') r.catch(() => {}); };

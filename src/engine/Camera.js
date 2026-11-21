@@ -7,6 +7,21 @@ import { rand, lerp } from './math.js';
 // further out (330), then closer again to make it more visceral (2026-11-16: 290; a zoom that follows the action may come).
 export const VIEW = 290;
 
+// How it moves. Rates are what is left after a second (0.01: a hundredth of it), so they hold at any frame rate.
+const FEEL = {
+  follow: 0.0008,      // of the way to its target left after a second (a soft lag)
+  trauma: 1.6,         // shake lost a second
+  shake: 16,           // picture px either way at full shake
+  shakeTurn: 0.05,     // rad either way at full shake
+  punch: 0.01,         // of a zoom punch left after a second
+  kick: 0.0001,        // of a recoil kick left after a second
+  swayIn: 2.5,         // 1/s: the tilt eased in or out
+  swayRate: 0.5,       // rad/s of its slow swing
+  swayAmp: 0.028,      // rad either way
+  edge: 10,            // world px kept past the world's edges (the corners a tilt would show)
+  margin: 40,          // world px added round the view for what is drawn (viewRadius: a tilt, a sprite's reach)
+};
+
 // The picture for a view `view` world px high in a window h device px high: { ss: scene px a window px, zoom: scene
 // px a world px }.
 //   pixel (at a wheel: Camera `pixel`): the scene is drawn 1:1, its canvas the window (ss 1), at the whole zoom
@@ -65,7 +80,7 @@ export default class Camera {
   // keep the view inside the world (a world smaller than the view is centred); the margin hides the sway's corners
   clamp() {
     if (!this.bounds) return;
-    const z = this.zoom * this.scale, hw = this.w / z / 2 + 10, hh = this.h / z / 2 + 10, { w, h } = this.bounds;
+    const z = this.z, hw = this.w / z / 2 + FEEL.edge, hh = this.h / z / 2 + FEEL.edge, { w, h } = this.bounds;
     this.x = w < hw * 2 ? w / 2 : Math.min(Math.max(this.x, hw), w - hw);
     this.y = h < hh * 2 ? h / 2 : Math.min(Math.max(this.y, hh), h - hh);
   }
@@ -89,21 +104,21 @@ export default class Camera {
 
   update(dt, tx, ty) {
     this.time += dt;
-    const k = 1 - Math.pow(0.0008, dt);
+    const k = 1 - Math.pow(FEEL.follow, dt);
     this.x = this.pixel ? tx : lerp(this.x, tx, k);
     this.y = this.pixel ? ty : lerp(this.y, ty, k);
     this.clamp();
-    this.trauma = Math.max(0, this.trauma - dt * 1.6);
-    this.punchZ *= Math.pow(0.01, dt);
+    this.trauma = Math.max(0, this.trauma - dt * FEEL.trauma);
+    this.punchZ *= Math.pow(FEEL.punch, dt);
     const s = this.trauma * this.trauma;
-    this.sx = rand(-1, 1) * 16 * s;
-    this.sy = rand(-1, 1) * 16 * s;
-    this.sr = rand(-1, 1) * 0.05 * s;
-    this.swayK = Math.max(0, Math.min(1, this.swayK + (this.sway ? dt : -dt) * 2.5));
-    this.kick.x *= Math.pow(0.0001, dt);
-    this.kick.y *= Math.pow(0.0001, dt);
+    this.sx = rand(-1, 1) * FEEL.shake * s;
+    this.sy = rand(-1, 1) * FEEL.shake * s;
+    this.sr = rand(-1, 1) * FEEL.shakeTurn * s;
+    this.swayK = Math.max(0, Math.min(1, this.swayK + (this.sway ? dt : -dt) * FEEL.swayIn));
+    this.kick.x *= Math.pow(FEEL.kick, dt);
+    this.kick.y *= Math.pow(FEEL.kick, dt);
     if (this.pixel) { this.sr = 0; this.swayK = 0; }
-    this.rot = Math.sin(this.time * 0.5) * 0.028 * this.swayK + this.sr;
+    this.rot = Math.sin(this.time * FEEL.swayRate) * FEEL.swayAmp * this.swayK + this.sr;
   }
 
   // where the view is drawn from (world px): held on whole px, the nearest point that lands on the picture's grid
@@ -135,9 +150,9 @@ export default class Camera {
     return { x: x * c - y * s + this.w / 2 + this.sx, y: x * s + y * c + this.h / 2 + this.sy };
   }
 
-  // half-size of the visible world rectangle (with margin for rotation)
+  // half-size of the visible world rectangle (with margin for rotation), at the zoom it is drawn at (z)
   viewRadius() {
-    const z = this.zoom * this.scale;
-    return { x: this.w / z / 2 + 40, y: this.h / z / 2 + 40 };
+    const z = this.z;
+    return { x: this.w / z / 2 + FEEL.margin, y: this.h / z / 2 + FEEL.margin };
   }
 }

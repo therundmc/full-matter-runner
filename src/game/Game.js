@@ -1099,7 +1099,7 @@ export default class Game {
         const at = this.camera.worldToScreen(this.world.player.x, this.world.player.y);
         this.safeDraw(ctx, () => drawMurk(ctx, W, H, at.x, at.y, this.murk));
       }
-      if (!post) this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma));
+      if (!post) this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma, this.wheel));
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const slow = POST.slowTint;
@@ -1234,7 +1234,7 @@ export default class Game {
     // faint scanlines
     g.fillStyle = 'rgba(0,0,0,0.07)';
     const step = Math.max(2, Math.round(H / 360));
-    for (let y = 0; y < H; y += step * 2) g.fillRect(0, y, W, step);
+    if (!this.wheel) for (let y = 0; y < H; y += step * 2) g.fillRect(0, y, W, step); // (none at the wheel: Lens `flat`)
     this.vignette = c;
     return c;
   }

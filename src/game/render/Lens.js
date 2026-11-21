@@ -7,10 +7,9 @@
 //   toScreen(x, y)       world point -> { x, y } in picture px
 //   state, phase         the game's state ('title', 'play', 'dead', 'pause', 'results', ...) and the alert phase
 //   powerOn              false once the house's fuse box is smashed (systems/Power.js)
-//   timeScale, trauma    slow motion (1 = none), camera shake 0..1.2
-//   look                 the player looks far (Shift)
+//   trauma               camera shake 0..1.2
 //   combo                kills in the player's current chain (systems/Scoring.js)
-//   player               { x, y, angle, move } with move: 'slide' | 'roll' | 'dive' | null
+//   player               { x, y }: where he is (the zoom kick's centre when there is none of its own)
 //   heat                 [{ x, y, kind: 'fire' | 'steam' }] hot spots in the world
 //   lights               [{ x, y, k }] the brightest lamps in view, strongest first
 //   drive                at the wheel (systems/Drive.js), else null: { k: his speed, share of flat out; angle: the way
@@ -19,28 +18,17 @@
 //                        page): nothing of the world reaches the picture, and what it left in the lens is dropped
 import { POST } from '../data/post.js';
 import { quality } from '../systems/Quality.js';
+import { clamp01 } from '../../engine/math.js';
 
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const ease = (from, to, rate, dt) => from + (to - from) * (1 - Math.exp(-rate * dt));
 const copyGrade = (g) => ({ sat: g.sat, con: g.con, gain: [...g.gain], lift: [...g.lift], tint: [...g.tint], tintK: g.tintK });
-
-// What of the speed's look at the wheel may move the picture's px (POST.speed.drive): nothing. { mix: the lights'
-// trails laid over it, pull: the band stretched along the road, split: the colours parted along it (px) }, all 0
-// whatever the table says: the cars at the picture's edges came out deformed (the user, 2026-11-19). The streaks of
-// air and the darkening of the band are added over the picture, they move none of it
-export function driveLens() {
-  return { mix: 0, pull: 0, split: 0 };
-}
 
 export default class Lens {
   constructor(cfg = POST) {
     this.cfg = cfg;
     this.grade = copyGrade(cfg.grades.menu);
     this.noRays = { ...cfg.rays, strength: 0 }; // the shafts when the QUALITY option leaves them out
-    this.edge = cfg.focus.edge; // soft edges, 0..1
-    this.blur = 0;              // the whole picture soft (menus), 0..1
-    this.smear = { x: 0, y: 0 };
-    this.radial = 0;
+    this.blur = 0;              // the whole picture soft (the results), 0..1
     this.rush = 0;              // 0..1: the speed at the wheel, as the edges of the picture show it (speed.drive)
     this.rushA = 0;             // the way he goes (world rad), eased
     this.rampage = 0;           // 0..1: how hot the chain of kills runs
@@ -95,8 +83,7 @@ export default class Lens {
     if (B.frame) { this.frame = Math.max(this.frame, B.frame); this.frameGap = this.cfg.punch.frameGap; }
   }
 
-  // a jolt of the car he drives ({ beat }: systems/Drive.js): the edges streak harder for an instant, the colours
-  // part there
+  // a jolt of the car he drives ({ beat }: systems/Drive.js): the edges streak and darken harder for an instant
   ride({ beat }) {
     const K = this.cfg.speed.drive.kick, k = K[beat];
     if (!k) return;
@@ -155,7 +142,7 @@ export default class Lens {
     const g = this.cfg.grades;
     if (v.state === 'dead') return g.dead;
     if (v.state === 'pause') return g.paused;
-    if (v.state !== 'play' && v.state !== 'pause' && v.state !== 'intro' && v.state !== 'outro') return g.menu;
+    if (v.state !== 'play' && v.state !== 'intro' && v.state !== 'outro') return g.menu;
     if (v.powerOn === false) return g.dark;
     return v.phase === 'alert' ? g.combat : v.phase === 'caution' || v.phase === 'evasion' ? g.caution : g.calm;
   }
@@ -197,22 +184,11 @@ export default class Lens {
     g.sat = ease(g.sat, to.sat, r, dt); g.con = ease(g.con, to.con, r, dt); g.tintK = ease(g.tintK, to.tintK, r, dt);
     for (const k of ['gain', 'lift', 'tint']) for (let i = 0; i < 3; i++) g[k][i] = ease(g[k][i], to[k][i], r, dt);
 
-    // focus
-    const f = c.focus;
-    const edge = v.state === 'dead' ? f.dead : v.state === 'title' || v.state === 'loading' ? f.title : v.look && v.state === 'play' ? f.look : f.edge;
-    const blur = v.state === 'pause' ? f.pause : v.state === 'results' ? f.results : 0;
-    this.edge = ease(this.edge, edge, f.ease, dt);
-    this.blur = ease(this.blur, blur, f.ease, dt);
-
-    // speed: a smear along the move (picture heights, y up), a stream from the player in slow motion
-    const s = c.speed, k = v.state === 'play' && v.player?.move ? s[v.player.move] || 0 : 0;
-    const a = v.player?.angle || 0;
-    this.smear.x = ease(this.smear.x, Math.cos(a) * k, s.ease, dt);
-    this.smear.y = ease(this.smear.y, -Math.sin(a) * k, s.ease, dt);
-    this.radial = ease(this.radial, v.state === 'play' ? (1 - clamp01(v.timeScale)) * s.slow : 0, s.ease, dt);
+    // focus: the picture behind the results soft
+    this.blur = ease(this.blur, v.state === 'results' ? c.focus.results : 0, c.focus.ease, dt);
 
     // at the wheel: how much of the speed the edges show
-    const D = s.drive, dr = (v.state === 'play' || v.state === 'continued') && !v.page ? v.drive : null;
+    const D = c.speed.drive, dr = (v.state === 'play' || v.state === 'continued') && !v.page ? v.drive : null;
     this.rush = ease(this.rush, dr ? Math.pow(clamp01((dr.k - D.from) / (1 - D.from)), D.curve) : 0, D.ease, dt);
     // (a close-up at the wheel: none of it, at once; the band is measured for the drive's own view, in a close-up
     // the car's ends and the kerbs are in it. It comes back in by itself after the cut out)
@@ -241,9 +217,10 @@ export default class Lens {
       put(waves, i - w0, w.x, w.y, w.t * k.speed, k.bend * life * Math.sqrt(life));
     }
 
-    // (the QUALITY option: no shimmer, and the lens' glow and shafts not run at all: PostGL)
+    // (the QUALITY option: no shimmer, and the lens' glow and shafts not run at all: PostGL; at the wheel no heat
+    // bends the picture either: it moves no px there)
     const Q = quality(), heat = this.slots.heat.fill(0), HB = c.heat.blast;
-    let n = Q.shimmer ? 0 : c.heat.max;
+    let n = Q.shimmer && !(world && v.drive) ? 0 : c.heat.max;
     for (const e of this.embers) if (n < c.heat.max) put(heat, n++, e.x, e.y, (HB.r * v.scale) / H, HB.k * (1 - e.t / HB.life));
     for (const h of world && v.heat || []) if (n < c.heat.max) put(heat, n++, h.x, h.y, (c.heat[h.kind].r * v.scale) / H, c.heat[h.kind].k);
 
@@ -251,9 +228,8 @@ export default class Lens {
     for (let i = 0; i < Math.min(lamps.length, c.rays.max); i++) put(lights, i, lamps[i].x, lamps[i].y, Math.min(1, lamps[i].k), 0);
 
     // the speed at the wheel: how much, the way he goes in the picture (y up), his car, and the band's numbers.
-    // flat: at the wheel the scene is drawn 1:1 and must come out px for px where the road is: no barrel, no zoom
-    // kick, the lens' own fringe kept to the band the speed works on (PostGL), and no scan lines (they stand still
-    // on the screen: a car changing lanes under them flickers, row by row)
+    // flat: at the wheel the scene is drawn 1:1 and must come out px for px: no barrel, no zoom kick, no fringe, no
+    // wave, and no scan lines (they stand still on the screen: a car changing lanes under them flickers, row by row)
     const D = c.speed.drive, flat = world && !!v.drive, rush = flat && !v.drive.close ? Math.min(D.cap, this.rush + this.jolt) : 0;
     const way = this.rushA - (v.rot || 0), rows = H / Math.max(1, v.scale) / D.rows;
     const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
@@ -267,17 +243,14 @@ export default class Lens {
       glitch: this.glitch,
       waves, waveWidth: flat ? 0 : c.wave.width, // (at the wheel no wave bends the picture either: 0, none)
       heat,
-      smear: [this.smear.x * (H / W), this.smear.y],
-      radial: this.radial, centre,
       rush: {
         k: rush, flat: flat ? 1 : 0, dir: [Math.cos(way), -Math.sin(way)], at: flat ? at(v.drive.x, v.drive.y) : [0.5, 0.5],
-        band: D.band, car: D.car,
-        len: D.len, rows, flick: D.flick, dark: D.dark, lines: D.lines, ...driveLens(D, px),
+        band: D.band, car: D.car, rows, dark: D.dark, lines: D.lines,
       },
-      edge: this.edge, blur: this.blur,
+      blur: this.blur,
       glow: { ...c.glow, strength: Q.glow ? c.glow.strength + R.glow * r : 0 }, rays: Q.glow && Q.rays ? c.rays : this.noRays, lights, tone: c.tone,
       grade: g,
-      curve: flat ? 0 : t.curve, scan: flat ? 0 : t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
+      curve: flat ? 0 : t.curve, scan: flat ? 0 : t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, grain: t.grain,
       vignette: t.vignette + R.vignette * r + this.close,
     };
   }

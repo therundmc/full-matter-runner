@@ -6,8 +6,11 @@ const { Bodies, Body } = Matter;
 const { default: PhysicsWorld } = await load('engine/physics/PhysicsWorld.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { setMaterial, impulse, kgOf } = await load('engine/physics/Body.js');
-const { stoppingDistance } = await load('engine/physics/Friction.js');
-const { fromMps } = await load('engine/physics/Units.js');
+const { G, PX_PER_M, STEP } = await load('engine/physics/Units.js');
+
+// m/s -> px/step; the distance (px) a body sliding at v px/step on a floor of friction mu stops in: v2 / (2 mu g)
+const fromMps = (mps) => mps * PX_PER_M * STEP;
+const stoppingDistance = (v, mu) => ((v / STEP) ** 2) / (2 * mu * G * PX_PER_M);
 
 const DT = 1 / 60;
 function run(phys, seconds, t0 = 0) {

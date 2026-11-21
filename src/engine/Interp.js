@@ -6,6 +6,7 @@
 //   Interp     keeps where things were before the last step; `apply` writes the in-between places into the things
 //              themselves for the time of a draw, `restore` puts the real ones back. Nothing may step in between:
 //              the simulation never sees a drawn place.
+//   Movers     the lists of points a world moves by hand (no body: particles, rounds, papers...), gathered for capture
 
 // px in one step past which a thing was put somewhere, not moved (a respawn, a seat taken): it is not smeared
 // (the fastest bullet goes 47 px a step)
@@ -41,13 +42,33 @@ export class StepClock {
   get alpha() { return Math.min(1, Math.max(0, this.acc / this.step)); }
 }
 
+// What moves without a body, for Interp.capture: whoever moves points of its own (things with x, y and maybe z,
+// moved by hand once a step) adds a source, fn(out) pushing its lists onto `out`. A point must be in one list only
+// (twice, it would be moved twice and put back wrong).
+export class Movers {
+  constructor() {
+    this.sources = [];
+    this.out = [];
+  }
+
+  add(fn) { this.sources.push(fn); }
+
+  // every list of every source, as of now (the arrays a system swaps for new ones each step are read again)
+  lists() {
+    const out = this.out;
+    out.length = 0;
+    for (const fn of this.sources) fn(out);
+    return out;
+  }
+}
+
 export default class Interp {
   constructor() {
     this.n = 0;        // the last capture's stamp: what does not carry it has no place to come from (new, or still)
     this.bodies = [];  // Matter bodies taken at the last capture
     this.points = [];  // plain things with x, y (z)
-    this.saved = [];   // the real places while applied: [thing, x, y, angle or z] in a row
-    this.nb = 0;       // how many of `saved`'s rows are bodies (the others are points)
+    this.moved = [];   // the bodies applied: their real place is on them (irx, iry, ira) until restored
+    this.saved = [];   // the points applied, with their real places: [point, x, y, z] in a row
     this.on = false;
     this.live = false; // a capture holds for the step under way (born)
   }
@@ -94,20 +115,20 @@ export default class Interp {
   apply(alpha) {
     if (this.on) return;
     this.on = true;
-    const S = this.saved, n = this.n, k = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
+    const S = this.saved, B = this.moved, n = this.n, k = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
     S.length = 0;
-    this.nb = 0;
+    B.length = 0;
     if (k >= 1) return;
     for (const b of this.bodies) {
       if (b.ipn !== n) continue;
       const q = b.position, dx = q.x - b.ipx, dy = q.y - b.ipy, da = b.angle - b.ipa;
       if ((dx === 0 && dy === 0 && da === 0) || dx * dx + dy * dy > JUMP * JUMP) continue;
-      S.push(b, q.x, q.y, b.angle);
+      b.irx = q.x; b.iry = q.y; b.ira = b.angle;
+      B.push(b);
       q.x = b.ipx + dx * k;
       q.y = b.ipy + dy * k;
       b.angle = b.ipa + da * k;
     }
-    this.nb = S.length;
     for (const p of this.points) {
       if (p.ipn !== n) continue;
       const dx = p.x - p.ipx, dy = p.y - p.ipy, z = p.z, dz = z !== undefined && p.ipz !== undefined ? z - p.ipz : 0;
@@ -123,16 +144,29 @@ export default class Interp {
   restore() {
     if (!this.on) return;
     this.on = false;
-    const S = this.saved, nb = this.nb;
-    for (let i = 0; i < nb; i += 4) {
-      const b = S[i];
-      b.position.x = S[i + 1]; b.position.y = S[i + 2]; b.angle = S[i + 3];
+    const S = this.saved, B = this.moved;
+    for (const b of B) {
+      b.position.x = b.irx; b.position.y = b.iry; b.angle = b.ira;
+      b.irx = undefined;
     }
-    for (let i = nb; i < S.length; i += 4) {
+    B.length = 0;
+    for (let i = 0; i < S.length; i += 4) {
       const p = S[i];
       p.x = S[i + 1]; p.y = S[i + 2];
       if (S[i + 3] !== undefined) p.z = S[i + 3];
     }
     S.length = 0;
+  }
+}
+
+// A body's outline where it is drawn (between two steps): Matter keeps its vertices where the simulation put it, so
+// they are carried by what apply moved it by. fn(x, y) for each vertex, in order.
+export function eachDrawnVertex(b, fn) {
+  const vs = b.vertices;
+  if (b.irx === undefined) { for (const v of vs) fn(v.x, v.y); return; }
+  const da = b.angle - b.ira, c = Math.cos(da), s = Math.sin(da), x0 = b.irx, y0 = b.iry, q = b.position;
+  for (const v of vs) {
+    const dx = v.x - x0, dy = v.y - y0;
+    fn(q.x + dx * c - dy * s, q.y + dx * s + dy * c);
   }
 }

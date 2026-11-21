@@ -1,7 +1,7 @@
 import './setup.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import Interp, { StepClock, JUMP } from '../src/engine/Interp.js';
+import Interp, { StepClock, JUMP, Movers, eachDrawnVertex } from '../src/engine/Interp.js';
 import Camera, { fitView } from '../src/engine/Camera.js';
 import { FIXED_DT } from '../src/game/Config.js';
 
@@ -144,4 +144,40 @@ test('interp: at the wheel the in-between places still land on whole px of the p
     I.restore();
   }
   assert.ok(between > 200, 'the places handed to the snap were in-between ones');
+});
+
+test('interp: a list registered with the movers is drawn between its two step places, whatever array holds it', () => {
+  // the regression: pool balls, a car's billows, the streaks of air, papers and litter were moved by hand each step
+  // but never captured, so at 120 / 144 Hz they were drawn stepped
+  const M = new Movers(), I = new Interp(), sys = { list: [{ x: 0, y: 0 }] }, ball = { x: 10, y: 10, z: 2 };
+  M.add((out) => out.push(sys.list));
+  M.add((out) => out.push([ball]));
+  I.capture([], M.lists());
+  sys.list[0].x = 8; ball.y = 14; ball.z = 0;
+  sys.list = sys.list.filter(() => true); // (a system that swaps its array: read again at the next capture)
+  I.apply(0.25);
+  assert.deepEqual([sys.list[0].x, ball.y, ball.z], [2, 11, 1.5]);
+  I.restore();
+  assert.deepEqual([sys.list[0].x, ball.y, ball.z], [8, 14, 0]);
+  assert.equal(M.lists().length, 2);
+  assert.equal(M.lists()[0], sys.list, 'the new array');
+});
+
+test('interp: a body\'s outline is drawn where its sprite is (F4), its real vertices left alone', () => {
+  const I = new Interp(), vs = [{ x: 9, y: 9 }, { x: 11, y: 9 }, { x: 11, y: 11 }, { x: 9, y: 11 }];
+  const b = { position: { x: 10, y: 10 }, angle: 0, isStatic: false, vertices: vs };
+  I.capture([b]);
+  b.position.x = 14; b.angle = Math.PI / 2;
+  for (const v of vs) { const dx = v.x - 10, dy = v.y - 10; v.x = 14 - dy; v.y = 10 + dx; } // (Matter's own update)
+  I.apply(0.5);
+  const got = [];
+  eachDrawnVertex(b, (x, y) => got.push([+x.toFixed(6), +y.toFixed(6)]));
+  const c = Math.cos(Math.PI / 4), s = Math.sin(Math.PI / 4);
+  const want = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([dx, dy]) => [+(12 + dx * c - dy * s).toFixed(6), +(10 + dx * s + dy * c).toFixed(6)]);
+  assert.deepEqual(got, want, 'the square half way, turned half way');
+  I.restore();
+  got.length = 0;
+  eachDrawnVertex(b, (x, y) => got.push([x, y]));
+  assert.deepEqual(got, vs.map((v) => [v.x, v.y]), 'restored: its own vertices');
+  assert.equal(b.position.x, 14);
 });

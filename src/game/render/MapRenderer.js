@@ -1,6 +1,6 @@
 import { TILE, PALETTE, LITTER, WALL_RIM, CHUNKS } from '../Config.js';
 import { sprite, spriteOpt, silhouette, sw, sh } from '../../engine/Assets.js';
-import { rand, pick, chance, TAU, hashString, areaTable, areaCount } from '../../engine/math.js';
+import { rand, pick, chance, TAU, hashString, areaTable, areaCount, cellHash } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
@@ -22,13 +22,6 @@ const RUN = '#6c0a0e', RUN_WALL = '#a0161a';
 // sole (toe toward +x) and heel of a shoe print, in px
 const SHOE = [[0, -1], [1, -1], [2, -1], [3, -1], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [1, 1], [2, 1], [3, 1],
   [-3, -1], [-2, -1], [-3, 0], [-2, 0], [-3, 1], [-2, 1]];
-
-// well-mixed integer hash of a cell (no visible lattice, unlike a plain x*a ^ y*b)
-function cellHash(x, y) {
-  let h = (x * 374761393 + y * 668265263) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
 
 // texture variants: _v1 (subtle wear) on ~1 cell in 7, _v2 (a landmark: manhole, drain...) on ~1 in 40, _v3.._v5 (a
 // light detail: a crack, a chip, a stain, a burn...) on ~1 in 14 each
