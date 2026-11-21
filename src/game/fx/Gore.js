@@ -95,29 +95,27 @@ export function gore(world, ch, angle, cause, by, how) {
   // an opened artery (a wound's `artery`) spurts a while once he is down
   const artery = wd.artery && chance(wd.artery[0]) ? wd.artery[1] * rand(0.8, 1.2) : 0;
   const bleeding = { pool: rand(wd.pool[0], wd.pool[1]) * Math.sqrt(more), poolRate: wd.rate, spurt: wd.spurt || artery, dry: cause === 'snap' };
-  {
-    // his body (every kind has its ragdoll); close shotgun blasts tear limbs off
-    const detach = scripted ? [] : tornLimbs(tear);
-    const whole = mode === 'corpse' && !detach.length;
-    // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
-    const behead = mode === 'headless' && !burst && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
-    // his face smashed into a wall (how.dying 'wall'): he slumps down it and stays sat against it (Ragdoll.propUp);
-    // into something low ('sit'): he sits against its side (how.against, Ragdoll.sitAgainst)
-    const sit = scripted === 'wall' || scripted === 'sit';
-    const dying = sit ? null : scripted || (cause === 'snap' || how?.still ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
-    const kneels = !!KNEELS[dying]; // where he stood, pitching forward the way he faced (square to what he was driven into)
-    // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
-    const lay = ch.knocked > 0 ? ch.downAngle : null;
-    const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
-    world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + (how?.env ? 0 : rand(-0.3, 0.3)) : lay ?? angle, kneels || sit || lay !== null ? 0 : slide, {
-      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, stuckA: by?.stuckA, stuckJolt: by?.stuckJolt, dying, mark: markOf(wd),
-      sit: scripted === 'wall' ? SIT_REACH : 0, against: how?.against ? { ...how.against, sit: scripted === 'sit' } : null,
-      kneeling: kneels && !!how?.kneeling,
-      // he faced his killer: he goes over backwards (one who kneels pitches forward)
-      back: !!dying && dying !== 'throes' && !kneels && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
-      killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,
-    }));
-  }
+  // his body (every kind has its ragdoll); close shotgun blasts tear limbs off
+  const detach = scripted ? [] : tornLimbs(tear);
+  const whole = mode === 'corpse' && !detach.length;
+  // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
+  const behead = mode === 'headless' && !burst && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
+  // his face smashed into a wall (how.dying 'wall'): he slumps down it and stays sat against it (Ragdoll.propUp);
+  // into something low ('sit'): he sits against its side (how.against, Ragdoll.sitAgainst)
+  const sit = scripted === 'wall' || scripted === 'sit';
+  const dying = sit ? null : scripted || (cause === 'snap' || how?.still ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
+  const kneels = !!KNEELS[dying]; // where he stood, pitching forward the way he faced (square to what he was driven into)
+  // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
+  const lay = ch.knocked > 0 ? ch.downAngle : null;
+  const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
+  world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + (how?.env ? 0 : rand(-0.3, 0.3)) : lay ?? angle, kneels || sit || lay !== null ? 0 : slide, {
+    headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, stuckA: by?.stuckA, stuckJolt: by?.stuckJolt, dying, mark: markOf(wd),
+    sit: scripted === 'wall' ? SIT_REACH : 0, against: how?.against ? { ...how.against, sit: scripted === 'sit' } : null,
+    kneeling: kneels && !!how?.kneeling,
+    // he faced his killer: he goes over backwards (one who kneels pitches forward)
+    back: !!dying && dying !== 'throes' && !kneels && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
+    killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,
+  }));
 
   if (mode === 'headless') {
     if (cause === 'execute') {
