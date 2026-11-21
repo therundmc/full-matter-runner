@@ -12,14 +12,13 @@
 // { t: s since he stepped into the zone, s: px along the route, v: px/step, slip: rad, wag: rad, heading,
 //   fadeAt: s | null }.
 import { TILE } from '../Config.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, smooth, easeOut } from '../../engine/math.js';
 import { MOTOR, squealOf, launchChirp } from '../../audio/Motor.js';
 import { OUTRO } from '../data/outro.js';
 import { routePath } from './RoutePath.js';
 
 export { OUTRO }; // (its numbers: data/outro.js; Game, World and ui/Screens read them from here)
 
-const ease = (k) => k * k * (3 - 2 * k); // smoothstep
 
 // 'walk' -> 'board' -> 'ignition' -> 'drive' (kept for the tests: the timeline's order)
 export function outroPhase(t, o = OUTRO) {
@@ -127,7 +126,7 @@ export function motorState(out, t, dt, o = OUTRO, m = MOTOR) {
 
 // 0..1 black over the picture (out: the outro's state)
 export function fadeAlpha(out, o = OUTRO) {
-  return out.fadeAt === null ? 0 : ease(clamp((out.t - out.fadeAt) / o.fadeDur, 0, 1));
+  return out.fadeAt === null ? 0 : smooth((out.t - out.fadeAt) / o.fadeDur);
 }
 
 // black and held: the results
@@ -137,13 +136,12 @@ export function outroOver(out, o = OUTRO) {
 
 // 0..1 how far the letterbox bars are in (ease out)
 export function barsK(t, o = OUTRO) {
-  const k = clamp(t / o.barsIn, 0, 1);
-  return 1 - (1 - k) ** 3;
+  return easeOut(t / o.barsIn);
 }
 
 // 0..1 the camera's way from the player to the cab
 export function camBlend(t, o = OUTRO) {
-  return ease(clamp((t - o.walk) / o.cam, 0, 1));
+  return smooth((t - o.walk) / o.cam);
 }
 
 // did the clock cross `at` during the step from t0 to t1? (one-shot beats of the timeline)

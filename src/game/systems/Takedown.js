@@ -1,7 +1,7 @@
 // Stealth kill from behind: the rules only (DOM-free). The move itself is played by Player.updateTakedown, its
 // sequence is data (data/finishers.js TAKEDOWNS).
 import { TAKEDOWN } from '../Config.js';
-import { angDiff } from '../../engine/math.js';
+import { angDiff, smooth } from '../../engine/math.js';
 
 // Whether `p` stands close enough to the standing guard `e` to seize him, turned to him: from whatever side.
 export function within(p, e, T = TAKEDOWN) {
@@ -61,7 +61,6 @@ export const lockedFor = (f) => f.beats.reduce((s, [wait]) => s + wait, 0) + f.a
 // after one keeps his head in it (`held`).
 export const SLAM = { hold: 0.14, pull: 0.55, held: 0.8, grab: 0.4 };
 const CONTACT = new Set(['smash', 'dunk']);
-const ease = (k) => k * k * (3 - 2 * k);
 // where beat i ends: [drive, back]
 function endOf(f, i, C) {
   const what = f.beats[i]?.[1];
@@ -79,10 +78,10 @@ export function slamAt(td, C = SLAM) {
   let drive, back, shake = 0;
   if (CONTACT.has(what)) {
     if (u < C.hold) { drive = d0; back = b0; }
-    else if (u < C.pull) { const k = ease((u - C.hold) / (C.pull - C.hold)); drive = d0 * (1 - k); back = b0 + (1 - b0) * k; }
+    else if (u < C.pull) { const k = smooth((u - C.hold) / (C.pull - C.hold)); drive = d0 * (1 - k); back = b0 + (1 - b0) * k; }
     else { const k = ((u - C.pull) / (1 - C.pull)) ** 2; drive = k; back = 1 - k; }
   } else {
-    const k = ease(Math.min(1, u / 0.4));
+    const k = smooth(u / 0.4);
     drive = d0 + (d1 - d0) * k; back = b0 + (b1 - b0) * k;
     if (what === 'struggle') shake = Math.sin(Math.PI * u);
   }

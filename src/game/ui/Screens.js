@@ -1,6 +1,6 @@
 import { PALETTE } from '../Config.js';
 import { text, glitchText, thousands, fitSize } from './Text.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, easeOut as ease } from '../../engine/math.js';
 import { OUTRO, fadeAlpha, barsK } from '../systems/Outro.js';
 import { WEAPONS } from '../data/weapons.js';
 import { drawPrompts } from './Glyphs.js';
@@ -86,7 +86,7 @@ export function introBeats(level, t0, t1, R = INTRO) {
 // card: { level, best ({ total, grade } or null), label ('LEVEL 1'), device, tint: introTint(id) }
 export function drawIntro(ctx, W, H, t, card, out = 0) {
   const { level, best, label, device, tint } = card;
-  const s = H / 720, R = INTRO, T = introTimeline(level), ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+  const s = H / 720, R = INTRO, T = introTimeline(level);
   // the shutter: everything goes, faster and faster
   const go = clamp(out / R.out, 0, 1) ** 2, stay = 1 - go;
   // the picture darkens in the level's colour, more at the edges
@@ -229,7 +229,7 @@ const DEAD = { slam: 0.14, line: 0.24, taunt: 0.38, prompt: 0.3 }; // s: the tit
 // taunt and the retry prompt at once (R / a click / the pad's A: Game.retry, at the last checkpoint or room reached).
 // death: { cause, by: describeDeath(...), n: deaths so far }; device: whose caps the prompt shows
 export function drawDead(ctx, W, H, t, seed, death, device) {
-  const s = H / 720, ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+  const s = H / 720;
   // the picture goes red and dark, darker at the edges
   const a = ease(t / 0.25);
   ctx.fillStyle = `rgba(110,0,14,${0.38 * a})`;
@@ -319,7 +319,7 @@ export function drawOutro(ctx, W, H, out) {
 // The card that closes a chase not finished yet (Game state 'continued'; view: systems/Drive.js finishView): the
 // picture gone black, TO BE CONTINUED stamped a little crooked like the level's card, what comes next under it
 export function drawContinued(ctx, W, H, view, next, t) {
-  const s = H / 720, ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+  const s = H / 720;
   ctx.fillStyle = `rgba(0,0,0,${view.black})`;
   ctx.fillRect(0, 0, W, H);
   if (view.title > 0) {

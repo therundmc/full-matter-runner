@@ -4,8 +4,8 @@
 import { BODY_SCALE } from '../../Config.js';
 import { TRAVERSE } from '../../data/feel.js';
 import { sprite, sw as spriteW } from '../../../engine/Assets.js';
-import { lerp, clamp, smooth, bump, lerpA } from '../../../engine/math.js';
-import { easeOut, LIMB, WAY, AT, TO, LEGS, SH, TMP } from './Rig.js';
+import { lerp, clamp, smooth, bump, lerpA, easeOut } from '../../../engine/math.js';
+import { LIMB, WAY, AT, TO, LEGS, SH, TMP } from './Rig.js';
 import { place, blendPose, copyPose, track, legsPose, shoulder, reach } from '../CharacterAnim.js';
 import { reachOut } from './Takedown.js';
 

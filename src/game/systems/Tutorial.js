@@ -50,6 +50,7 @@
 //   fall    [c0, r0, c1, r1]: beyond the window. Once he is there the lesson is over ('tutorialEnd'); he lands
 //           from its windows in a roll.
 import { TILE, PALETTE, PLAYER } from '../Config.js';
+import { smooth } from '../../engine/math.js';
 import { LESSONS, BEAT, RELOAD, OPENING, BLAST, LEAP, FRAME, FORCE, STAIRS, FRONT, SLACK, STAND } from '../data/staging.js';
 import { ignite } from './Gas.js';
 
@@ -60,7 +61,6 @@ const SIDE = 11;              // px either side of the stairs' middle they come 
 const CALM = 0.15;            // s a guard is kept from firing or striking, at least, through the reload's calm (RELOAD)
 const BOTTLE = 110;           // px: the blast of the propane bottle's place when the bottle went before its fuse (blow)
 
-const smooth = (k) => { const u = Math.min(1, Math.max(0, k)); return u * u * (3 - 2 * u); };
 // 0..1 with a little overshoot on the way: a pop
 const pop = (k) => { const u = Math.min(1, Math.max(0, k)) - 1; return 1 + u * u * (2.7 * u + 1.7); };
 const inside = ([c0, r0, c1, r1], x, y) => x >= c0 * TILE && x < (c1 + 1) * TILE && y >= r0 * TILE && y < (r1 + 1) * TILE;

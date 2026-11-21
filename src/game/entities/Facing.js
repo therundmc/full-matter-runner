@@ -9,7 +9,7 @@
 import { FACING } from '../data/feel.js';
 import { GAIT } from './Gait.js';
 import { BODY_SCALE } from '../Config.js';
-import { angDiff, clamp, lerp, smoother } from '../../engine/math.js';
+import { angDiff, clamp, lerp, smoother, damped } from '../../engine/math.js';
 
 const H = 1 / 240; // s: the springs' longest sub-step (the same motion at any frame rate)
 
@@ -22,7 +22,7 @@ function spring(F, k, kv, to, w, z, dt) {
   const n = Math.max(1, Math.ceil(dt / H)), h = dt / n;
   let x = F[k], v = F[kv]; // stepped in locals, stored once (a keyed store boxes every number it writes)
   for (let i = 0; i < n; i++) {
-    v += (w * w * angDiff(x, to) - 2 * z * w * v) * h;
+    v = damped(v, angDiff(x, to), w, z, h);
     x += v * h;
   }
   F[k] = x; F[kv] = v;

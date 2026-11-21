@@ -2,8 +2,8 @@
 // up (drawDown).
 import { PALETTE } from '../../Config.js';
 import { drawSprite, silhouette, sw as spriteW } from '../../../engine/Assets.js';
-import { lerp, clamp, smooth, bump } from '../../../engine/math.js';
-import { easeOut, YIELD_FEET } from './Rig.js';
+import { lerp, clamp, smooth, bump, easeOut } from '../../../engine/math.js';
+import { YIELD_FEET } from './Rig.js';
 import { standPose, blendPose, copyPose, track, reach, drawPose } from '../CharacterAnim.js';
 import { holdOnTheWay } from './Traverse.js';
 

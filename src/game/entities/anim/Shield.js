@@ -3,8 +3,8 @@
 import { BODY_SCALE } from '../../Config.js';
 import { SHIELD } from '../../data/feel.js';
 import { slamAt } from '../../systems/Takedown.js';
-import { lerp, clamp, smooth, lerpA } from '../../../engine/math.js';
-import { easeOut, SIDE, sideReach, PAIR, SH, YIELD_FEET, PART } from './Rig.js';
+import { lerp, clamp, smooth, lerpA, easeOut } from '../../../engine/math.js';
+import { SIDE, sideReach, PAIR, SH, YIELD_FEET, PART } from './Rig.js';
 import { shoulder, bodyFrame, paintPose } from '../CharacterAnim.js';
 import { slamHead } from './Takedown.js';
 

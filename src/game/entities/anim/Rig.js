@@ -4,8 +4,6 @@
 import { sprite, sw as spriteW } from '../../../engine/Assets.js';
 import { clamp } from '../../../engine/math.js';
 
-export const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
-
 // the arm as drawn: shoulder joint (torso-local, under the sprite's shoulder), upper arm and forearm (their real
 // lengths: an arm bent toward the floor or the eye shows shorter, its elbow out to the side), the hips' half width,
 // the neck (torso-local x of the head's centre)
