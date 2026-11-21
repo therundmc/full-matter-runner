@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { spotFor } = await load('game/systems/TakedownSpot.js');
 const { newTakedown, advance, lockedFor, slamAt } = await load('game/systems/Takedown.js');
@@ -110,8 +111,6 @@ test('env takedown: a wall behind a doorway does not count, the jamb beside it d
 });
 
 // ---- the move, played by the player on a world that only knows what it needs ----
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const only = (fns) => new Proxy(fns, { get: (t, k) => t[k] || noop }); // these counted, anything else a no-op
 function scene(type, spotProps = []) {
   const heard = [], sounds = [], fx = { drops: 0, chips: 0, walls: 0, splashes: 0, blood: 0, spills: [] };

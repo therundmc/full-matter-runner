@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
 const { standing, kickReady, kickTarget, inPath, throwSpeed } = await load('game/systems/Kick.js');
@@ -18,8 +19,6 @@ const { newPose, kickPose, kickPhases, postPose } = await load('game/entities/Ch
 
 const K = PLAYER.slide.kick;
 const guard = (x, y, over = {}) => ({ alive: true, knocked: 0, x, y, radius: 10, ...over });
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 
 test('kick: only at the end of a slide (its last part, as it stalls on him, or just after it)', () => {
   assert.equal(kickReady(0.2, 0, K), false, 'not in the heart of it: that is the sweep\'s');

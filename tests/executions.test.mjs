@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { default: EventBus } = await load('engine/EventBus.js');
 const { FINISHERS, EXECUTIONS, EXEC, THREAT, finisherFor, finisherFamily, finisherChoice, pickVariant, killBeat, killTime, lockTime } = await load('game/data/finishers.js');
@@ -144,8 +145,6 @@ test('finishers: never the same long execution twice in a row; a gun short of ro
 });
 
 // ---- the move itself, played by the player on a world that only knows what it needs ----
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 function scene(type, mag, threat = false) {
   const sounds = [], told = [], heard = [];
   const w = {

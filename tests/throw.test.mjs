@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {}, drawImage() {} }) }) };
 const { default: Player } = await load('game/entities/Player.js');
@@ -15,8 +16,6 @@ const { PLAYER } = await load('game/Config.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { killStyle, killTags } = await load('game/systems/Scoring.js');
 
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const DT = 1 / 60;
 
 // a world that knows only what a step of the player and a throw need; it keeps what it was asked (slowmo, hitstop,

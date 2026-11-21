@@ -4,8 +4,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { ctx, quiet } from './helpers.mjs';
 
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Lorries, backedAt, beepsBy } = await load('game/systems/Lorries.js');
@@ -25,7 +25,6 @@ const { default: lab } = await load('game/data/levels/lab.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 const SIZE = { pursuer: [140, 58], convertible: [172, 64], van: [160, 64] };
 const C = level2a.chase, [NORTH, SOUTH] = C.lanes.map((r) => r * TILE), KERB = C.kerbs[1] * TILE;
 const EV = C.events.find((e) => e.kind === 'lorry');
@@ -225,16 +224,16 @@ test('lorry: nose on its flank at a crawl with the way round open, it eases roun
 });
 
 test('kerb: what stands on the fruit market is thrown or torn down, never a wall; the car is not held up by it', () => {
-  // the level: the market's stalls, crates and signs on the way round the lorry (the cafe's terrace is gone), none of
+  // the level: the market's stalls, crates and signs on the way round the lorry (no cafe terrace), none of
   // them `lasting`: the stalls torn (bolted), the crates and the signs flung (loose, light)
   const [x, y] = EV.gap, on = level2a.props.filter(([t, c, r]) => Math.abs(c - x) < 14 && r > C.kerbs[1] && r < C.kerbs[1] + 5);
   const kinds = new Set(on.map(([t]) => t));
   for (const k of ['market_stall', 'market_stall_coco', 'fruit_crate_orange', 'fruit_crate_mango', 'fruit_crate_coconut', 'market_sign']) assert.ok(kinds.has(k), `${k} on the market`);
-  for (const k of ['table_round', 'parasol', 'planter', 'bollard']) assert.ok(!kinds.has(k), `no ${k}: the terrace is gone`);
+  for (const k of ['table_round', 'bollard']) assert.ok(!kinds.has(k), `no ${k}: no cafe terrace there`);
   for (const k of kinds) assert.ok(PROPS[k] && !PROPS[k].lasting, `${k} gives`);
   for (const k of kinds) assert.ok(PROPS[k].static || PROPS[k].hung || PROPS[k].kg <= CHASE.hit.fling.kg, `${k} is torn or flung`);
   assert.ok(on.length >= 30, `enough of it to fly (${on.length})`);
-  assert.ok(PROPS.awning.canopy && PROPS.awning.hung && PROPS.parasol.canopy);
+  assert.ok(PROPS.awning.canopy && PROPS.awning.hung && PROPS.awning_peach.canopy);
   // a chair (loose, light) in his lane is flung on ahead and to its side; a table (bolted) is torn down
   const s = start(60);
   const chair = prop(s.w, 'chair', s.v.x + 200, SOUTH - 12), table = prop(s.w, 'table_round', s.v.x + 420, SOUTH + 6);

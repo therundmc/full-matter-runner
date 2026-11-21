@@ -465,7 +465,7 @@ export default {
     ['chainlink_hole', 468, 42.73, 0], ['chainlink_fence', 472, 42.73, 0], ['chainlink_fence', 476, 42.73, 0],
     ['chainlink_fence', 480, 42.73, 0], ['chainlink_fence', 491, 42.73, 0], ['chainlink_fence', 495, 42.73, 0],
     ['royal_palm', 468, 42, 0], ['royal_palm_b', 493.6, 41.8, 0], ['billboard_tan', 477, 40.7375, 0],
-    ['billboard_radio', 511, 40.7375, 0],
+    ['billboard_radio', 511, 40.7375, 0], ['crash_cushion_narrow', 522.4, 42.1, 0],
     // miami: the cold store, the motel's back, the used car lot (south)
     ['deco_canopy_mint', 464.5, 49.375, 0], ['royal_palm_b', 466.9, 48.55, 0], ['pole_sign_motel', 472.7, 48.45, 0],
     ['neon_sign_motel', 474.6, 49.91, 0], ['hibiscus_hedge', 476.6, 49.42, 0], ['neon_sign_flamingo', 477.4, 49.91, 0],
@@ -613,7 +613,7 @@ export default {
     ['neon_tube_pink', 431.9, 17.94, 180],
     // harmony: part two (the street's furniture carried on)
     ['cart_loaded', 461.5, 41.75, 20], ['news_box_yellow', 473.7, 49.62, 0], ['news_box_red', 474.3, 49.62, 0],
-    ['bin_bag', 464.3, 49.6, 0], ['crash_cushion_narrow', 522.4, 42.1, 0],
+    ['bin_bag', 464.3, 49.6, 0],
     // polish west: drains, paint and kerbs at Coral Street
     ['news_box', 45, 16.45, 0], ['news_box', 45.56, 16.45, 0], ['news_box', 46.12, 16.45, 0],
     // polish west: meters, signs, lamps

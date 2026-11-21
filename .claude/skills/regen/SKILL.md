@@ -1,16 +1,17 @@
 ---
 name: regen
 description: Regenerate the generated files of FULL MATTER RUNNER - sprites (tools/generate_assets.py, comic stills
-  tools/generate_comic.py) and levels (tools/build_level1.py, build_tutorial.py, build_lab.py) - after editing their
-  generator, then test and take one screenshot to check by eye. Use whenever a generator or tools/levelkit.py was
+  tools/generate_comic.py, title stills tools/comic/title.py) and levels (tools/build_level1.py, build_level2a.py,
+  build_tutorial.py, build_lab.py) - after editing their generator, then test and take one screenshot to check by eye. Use whenever a generator or tools/levelkit.py was
   touched, or a generated file looks out of date. Never hand-edit the outputs.
 ---
 
 # regen: rebuild sprites and levels from their tools
 
-Never edit the outputs: src/game/data/levels/level1.js, lab.js, tutorial.js, assets/sprites/**,
-src/audio/bank.js. Edit the generator and run it. (street.js is hand-written.) Python 3 with Pillow.
-Run everything from the repo root.
+Never edit the outputs: src/game/data/levels/level1.js, level2a.js, lab.js, tutorial.js, assets/sprites/**,
+src/game/data/titleart.js, src/audio/bank.js. Edit the generator and run it. Python 3 with Pillow (made with
+Python 3.11 / Pillow 9.4; another version is fine: the sprite and comic generators leave a PNG whose pixels did not
+change untouched, so a different zlib does not rewrite the whole folder). Run everything from the repo root.
 
 ## 1. Run the generator(s) that changed
 
@@ -18,10 +19,17 @@ Run everything from the repo root.
 |---|---|---|
 | tools/generate_assets.py | `python tools/generate_assets.py` | assets/sprites/<group>/<name>.png |
 | tools/generate_comic.py, tools/comic/** | `python tools/generate_comic.py` | assets/sprites/comic/*.png |
+| tools/comic/title.py, title_art.py | `python tools/comic/title.py` | assets/sprites/title/*.png, src/game/data/titleart.js |
 | tools/build_level1.py | `python tools/build_level1.py` | src/game/data/levels/level1.js |
+| tools/build_level2a.py | `python tools/build_level2a.py` | src/game/data/levels/level2a.js |
 | tools/build_tutorial.py | `python tools/build_tutorial.py` | src/game/data/levels/tutorial.js |
 | tools/build_lab.py | `python tools/build_lab.py` | src/game/data/levels/lab.js |
-| tools/levelkit.py | the three level builders | the three levels |
+| tools/levelkit.py | the four level builders | the four levels |
+
+Order: the sprites FIRST, then the levels: build_level2a.py reads the props' PNGs (their sizes and shapes, to keep
+the lanes clear), so a prop sprite that changed means 2A is rebuilt after it. The sprite and comic generators also
+delete a PNG of their own folders that they no longer make (a sprite renamed or dropped); tests/assets.test.mjs
+checks every sprite is placed, spawned or listed in STOCK (generate_assets.py).
 
 Expected output: `generated N sprites into ...` / `wrote ...: WxH tiles, N props, N roof pieces`.
 generate_assets.py is deterministic and asserts every sprite's size: an AssertionError names the sprite and the

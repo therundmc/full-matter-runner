@@ -4,9 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
+import { ctx, noop } from './helpers.mjs';
 
 // no DOM under Node: what a car paints on itself goes nowhere
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Vehicle, VEHICLES } = await load('game/entities/Vehicle.js');
@@ -30,7 +30,6 @@ const { default: lab } = await load('game/data/levels/lab.js');
 const { Bodies } = Matter;
 const STEP = 1 / 60;
 const M = VEHICLES.convertible;
-const noop = () => {};
 
 // size in world px of a sprite painted at twice the world's density (IHDR)
 function pngSize(sprite) {

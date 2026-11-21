@@ -6,9 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { ctx, quiet } from './helpers.mjs';
 
 // no DOM under Node: what the cars paint on themselves goes nowhere
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Toll, laneY, nearestLane, woodFor, steelFor, reach, mouthX, onBoom } = await load('game/systems/Toll.js');
@@ -33,7 +33,6 @@ const { default: lab } = await load('game/data/levels/lab.js');
 
 const { Bodies } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 const C = level2a.chase, T = C.toll, GX = T.at * TILE;
 const SIZE = { pursuer: [140, 58], convertible: [172, 64] };
 

@@ -921,7 +921,7 @@ Guards mind their own business until the player gives himself away (`Director.is
 and outside the level's `premises` (tile rectangles, `lv.guard()` in tools/levelkit.py) he is a passer-by; a gun in
 hand, a weapon in hand inside the premises, a shot heard, a guard floored or killed, a word that turned into a fight
 make him a target for good. Short of that, what he does that no customer does gets him a word (below). No
-`premises` = hostile ground everywhere (lab, street testbed, tutorial). Level 1's bar room and toilets are public: only the VIP room, the back
+`premises` = hostile ground everywhere (lab, tutorial). Level 1's bar room and toilets are public: only the VIP room, the back
 room, the storeroom, behind the counter and the yards are premises. A stranger who only stands about on public
 ground is none of the guards' concern, however long he stays (the user's call); hanging about a door into the
 premises is an act (`lurk`, below), except in the level's `welcome` rectangles (`lv.host()`, `Director.isGuest`: a
@@ -1222,7 +1222,6 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   3 soot, 4 pool, 5 bars, 6 curtain, 7 takedowns, 8 jukebox, 9 trapdoor, 10 powder, 11 steam, 12 power, 13 liquids,
   14 doors, 15 cueball, 16 fire, 17 vehicles in the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
   `awake` guards for the sight tests.
-- `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,
   prop, vehicle, blast, water; same key or mouse wheel = next variant), B rotates, F / middle click drops it at the
   cursor (props and vehicles are refused when their footprint bites a wall); G god mode, T freeze guards, O time

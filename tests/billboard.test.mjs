@@ -5,9 +5,9 @@
 import { load } from './setup.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { ctx } from './helpers.mjs';
 
 // no DOM under Node: entities only need canvases to exist, nothing is looked at here
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: TileMap } = await load('game/world/TileMap.js');

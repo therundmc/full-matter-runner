@@ -5,6 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {}, drawImage() {} }) }) };
 const { default: Player } = await load('game/entities/Player.js');
@@ -27,8 +28,6 @@ const { killStyle, killTags } = await load('game/systems/Scoring.js');
 const { killTier } = await load('game/systems/KillCam.js');
 const { throwSpeed } = await load('game/systems/Kick.js');
 
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const DT = 1 / 60;
 const quiet = { now: 100, dodgeT: -99, pickT: -99, streak: 1 };
 

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { noop, sink } from './helpers.mjs';
 
 const { WEAPONS } = await load('game/data/weapons.js');
 const { FEEL, MOMENTS, GESTURE, TELL, STROKE, HEAVY, familyOf } = await load('game/data/feel.js');
@@ -10,8 +11,6 @@ const { default: Character } = await load('game/entities/Character.js');
 const { default: Player } = await load('game/entities/Player.js');
 const { default: Door } = await load('game/entities/Door.js');
 
-const noop = () => {};
-const sink = new Proxy({}, { get: () => noop });
 const KINDS = ['punch', 'blunt', 'cut', 'bullet', 'finisher'];
 const MUZZLES = ['star', 'burst', 'puff', 'tongue', 'spear', 'brake', 'blast'];
 const inRange = (v, a, b, what) => assert.ok(typeof v === 'number' && v >= a && v <= b, `${what} = ${v}`);

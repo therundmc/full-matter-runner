@@ -7,6 +7,8 @@ import os
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
+from pngout import save_png
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites', 'comic')
 FONT = os.path.join(ROOT, 'assets', 'font', 'joystix.ttf')
@@ -116,7 +118,7 @@ class Cv:
     def save(self, name, size):
         assert self.im.size == size, (name, self.im.size, size)
         os.makedirs(OUT_DIR, exist_ok=True)
-        self.im.save(os.path.join(OUT_DIR, name + '.png'))
+        save_png(self.im, os.path.join(OUT_DIR, name + '.png'))
 
 
 # ---------------------------------------------------------------- lettering

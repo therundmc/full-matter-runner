@@ -41,7 +41,7 @@
   give a sprite's size in world px; drawSprite and the decal bake honour `img.k`, a raw drawImage must scale by it).
   Furniture and vehicles follow (`FINE_PROPS`, kept in step in both files), floors too; neon signs stay at 1x.
   Level 1's detail pass is done (2026-11-18: furniture wear, floor wear in FloorWear.js, live props in PropLife.js,
-  car interiors); still to do: car debris sprites to match, and the same care on every new level.
+  car interiors, car debris); every new level gets the same care.
 - The hero (the user's pick, 2026-11-18, "B v2"): brown hair to his collar, a Mediterranean tan (not brown or dark),
   a dark cap with a low crown and a short flat brim (its front edge petrol: it shows where he faces), a petrol gaiter
   up over his nose inside a funnel collar closed round his neck, a long ink-blue duster (`#3a4460`) with a tab on each
@@ -95,10 +95,10 @@
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
-- A hard game (the user's rule): NO checkpoints, EXCEPT the tutorial's rooms and 2A's parts. Dying restarts the
+- A hard game (the user's rule): no checkpoints, except the tutorial's rooms and 2A's two. Dying restarts the
   level from its beginning, never mid-level, but in the tutorial (at its last room reached, `Game.tutorialAt`) and in
   2A, the chase (the user's call: at the last of its parts reached, the level's `chase.checkpoints`, systems/
-  Checkpoints.js, `Game.chaseAt`: the street, the detour, the frontage road, the toll; later parts add theirs; the
+  Checkpoints.js, `Game.chaseAt`: THE STREET (the start) and THE ON-RAMP (col 462, out of the detour); the
   clock and the score as they were there; `Game.retry` after a death, RESTART / Backspace from the beginning). A long level is cut in STAGES played
   in a row instead (data/campaign.js: the player's levels 00 tutorial, 01 CUEBALL, 02 and 03 JITTERS, 04 05 LUCKY,
   06 07 THE BOSS, each a list of the engine's levels): LEVEL 2 is level2a (the car chase, ending on the crash into
@@ -106,7 +106,7 @@
   02, never "2A / 2B"; the FLAMINGO MOTEL (JITTERS) is level 3.
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
-  2A is built by tools/build_level2a.py (level `chase` block: van start, cruise, lanes, end col, events by col); the
+  2A is built by tools/build_level2a.py (level `chase` block: `van` the car's start (the code's name for THE BOSS's convertible), cruise, lanes, end col, events by col); the
   drive is systems/Drive.js with its numbers in data/chase.js (CHASE); the first time only it opens on him finishing his
   cigarette in the standing car and flicking it out (level `chase.intro`, systems/LastDrag.js, CHASE.intro; SPACE / pad A
   held skips it), then his gun, the boss's Uzi taken off the

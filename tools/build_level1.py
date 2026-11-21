@@ -5,7 +5,7 @@
 
 Plan (north is up):
 
-    rows  1-4    back lot: getaway van, the way out
+    rows  1-4    back lot: the getaway (THE BOSS's convertible), the way out
     rows  6-10   storeroom | toilets | back room (the boss)
     rows 12-19   the bar: the main room (counter, pool, a booth), the gaming room (poker), the VIP room
     rows 21-22   sidewalk
@@ -51,7 +51,7 @@ lv = Level(W, H, cut_cols=CUT_COLS, cut_rows=CUT_ROWS)
 def drawn(col):
     """A column of the level (after the cuts: what tests, QA plans and the game see) in the drawing's: the street
     is laid out in the level's columns, measured against what stands on it, and given back in the drawing's."""
-    return col + (2 if col >= 28 else 1 if col >= 19 else 0)
+    return lv.drawn_x(col)
 
 
 # ---------------------------------------------------------------- tiles
@@ -1031,7 +1031,7 @@ exit_zone = {'x': 23.4, 'y': 4.55, 'r': 1.3, 'route': [[12.6, 3.4], [12.6, 27.0]
 if __name__ == '__main__':
     lv.check(guards=12)
     lv.write('level1', name='NO LOOSE ENDS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
-             objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
+             objective=['CLEAN OUT THE BAR', "GET TO THE BOSS'S CAR IN THE BACK LOT"],
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NO LOOSE ENDS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
                  'Ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',

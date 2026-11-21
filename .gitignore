@@ -2,8 +2,11 @@
 __pycache__/
 qa-report/
 
+# scratch output of the tools (QA runs with --out tmp/..., screenshots of tools/shot.mjs)
+tmp/
+
+# the game has no npm dependency (no build step, Matter is vendored): a lock file `npm install` leaves has nothing to lock
+package-lock.json
+
 # rendered music extracts for listening (tools/render_music.mjs --wav), not kept in history
 audition/
-
-# recorded instrument samples downloaded for the music extracts (tools/music_sources.json lists them)
-tools/music-samples/

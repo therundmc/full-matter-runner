@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { ctx, quiet } from './helpers.mjs';
 
 // no DOM under Node: what the van paints on itself goes nowhere
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Drive, speedStep, steerStep, steerOf, headingOf, yawStep, springStep, bodyLean, kmh, nosedIn, seatOf } = await load('game/systems/Drive.js');
@@ -22,7 +22,6 @@ const { default: level2a } = await load('game/data/levels/level2a.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 
 // an open yard 70 x 14 tiles walled round; `cross`: a wall across it at that column (rows 1..12)
 function yard(cross = null) {

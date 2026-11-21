@@ -4,9 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { ctx, quiet } from './helpers.mjs';
 
 // no DOM under Node: what the cars paint on themselves goes nowhere
-const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
 const { default: Drive, frontsAt } = await load('game/systems/Drive.js');
@@ -22,7 +22,6 @@ const { default: level2a } = await load('game/data/levels/level2a.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
-const quiet = new Proxy({}, { get: () => () => {} });
 const C = level2a.chase;
 
 // the back road: its walls and the props of the stretch [x0, x1] (world px), the physics, the player
@@ -151,8 +150,8 @@ test('kerb: steered into a street across (the level\'s `chase.across`), he is he
 
 test('kerb: where the fronts step in toward the road ahead of him, he is brought back inside their line: never nose-on into the corner', () => {
   // along the sidewalk behind the parking row of our side, whose block is a row back (the next one's corner at col
-  // 109), hands off and steered into the fronts; off the road onto the terrace and held down against the cafe (its end at col 355;
-  // a parasol torn down over him, its pole still standing, does not stop him there)
+  // 109), hands off and steered into the fronts; off the road onto the market and held down against its front (its end at col 355;
+  // what is torn down over him there does not stop him)
   for (const [col, row, corner, line, how, hold] of [[94, 18.02, 109, 18, [null, 'KeyD'], 9], [324, C.van[1], 355, 18, ['KeyD'], 9]]) {
     for (const key of how) {
       const w = world((col - 8) * TILE, (corner + 14) * TILE), v = convertible(w, col * TILE, row * TILE);

@@ -10,7 +10,7 @@
 export default {
   name: 'NO LOOSE ENDS',
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
-  objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
+  objective: ['CLEAN OUT THE BAR', "GET TO THE BOSS'S CAR IN THE BACK LOT"],
   exit: { x: 22.4, y: 4.55, r: 1.3, route: [[12.6, 3.4], [12.6, 27.0], [-9, 26.2]], radius: [3, 3], slide: [0, 1], fade: 14 },
   facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 0, '23,17': 65, '17,8': 90, '20,9': 0, '28,7': 180, '27,10': 0, '26,4': -27, '28,3': 153, '12,8': 180 },
   patrols: {

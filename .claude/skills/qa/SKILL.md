@@ -23,13 +23,14 @@ npm run qa -- --minutes <m> --level <id> [--seed n] [--god] [--plans a,b] [--rea
 | something deep in a level, the bot dies early | add `--god` |
 | tutorial | `--level tutorial --god` to reach the window |
 | props / physics / reload | `--level lab` |
-| traffic, passers-by | `--level street` |
+| traffic, passers-by | `--level level1 --god --plans road` |
+| the car chase (2A) | `--level level2a --god` |
 | audio voices, frame timing, the real loop | `--realtime` (slow: real time) |
 | input handling, menus, pause, restarts, edge cases | `--chaos` (chaos plans only) or `--chaos-share 0.3`; one plan: `--chaos --plans monkey` |
 | does a detector catch an old bug | `--root <a git worktree of the old commit>`: today's bot on that game |
 
-Reuse the seed of the run you compare with (the latest reports used `--seed 5`). Levels: tutorial, level1, lab,
-street (src/game/data/levels/index.js). Exit code: 0 no error, 1 errors, 2 the tool itself failed.
+Reuse the seed of the run you compare with (the latest reports used `--seed 5`). Levels: tutorial, level1, level2a,
+lab (src/game/data/levels/index.js). Exit code: 0 no error, 1 errors, 2 the tool itself failed.
 
 ## 2. Read the report
 

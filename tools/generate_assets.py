@@ -8,7 +8,7 @@ Conventions
 - 1 px = 1 world px, top-down camera, directional sprites face +x.
 - Light comes from the top-left (-x, -y, +z).
 - Characters / weapons / props get a 1 px dark outline; tiles wrap seamlessly.
-Only depends on Pillow (no numpy). Output is fully deterministic (seeded RNG).
+Only depends on Pillow (no numpy). Output is fully deterministic (every painter seeds its own random.Random).
 """
 import math
 import os
@@ -16,9 +16,27 @@ import random
 
 from PIL import Image
 
+from pngout import prune, save_png
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
-RNG = random.Random(1337)
+
+# STOCK: props painted and listed in engine/Assets.js that no level places yet, kept for the levels to come (the
+# user's call, 2026-11-21), and by its path any other still on disk the game does not load yet (the comic's cards,
+# tools/generate_comic.py: art for a future menu). tests/sprites.test.mjs checks every prop sprite is placed by a
+# level, spawned by the code or named here, and every PNG is loaded or named here: a new orphan is caught, and a
+# stock sprite a level starts to use leaves this list.
+STOCK = (
+    'carwash_sign', 'carwash_board', 'wash_bucket', 'hose_reel', 'soap_puddle',                  # a car wash
+    'tyre_stack', 'tyre_pile', 'tyre_loose', 'tyre_rack', 'tyre_sign',                           # a tyre yard
+    'carport', 'tv_antenna', 'driveway', 'lawn_dry_a',                                           # the suburb
+    'awning_pink', 'awning_mint', 'awning_wine', 'deco_office_teal', 'dumpster_aqua',
+    'stucco_trim_mint', 'stucco_trim_peach', 'neon_sign_mirage',
+    'sawhorse', 'sign_stop', 'sign_detour_left', 'detour_arrow_paint_left',                      # road works
+    'parking_bay', 'plaza_line', 'plaza_stripes', 'road_arrow_turn', 'road_only', 'gore_hatch', 'expansion_joint',
+    'velvet_rope', 'entry_carpet', 'bed', 'dj_booth',                                            # a club, a flat
+    'comic/target_cueball', 'comic/target_lucky', 'comic/target_jitters', 'comic/target_boss', 'comic/card_runner',
+)
 
 # --------------------------------------------------------------------------
 # Colour helpers
@@ -308,7 +326,7 @@ def ring(cv, cx, cy, r0, r1, fn):
 class VNoise:
     """Smooth value noise that wraps on a w x h canvas (cell must divide w, h)."""
 
-    def __init__(self, w, h, cell, rng=RNG):
+    def __init__(self, w, h, cell, rng):
         self.nx, self.ny, self.cell = max(1, w // cell), max(1, h // cell), cell
         self.v = [[rng.random() for _ in range(self.nx)] for _ in range(self.ny)]
 
@@ -377,7 +395,7 @@ def wood_fine(cv, x0, y0, x1, y1, base, plank, rng, vertical, mask):
             cv.p[i, j] = c
 
 
-def wood_fill(cv, x0, y0, x1, y1, base, plank=5, rng=RNG, vertical=False, mask=None):
+def wood_fill(cv, x0, y0, x1, y1, base, plank=5, *, rng, vertical=False, mask=None):
     """Planks with seams, grain streaks and subtle noise."""
     if cv.s > 1:
         return wood_fine(cv, x0, y0, x1, y1, base, plank, rng, vertical, mask)
@@ -4681,20 +4699,13 @@ def knocked_down(ch):
 
 
 # --------------------------------------------------------------------------
-# Magazines, shell boxes and ammo pickups (+x = bullet tips)
+# Ammo pickups (+x = bullet tips)
 # --------------------------------------------------------------------------
 
 def mags():
     out = {}
     # (the guns' magazines are painted with the guns, weapons())
     red = ramp('#e8303a', 0.5, 0.25, 0.3)
-    out['shells_box'] = ascii_cv(["OAAAAAAO",
-                                  "AbBbBbBR",
-                                  "ABbBbBbR",
-                                  "AyyyyyyR",
-                                  "ArrrrrrR",
-                                  "ORRRRRRO"], {'O': OUTLINE, 'A': red[3], 'r': red[2], 'R': red[0], 'b': BRASS[2],
-                                                'B': BRASS[3], 'y': hx('#f9c80e')}, ol=None)
     # floor pickups: bright boxes with a label stripe
     yel = ramp('#f9c80e', 0.5, 0.25, 0.45)
     out['ammo_9mm'] = ascii_cv([".........",
@@ -9821,8 +9832,8 @@ def critters():
 # --------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------
-# Level 2A, the back road (docs/LEVEL2.md): the box lorry that backs out across the street (event 2), the cafe's
-# terrace it sends him through (an awning, parasols, planters), two more neon signs.
+# Level 2A, the back road (docs/LEVEL2.md): the box lorry that backs out across the street (event 2), a canvas
+# awning (the base of the shops' awnings), a neon sign.
 LORRY_BOX = ramp('#d2cbb8', 0.5, 0.26, 0.3)
 LORRY_CAB = ramp('#c8902c', 0.55, 0.3, 0.36)
 
@@ -9926,55 +9937,6 @@ def p_awning():
     return cv
 
 
-def p_parasol():
-    """A terrace parasol from above, 1.4 m across: eight gores, orange and bone, sagging between their ribs, a brass
-    cap on the pole's tip, the scalloped edge."""
-    S = 46
-    c = S / 2
-    cv = Cv(S, S)
-
-    def gore(u, v, L):
-        d = math.hypot(u, v)
-        a = math.atan2(v, u) + math.pi / 8
-        n = int(math.floor(a / (math.pi / 4))) % 8
-        f = (a / (math.pi / 4)) % 1.0
-        if d > 20.0 + 1.9 * (1 - math.sin(f * math.pi)):                   # the cloth pulled in between two ribs
-            return None
-        r = AWNING_A if n % 2 == 0 else AWNING_B
-        rib = min(f, 1 - f)
-        return shade(r, max(0.05, min(0.95, 0.42 + 0.3 * (light(u / 22, v / 22) - 0.5) + 0.16 * math.sin(f * math.pi) - (0.16 if rib < 0.06 else 0))))
-    fill_shape(cv, c, c, 22.0, 22.0, gore)
-    fill_shape(cv, c, c, 1.6, 1.6, lambda u, v, L: shade(BRASS, L))
-    smudge(cv, random.Random(8821), 5, (4, 4, S - 4, S - 4), (1.2, 3.0), 0.13, hx('#4a4038'))
-    cv.outline()
-    return cv
-
-
-def p_planter():
-    """A terrace planter from above, 1.25 m long: a cast concrete trough, dark soil, a clipped box hedge filling it
-    with a few small pale flowers."""
-    W, H = 42, 18
-    cv = Cv(W, H)
-    stone = ramp('#8e8a84', 0.45, 0.22, 0.3)
-    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(stone, L), kind='rect', bevel=1.4, corner=1.0)
-    rng = random.Random(8831)
-    mottle(cv, rng, 5, 4)
-    frect(cv, 3, 3, W - 3, H - 3, hx('#20140c'))
-    n = VNoise(W, H, 3, rng)
-    greens = ramp('#2e7434', 0.55, 0.3, 0.34)
-
-    def hedge(ly):
-        fill_shape(ly, W / 2, H / 2, W / 2 - 3.6, H / 2 - 3.4,
-                   lambda u, v, L: shade(greens, max(0.05, min(0.95, 0.2 + 0.75 * n(W / 2 + u, H / 2 + v) + (L - 0.5) * 0.5))),
-                   kind='rect', bevel=2.0, corner=2.2)
-        for _ in range(9):
-            ly.dot(rng.uniform(5, W - 5), rng.uniform(5, H - 5), rng.choice((hx('#f0e6d0'), hx('#f0c0d0'), hx('#f4e08a'))))
-    layer(cv, hedge, hx('#102a14'))
-    smudge(cv, rng, 3, (1, 1, W - 1, H - 1), (0.8, 1.6), 0.22, hx('#3a4a2a'))   # moss on the rim
-    cv.outline()
-    return cv
-
-
 FONT_SHOP.update({
     'C': [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
     'F': ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
@@ -9991,17 +9953,6 @@ def p_neon_sign_diner():
     neon_text(ne, 14, 3, 'DINER', NEON_AMBER)
     ne.render(cv, gl)
     return cv, gl
-
-
-def p_neon_sign_cafe():
-    """CAFE in pink tubes over a cyan stroke."""
-    cv, gl = sign_backing(34, 14), Cv(34, 14)
-    ne = Neon(34, 14)
-    neon_text(ne, 5, 2, 'CAFE', NEON_PINK)
-    ne.line([(5, 11), (28, 11)], NEON_CYAN)
-    ne.render(cv, gl)
-    return cv, gl
-
 
 
 # ---- the chase's street: more to hit (traffic cones, a road barrier, boxes, bundles of papers, a fruit stand, a
@@ -11180,8 +11131,7 @@ ROAD_PROPS.update((n, fn) for n, (fn, _) in ROAD_PAINT.items())
 ROAD_SIZES.update((n, sz) for n, (_, sz) in ROAD_PAINT.items())
 
 
-CHASE_PROPS = dict(lorry=p_lorry, awning=p_awning, parasol=p_parasol, planter=p_planter,
-                   neon_sign_diner=p_neon_sign_diner, neon_sign_cafe=p_neon_sign_cafe,
+CHASE_PROPS = dict(lorry=p_lorry, awning=p_awning, neon_sign_diner=p_neon_sign_diner,
                    awning_red=awning_of(ramp('#b82030', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25), 8851),
                    awning_green=awning_of(ramp('#2a7a4a', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25), 8852),
                    awning_blue=awning_of(ramp('#2a4a9a', 0.5, 0.26, 0.3), ramp('#d8dce6', 0.45, 0.24, 0.25), 8853),
@@ -11191,14 +11141,13 @@ CHASE_PROPS = dict(lorry=p_lorry, awning=p_awning, parasol=p_parasol, planter=p_
                    mailbox=p_mailbox, car_bumper=p_car_bumper(True), car_bumper_black=p_car_bumper(False),
                    car_mirror=p_car_mirror, car_hubcap=p_car_hubcap, car_headlight=p_car_headlight,
                    car_plate=p_car_plate, car_grille=p_car_grille)
-CHASE_SIZES = dict(lorry=(280, 80), awning=(98, 38), parasol=(46, 46), planter=(42, 18),
-                   neon_sign_diner=(46, 14), neon_sign_cafe=(34, 14),
+CHASE_SIZES = dict(lorry=(280, 80), awning=(98, 38), neon_sign_diner=(46, 14),
                    awning_red=(98, 38), awning_green=(98, 38), awning_blue=(98, 38), awning_wine=(98, 38),
                    traffic_cone=(12, 12), sawhorse=(40, 12), cardboard_box=(16, 14), paper_bundle=(14, 10),
                    fruit_stand=(36, 18), shopping_cart=(22, 14), mailbox=(14, 14), car_bumper=(40, 6),
                    car_bumper_black=(40, 6), car_mirror=(8, 6), car_hubcap=(10, 10), car_headlight=(8, 6),
                    car_plate=(12, 5), car_grille=(16, 6))
-CHASE_NEON = ['neon_sign_diner', 'neon_sign_cafe']   # light: at the world's density, with their glow maps
+CHASE_NEON = ['neon_sign_diner']   # light: at the world's density, with their glow maps
 CHASE_PROPS.update(ROAD_PROPS)
 CHASE_SIZES.update(ROAD_SIZES)
 
@@ -13431,7 +13380,7 @@ def _crate(cv, rng, x0, y0, x1, y1, wood, r, rad, leaf=None):
 
 
 ORANGES, MANGOS, LIMES = ramp('#ff8a1a', 0.5, 0.25, 0.3), ramp('#f0a830', 0.5, 0.26, 0.32), ramp('#6aa82a', 0.5, 0.25, 0.3)
-TOMATOES, PAPAYAS = ramp('#d8302a', 0.5, 0.26, 0.3), ramp('#f0c040', 0.5, 0.25, 0.3)
+TOMATOES = ramp('#d8302a', 0.5, 0.26, 0.3)
 LEAF = hx('#3a7a2a')
 
 
@@ -15877,16 +15826,11 @@ def build():
 # MIAMI_PROPS stand, MIAMI_PAINT is floor paint (levelkit FLOOR), MIAMI_NEON are neon signs on a wall (the world's
 # density, as the other neon signs). Colour variants where they cost nothing: the canopies, the hedges, the awnings,
 # the palms, the billboards, the pole signs.
-FONT_SHOP.setdefault('T', ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."])
-FONT_SHOP.setdefault('Y', ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."])
-FONT_SHOP.setdefault('B', ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."])
-FONT_SHOP.setdefault('K', ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"])
 FONT_STENCIL.setdefault('.', [".....", ".....", ".....", ".....", ".....", ".....", "..#.."])
 FONT_STENCIL.setdefault('-', [".....", ".....", ".....", ".###.", ".....", ".....", "....."])
 FONT_STENCIL.setdefault('Z', ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"])
 STUCCO = dict(pink='#f0a8c0', mint='#9edcc6', peach='#f6c49c', lavender='#c2b0e4')
 NEON_OF = dict(pink=NEON_CYAN, mint=NEON_PINK, peach=NEON_PINK, lavender=NEON_CYAN)   # the tube each colour wears
-PALM_GREY = ramp('#a8a49a', 0.5, 0.26, 0.3)
 
 
 def tube_text(ne, x, y, text, col, k=2):
@@ -16592,33 +16536,6 @@ def p_guardrail_dented():
     return cv
 
 
-def p_crash_cushion_hit():
-    """A crash cushion somebody hit, from above, 2 m: of its sand barrels two still stand (one split), the front ones
-    burst flat, their sand fanned out over the grass and the kerb, a lid thrown off, the reflective wrap torn."""
-    W, H = 64, 56
-    cv = Cv(W, H)
-    rng = random.Random(10071)
-    yel, lid = ramp('#e8c020', 0.5, 0.26, 0.28), ramp('#2e2c34', 0.45, 0.22, 0.35)
-    sand = ramp('#c4a46a', 0.45, 0.22, 0.25)
-    rag = VNoise(W, H, 5, rng)
-    px_paint(cv, 2, 2, W - 2, H - 2, lambda x, y, c: shade(sand, 0.3 + rag(x, y) * 0.6) if math.hypot((x - 22) / 22, (y - 30) / 24) + (rag(x, y) - 0.5) * 0.4 < 1 else None)
-    for (x, y, sx, sy, a) in ((18, 18, 13, 6, 0.4), (16, 40, 12, 5.5, -0.3)):     # the burst ones, flattened
-        fill_shape(cv, x, y, sx, sy, lambda u, v, L: shade(yel, 0.2 + L * 0.55), ang=a, kind='super', p=2.6)
-        crease(cv, [(x - sx * 0.7, y), (x, y + 1.5), (x + sx * 0.6, y - 1)], 0.35)
-    for (x, y, split) in ((46, 16, False), (46, 40, True)):
-        def barrel(ly, x=x, y=y, split=split):
-            ring(ly, x, y, 0.0, 12.0, lambda dx, dy, d: shade(yel, 0.3 + light(dx / 12, dy / 12) * 0.7))
-            ring(ly, x, y, 0.0, 9.6, lambda dx, dy, d: shade(lid, 0.45 + light(dx / 11, dy / 11) * 0.35) if d > 8.4 else lid[2])
-            if split:
-                px_paint(ly, x - 7, y - 3, x + 5, y + 4, lambda x_, y_, cur: shift(sand[2], rng.randint(-10, 10)) if abs(y_ - y - 0.5 * (x_ - x)) < 2.0 else None)
-            ring(ly, x, y, 10.0, 12.0, lambda dx, dy, d: (hx('#f4f2ea') if int((math.atan2(dy, dx) + 3.15) * 3) % 2 else None) if dx < 0 else None)
-        layer(cv, barrel)
-    fill_shape(cv, 6, 50, 5.5, 3.0, lambda u, v, L: shade(lid, 0.3 + L * 0.6), ang=0.6)   # a lid thrown off
-    smudge(cv, rng, 8, (3, 3, W - 3, H - 3), (1.5, 3.5), 0.3)
-    cv.outline()
-    return cv
-
-
 def p_call_box():
     """A freeway call box from above, laid back to be read (on its post): the yellow box, its solar panel on top, CALL
     in blue on its door, the box's number under it."""
@@ -16863,7 +16780,7 @@ MIAMI_PROPS = dict(royal_palm=royal_palm(10161, 16, 2), royal_palm_b=royal_palm(
                    pole_sign_motel=pole_sign('motel'), pole_sign_autos=pole_sign('autos'),
                    car_burnt=p_car_burnt, tent_tarp=p_tent_tarp, barrel_fire=p_barrel_fire,
                    chainlink_fence=chainlink(0), chainlink_hole=chainlink(1), guardrail_dented=p_guardrail_dented,
-                   crash_cushion_hit=p_crash_cushion_hit, call_box=p_call_box, pennant_string=p_pennant_string,
+                   call_box=p_call_box, pennant_string=p_pennant_string,
                    lot_light=p_lot_light, sign_gantry=p_sign_gantry,
                    awning_pink=awning_of(ramp('#f08ab0', 0.5, 0.26, 0.3), ramp('#f4f0e6', 0.45, 0.24, 0.25), 10181),
                    awning_mint=awning_of(ramp('#7ad0b0', 0.5, 0.26, 0.3), ramp('#f4f0e6', 0.45, 0.24, 0.25), 10182),
@@ -16875,7 +16792,7 @@ MIAMI_SIZES = dict(royal_palm=(160, 160), royal_palm_b=(160, 160), hibiscus_hedg
                    billboard_tan=(256, 112), billboard_radio=(256, 112), billboard_tan_bare=(256, 112),
                    billboard_tan_frame=(256, 112), billboard_radio_bare=(256, 112), billboard_radio_frame=(256, 112), pole_sign_motel=(80, 56), pole_sign_autos=(80, 56),
                    car_burnt=(140, 58), tent_tarp=(72, 52), barrel_fire=(24, 24), chainlink_fence=(128, 14),
-                   chainlink_hole=(128, 14), guardrail_dented=(128, 10), crash_cushion_hit=(64, 56), call_box=(18, 20),
+                   chainlink_hole=(128, 14), guardrail_dented=(128, 10), call_box=(18, 20),
                    pennant_string=(112, 16), lot_light=(72, 24), sign_gantry=(80, 448), awning_pink=(98, 38), awning_mint=(98, 38),
                    awning_peach=(98, 38), awning_lavender=(98, 38),
                    **{'deco_canopy_' + _c: (128, 40) for _c in STUCCO})
@@ -18435,7 +18352,7 @@ EXPECTED = {
                     pistol_bare=(27, 15), uzi_bare=(33, 18), uzi_silenced_bare=(46, 18), rifle_bare=(56, 16),
                     sniper_bare=(72, 17),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(5, 14), mag_uzi=(5, 18), mag_rifle=(8, 16),
-                    mag_sniper=(9, 12), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
+                    mag_sniper=(9, 12), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
                     ammo_rocket=(12, 6)),
     'props': dict((n + g, (w * FINE, h * FINE) if n in FINE_PROPS else (w, h))
                   for n, (w, h) in PROP_SIZES.items() for g in ([''] + (['_glow'] if n in GLOWING else []))),
@@ -18463,10 +18380,15 @@ EXPECTED = {
 
 def main():
     sprites = build()
+    written = 0
     for (group, name), cv in sorted(sprites.items()):
         d = os.path.join(OUT_DIR, group)
         os.makedirs(d, exist_ok=True)
-        cv.img.save(os.path.join(d, name + '.png'))
+        written += save_png(cv.img, os.path.join(d, name + '.png'))
+    # what this generator no longer makes goes (its own groups only: comic/ and title/ are tools/comic's)
+    for group in sorted({g for g, _ in sprites}):
+        for name in prune(os.path.join(OUT_DIR, group), {n for g, n in sprites if g == group}):
+            print('deleted stale %s/%s.png' % (group, name))
     # verify every expected file exists with the exact size
     n = 0
     for group, items in EXPECTED.items():
@@ -18478,7 +18400,7 @@ def main():
                 assert im.mode == 'RGBA', path
             n += 1
     assert n == len(sprites), (n, len(sprites))
-    print('generated %d sprites into %s' % (n, OUT_DIR))
+    print('generated %d sprites into %s (%d written, the others unchanged)' % (n, OUT_DIR, written))
 
 
 if __name__ == '__main__':

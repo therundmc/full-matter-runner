@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { sink } from './helpers.mjs';
 
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
 const { TILE, ENEMY, AI } = await load('game/Config.js');
@@ -26,7 +27,6 @@ const { default: level1 } = await load('game/data/levels/level1.js');
 
 const { default: lab } = await load('game/data/levels/lab.js');
 const C = BOSSES.cueball;
-const sink = new Proxy({}, { get: () => () => {} });
 
 // CUEBALL in a bare room, the player in front of him; no physics engine: velocities are applied by hand
 function room() {
