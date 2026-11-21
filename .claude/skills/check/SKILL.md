@@ -37,11 +37,11 @@ skipping `.claude/worktrees/`, and reports:
 | src/game/data/levels/level1.js | tools/build_level1.py (+ tools/levelkit.py) |
 | src/game/data/levels/lab.js | tools/build_lab.py (+ levelkit) |
 | src/game/data/levels/tutorial.js | tools/build_tutorial.py (+ levelkit) |
-| src/game/data/levels/level2a.js | tools/build_level2a.py (+ levelkit, + generate_assets.py: it reads the props' PNGs) |
+| src/game/data/levels/level2a.js | tools/build_level2a.py (+ levelkit, + generate_assets.py / tools/sprites/: it reads the props' PNGs) |
 | src/audio/bank.js, assets/sound/foley.wav | tools/build_sounds.mjs, tools/sounds.json |
 | assets/sprites/comic/** | tools/generate_comic.py or tools/comic/** |
 | assets/sprites/title/**, src/game/data/titleart.js | tools/comic/** (title.py, title_art.py) |
-| assets/sprites/** | tools/generate_assets.py |
+| assets/sprites/**, src/engine/spritelist.js, tools/sprite_tables.py | tools/generate_assets.py or tools/sprites/** (the kits, the registry) |
 
 A `generated` line is a KO unless regenerating gives the same file: run the generator (skill `regen`), then
 `git diff --stat` on the output; if it differs from the working tree, the output was edited by hand.

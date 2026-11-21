@@ -17,7 +17,7 @@ change untouched, so a different zlib does not rewrite the whole folder). Run ev
 
 | changed | run | output |
 |---|---|---|
-| tools/generate_assets.py | `python tools/generate_assets.py` | assets/sprites/<group>/<name>.png |
+| tools/sprites/** (a kit), tools/generate_assets.py | `python tools/generate_assets.py` (`--only <kit>,...` for some kits) | assets/sprites/<group>/<name>.png, src/engine/spritelist.js, tools/sprite_tables.py |
 | tools/generate_comic.py, tools/comic/** | `python tools/generate_comic.py` | assets/sprites/comic/*.png |
 | tools/comic/title.py, title_art.py | `python tools/comic/title.py` | assets/sprites/title/*.png, src/game/data/titleart.js |
 | tools/build_level1.py | `python tools/build_level1.py` | src/game/data/levels/level1.js |
@@ -29,11 +29,16 @@ change untouched, so a different zlib does not rewrite the whole folder). Run ev
 Order: the sprites FIRST, then the levels: build_level2a.py reads the props' PNGs (their sizes and shapes, to keep
 the lanes clear), so a prop sprite that changed means 2A is rebuilt after it. The sprite and comic generators also
 delete a PNG of their own folders that they no longer make (a sprite renamed or dropped); tests/assets.test.mjs
-checks every sprite is placed, spawned or listed in STOCK (generate_assets.py).
+checks every sprite is placed, spawned or flagged `stock` (tools/sprites/registry.py).
 
 Expected output: `generated N sprites into ...` / `wrote ...: WxH tiles, N props, N roof pieces`.
-generate_assets.py is deterministic and asserts every sprite's size: an AssertionError names the sprite and the
-expected size; keep `FINE` / `FINE_PROPS` in step with engine/Assets.js.
+The sprites are painted by the kits of tools/sprites/ (one module a family), each listing them in its SPRITES
+`{name: (painter, size, flags[, box])}` (the format: tools/sprites/registry.py). A new sprite is ONE line there: the
+game's load lists and densities (src/engine/spritelist.js) and the level builder's tables (tools/sprite_tables.py:
+SIZES, FLOOR, ROOF_SIZES) are generated from it, never edited by hand. The generator is deterministic (every painter
+seeds its own random.Random; it paints in parallel, `-j 1` in one process) and asserts every sprite's size: an
+AssertionError names the sprite and the expected size. `python tools/generate_assets.py --check` paints and compares
+with what is on disk without writing (exit 1 on any difference): run it to prove a refactor changed no pixel.
 
 ## 2. levelkit errors
 

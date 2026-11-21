@@ -34,11 +34,11 @@ const GENERATED = [
   [/^src\/game\/data\/levels\/level1\.js$/, ['tools/build_level1.py', 'tools/levelkit.py']],
   [/^src\/game\/data\/levels\/lab\.js$/, ['tools/build_lab.py', 'tools/levelkit.py']],
   [/^src\/game\/data\/levels\/tutorial\.js$/, ['tools/build_tutorial.py', 'tools/levelkit.py']],
-  [/^src\/game\/data\/levels\/level2a\.js$/, ['tools/build_level2a.py', 'tools/levelkit.py', 'tools/generate_assets.py']],
+  [/^src\/game\/data\/levels\/level2a\.js$/, ['tools/build_level2a.py', 'tools/levelkit.py', 'tools/generate_assets.py', 'tools/sprites/']],
   [/^(src\/audio\/bank\.js|assets\/sound\/foley\.wav)$/, ['tools/build_sounds.mjs', 'tools/sounds.json']],
   [/^assets\/sprites\/comic\//, ['tools/generate_comic.py', 'tools/comic/']],
   [/^(assets\/sprites\/title\/|src\/game\/data\/titleart\.js$)/, ['tools/comic/']],
-  [/^assets\/sprites\//, ['tools/generate_assets.py']],
+  [/^(assets\/sprites\/|src\/engine\/spritelist\.js$|tools\/sprite_tables\.py$)/, ['tools/generate_assets.py', 'tools/sprites/']],
 ];
 for (const f of touched) {
   const rule = GENERATED.find(([re]) => re.test(f));
