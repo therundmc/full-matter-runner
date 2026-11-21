@@ -256,7 +256,7 @@ export const OPTIONAL = [
   'props/tyre_pile', 'props/tyre_loose', 'props/tyre_rack', 'props/tyre_sign', 'props/garden_wall_pink',
   'props/garden_wall_mint', 'props/garden_wall_cream',
 ];
-export const FINE_LIST = [
+export const FINE = new Set([
   'characters/player_torso', 'characters/player_head', 'characters/thug_torso', 'characters/thug_head',
   'characters/heavy_torso', 'characters/heavy_head', 'characters/brute_torso', 'characters/brute_head',
   'characters/civ1_torso', 'characters/civ1_head', 'characters/civ2_torso', 'characters/civ2_head',
@@ -414,8 +414,7 @@ export const FINE_LIST = [
   'props/carwash_sign', 'props/carwash_board', 'props/wash_bucket', 'props/hose_reel', 'props/tyre_stack',
   'props/tyre_pile', 'props/tyre_loose', 'props/tyre_rack', 'props/tyre_sign', 'props/garden_wall_pink',
   'props/garden_wall_mint', 'props/garden_wall_cream',
-];
-export const FINE = new Set(FINE_LIST);
+]);
 export const STOCK = [
   'props/bed', 'props/dj_booth', 'props/neon_sign_mirage', 'props/parking_bay', 'props/velvet_rope',
   'props/entry_carpet', 'props/awning_wine', 'props/sawhorse', 'props/awning_pink', 'props/awning_mint',

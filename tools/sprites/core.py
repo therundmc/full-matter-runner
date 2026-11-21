@@ -414,9 +414,9 @@ def bevel_edges(cv, x0, y0, x1, y1, lt_t=0.18, dk_t=0.3):
             cv.set(x1, y, dk(cv.get(x1, y), dk_t))
 
 
-FINE = 2    # characters and weapons are painted at twice the world's pixel density, still plain pixel art (the user
-            # wants it kept: a smooth, shaded repaint was the wrong direction); the game draws them at half size
-            # (engine/Assets.js `density`)
+FINE = 2    # the people, the weapons, the props and the floors are painted at twice the world's pixel density, still
+            # plain pixel art (the user wants it kept: a smooth, shaded repaint was the wrong direction); the game draws
+            # them at half size (engine/Assets.js `density`, from the registry's `fine` / `dense` flags)
 
 
 def curve(p0, p1, p2, n=8):

@@ -22,8 +22,8 @@ def items():
     I = {}
     I['butt'] = ascii_cv(["wwwo",
                           "dddo"], {'w': hx('#ece6d6'), 'd': hx('#c8c0ae'), 'o': hx('#d89a50')}, ol=None)
-    # level 2A's opening (systems/LastDrag.js), both painted at FINE density (a pixel is half a world px; Assets.js
-    # FINE_ITEMS): the end of a cigarette in his fingers, its filter toward -x, the paper, the ash, the ember at +x
+    # level 2A's opening (systems/LastDrag.js), both painted at FINE density (a pixel is half a world px: their
+    # flag `dense`): the end of a cigarette in his fingers, its filter toward -x, the paper, the ash, the ember at +x
     # (6 x 1 world px: longer than life, it has to read from above); and the butt once flicked, on the road, its
     # end still alight (3 x 1)
     I['cigarette'] = ascii_cv(["FFFfWWWWwaee",
