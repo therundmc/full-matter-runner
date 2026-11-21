@@ -104,7 +104,7 @@ export function meleeLock(world, p, d, aim) {
   return man ? { man, close: false } : null;
 }
 
-// The gamepad's soft assist (LOCK only, Game.padAim): the way the right stick points, bent onto the man lockTarget
+// The gamepad's soft assist (LOCK only, CameraDirector.padAim): the way the right stick points, bent onto the man lockTarget
 // finds within AIM.lock.assist of it. Returns { x, y } to aim at (his chest), or null: the stick's own way stands.
 export function assistAim(world, angle) {
   const p = world.player;

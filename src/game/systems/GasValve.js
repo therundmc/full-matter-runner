@@ -63,7 +63,7 @@ export default class GasValve {
     w.explode(p.x, p.y, { radius: c.blast + c.extra * gas, source: 'gas' });
   }
 
-  // what heats the air for the lens (Game.lensView): the shimmer over a tap left open
+  // what heats the air for the lens (FrameRenderer.lensView): the shimmer over a tap left open
   heat() {
     return (this.taps || []).filter((t) => t.gas > 0.1 && !t.blown).map((t) => ({ x: t.prop.x, y: t.prop.y, kind: 'steam' }));
   }

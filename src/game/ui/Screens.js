@@ -57,7 +57,7 @@ const INTRO_TINTS = {
   level1: { main: PALETTE.pink, deep: '#7a0034', wash: '44,0,30' },
 };
 export const introTint = (id) => INTRO_TINTS[id] || INTRO_TINTS.level1;
-// heard as the shutter opens (Game.leaveIntro), whenever that is
+// heard as the shutter opens (flow/States.js leaveIntro), whenever that is
 export const SHUTTER_SOUND = { name: 'swing', vol: 0.7, opts: { weapon: 'bat' } };
 
 // when each beat of a level's card comes (s from its start)

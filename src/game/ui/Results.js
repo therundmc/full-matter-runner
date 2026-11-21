@@ -275,7 +275,7 @@ export function drawResults(ctx, W, H, t, r, replay, device) {
     ctx.globalAlpha = ease(pt / 0.2);
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(x0 + 3 * s, bottom - 46 * s, pw - 3 * s, 43 * s);
-    // what Game.updateResults reads: ENTER / A goes on, R / Y restarts the level, ESC / B goes to the menu
+    // what the results state reads (flow/States.js): ENTER / A goes on, R / Y restarts the level, ESC / B goes to the menu
     const go = [['confirm', r.nextLevel ? 'NEXT' : 'CONTINUE'], ['restart', 'RESTART'], ['menu', 'MENU']];
     drawPrompts(ctx, go, cx, bottom - 24 * s, 18 * s, device, { font: 0.6, gap: 1.2 });
     ctx.restore();

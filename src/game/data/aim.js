@@ -16,7 +16,7 @@ export const AIM = {
   // LOCK: no line of fire (where the rounds go is the player's to judge); a worn chevron on the floor `chevron.at` px
   // out (nearer a wall: `wall` px short of it), pointing out along the aim, only with the AIM MARK option (Settings `aimMark`, off by default; the mark on
   // the man stays); the man nearest the line within `cone` gets the corner ticks (`corners`, the user's pick), and on
-  // a gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that angle with the stick lets go.
+  // a gamepad the aim is pulled onto him within `assist` (CameraDirector.padAim): leaving that angle with the stick lets go.
   // Pairs are [at rest / a man near the line, the line on a man].
   // With a melee weapon (systems/AimCue.js meleeLock): out to `melee` px, and within a swing's reach (+ PLAYER.lunge.lock
   // .margin) the man is taken within `wide` rad of the aim, at his side too; that close one turns the player onto him

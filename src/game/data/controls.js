@@ -2,7 +2,7 @@
 // in use (engine/Input.js `device`: 'kbm' | 'pad'). Keys are physical positions (e.code): ZQSD on AZERTY.
 
 // gamepad (standard mapping, Xbox names) -> the key or mouse button it plays. The rest is read by name ('PadB',
-// 'NavUp'...) where it means something: B goes back in the menus, the sticks move and aim (Game.padAim).
+// 'NavUp'...) where it means something: B goes back in the menus, the sticks move and aim (CameraDirector.padAim).
 // The fire is on the bumpers (the user's call: a bumper is a plain switch, on the frame it goes down, where a trigger
 // has a travel and a threshold to cross); RT still attacks so that nobody used to it is lost, LT looks further.
 export const PAD_BINDINGS = {

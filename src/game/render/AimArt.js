@@ -1,5 +1,5 @@
 // The aim cue, LOCK (data/aim.js), painted in the world over the lighting (WorldRenderer, after the laser sights);
-// the cursor stays the mouse's dot (Game.drawCursor). Plain pixel art: every mark is whole world pixels in a flat ink
+// the cursor stays the mouse's dot (FrameRenderer.drawCursor). Plain pixel art: every mark is whole world pixels in a flat ink
 // (cyan at rest, white with a man in the line) over a dark edge, so that it reads on a lit floor as in the dark; no
 // gradient, nothing drawn over the man it points at but its mark round him. What it tells comes from
 // systems/AimCue.js. The floor's marks (LOCK's chevron, the throw's, the vault's) are worn stencil paint
@@ -63,7 +63,7 @@ function wornChevron(x, y, a, at, size, col, alpha, seed) {
 }
 
 // LOCK: the corner ticks on the man nearest the line (AIM.lock.corners), white once the line is on him (on a gamepad
-// the aim is pulled onto him: Game.padAim); with the AIM MARK option (World.aimMark, Settings `aimMark`) a worn
+// the aim is pulled onto him: CameraDirector.padAim); with the AIM MARK option (World.aimMark, Settings `aimMark`) a worn
 // chevron on the floor too, pointing out along the aim, white once the line is on a man
 function lock(world, p, q, t) {
   const L = AIM.lock, C = L.chevron;
