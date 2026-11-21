@@ -25,6 +25,7 @@ import { drawChaseFigures, drawChaseWind, drawChaseTells } from './PursuitArt.js
 import { drawDrag } from './DragArt.js';
 import { drawCarSmoke } from './CarFxArt.js';
 import { PROF } from '../../engine/Profiler.js';
+import { eachDrawnVertex } from '../../engine/Interp.js';
 
 const { Body } = Matter;
 const OUTLINE = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // a stamp's 1 px dark outline
@@ -211,7 +212,6 @@ export default class WorldRenderer {
       ctx.fillStyle = g;
       ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
     }
-    ctx.globalAlpha = 1;
     ctx.globalAlpha = 1;
     for (const r of w.rings) {
       const p = r.t / r.dur;
@@ -515,6 +515,7 @@ export default class WorldRenderer {
   // F4: every Matter body outlined by state, velocities, live contacts
   drawPhysicsDebug(ctx, vis) {
     const phys = this.world.physics;
+    const line = (x, y) => ctx.lineTo(x, y); // (a first lineTo on an empty path is a moveTo)
     ctx.save();
     ctx.lineWidth = 0.75;
     for (const b of phys.bodies()) {
@@ -526,9 +527,7 @@ export default class WorldRenderer {
       if (b.isSensor) col = '#ff4af0';
       ctx.strokeStyle = col;
       ctx.beginPath();
-      const vs = b.vertices;
-      ctx.moveTo(vs[0].x, vs[0].y);
-      for (let i = 1; i < vs.length; i++) ctx.lineTo(vs[i].x, vs[i].y);
+      eachDrawnVertex(b, line); // (where its sprite is drawn, between two steps: engine/Interp.js)
       ctx.closePath();
       ctx.stroke();
       if (!b.isStatic) {

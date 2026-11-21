@@ -18,6 +18,7 @@ import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
 import { chance, clamp, angDiff } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
 import { PROF } from '../../engine/Profiler.js';
+import { Movers } from '../../engine/Interp.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
 import { gripOn } from '../data/materials.js';
 import Audio from '../../audio/Audio.js';
@@ -114,6 +115,7 @@ export default class World {
     this.addBody(this.wallBodies);
     this.addBody(this.map.buildEdgeBodies()); // nobody walks off an open map border (traffic / passers-by excepted)
     this.wallsDirty = false;
+    this.moving = new Movers(); // what moves without a body, drawn between two steps (movers)
     this.particles = new Particles(this);
 
     this.player = null;
@@ -218,6 +220,7 @@ export default class World {
     this.tollFx = this.toll ? new TollFx(this) : null; // a toll's plaza hit: its arms' splinters, the crash on a boom (looks)
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
+    this.movesOwn();
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
     this.checkpoints?.resume(); // (started at a checkpoint: the clock and the score it kept)
   }
@@ -420,10 +423,25 @@ export default class World {
   }
 
   // what moves without a body, for the picture drawn between two steps (engine/Interp.js): lists of things with x, y
-  movers() {
-    const M = this.moving || (this.moving = [null, null, null]);
-    M[0] = this.particles.list; M[1] = this.projectiles; M[2] = this.critters.list;
-    return M;
+  movers() { return this.moving.lists(); }
+
+  // a source of points moved by hand once a step, drawn between two steps from now on (engine/Interp.js Movers):
+  // fn(out) pushes its lists onto out
+  moves(fn) { this.moving.add(fn); }
+
+  // the points the world's own systems move by hand: sparks and smoke, rounds, rats and pigeons, the pool balls (on
+  // their table), a car's billows, the streaks of air past his car, the cigarette's smoke and butt (2A's opening),
+  // loose paper, litter. (Each in one list only: Movers)
+  movesOwn() {
+    this.moves((out) => {
+      out.push(this.particles.list, this.projectiles, this.critters.list, this.carFx.puffs, this.papers.list, this.litter.list);
+      for (const set of this.poolBalls.sets.values()) out.push(set);
+      const d = this.drive;
+      if (d) {
+        out.push(d.wind);
+        if (d.drag) { out.push(d.drag.smoke); if (d.drag.butt) out.push([d.drag.butt]); }
+      }
+    });
   }
 
   // ---------------- the getaway (systems/Outro) ----------------
