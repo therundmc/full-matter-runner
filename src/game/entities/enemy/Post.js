@@ -24,7 +24,7 @@ export function takeJob(me, job) {
   me.job = job;
   me.boss = job === 'boss';
   me.activity = job;
-  me.activityT = rand(8, 14);
+  me.activityT = dice(me.world).rand(8, 14);
   const S = POSTS[job];
   if (!S) return;
   me.script = S;
@@ -69,7 +69,7 @@ export function takeJob(me, job) {
   }
   me.routine = new Routine(S, me.seat?.slot ?? 0, dice(me.world));
   if (!S.walk) me.routine.begin(me.routine.pick(), true);
-  if (S.open && chance(S.open.odds)) me.openAt(S.open);
+  if (S.open && dice(me.world).chance(S.open.odds)) me.openAt(S.open);
 }
 
 // the level opens on him at act O.act, phase O.phase, already in place there (a patrol caught at a halt: on the
@@ -274,7 +274,7 @@ function spotFor(me, ph) {
       const drinkers = w.chars.filter((c) => c.isCivilian && c.alive && c.brain?.activity === 'drink' && !c.left
         && Math.abs((c.x - h.x) * ax + (c.y - h.y) * ay) < 2.5 * TILE && Math.abs((c.x - h.x) * ay - (c.y - h.y) * ax) < 2 * TILE);
       if (!drinkers.length) return null;
-      const c = drinkers[Math.floor(Math.random() * drinkers.length)], along = (c.x - h.x) * ax + (c.y - h.y) * ay;
+      const c = drinkers[Math.floor(dice(me.world).next() * drinkers.length)], along = (c.x - h.x) * ax + (c.y - h.y) * ay;
       return { x: h.x + ax * along, y: h.y + ay * along, face: h.angle };
     }
     case 'pool': {
@@ -284,7 +284,7 @@ function spotFor(me, ph) {
       const free = poolSpots(table, me.radius + 1).filter((s) => Math.hypot(s.x - me.x, s.y - me.y) > 24
         && !w.map.isSolid(Math.floor(s.x / TILE), Math.floor(s.y / TILE)) && !furnitureAt(me, s.x, s.y, me.radius - 2)
         && !w.chars.some((c) => c !== me && c.alive && Math.hypot(c.x - s.x, c.y - s.y) < 22));
-      return free.length ? free[Math.floor(Math.random() * free.length)] : null;
+      return free.length ? free[Math.floor(dice(me.world).next() * free.length)] : null;
     }
     default: { const p = me.nearest(ph.at, h, R); return p && frontOf(p, me.radius + 1); } // a sink, a fridge...
   }
@@ -310,7 +310,7 @@ export function startPhase(me) {
     // the other man at the same job answers it (a laugh at a joke)
     const mate = ph.answer && me.world.enemies.find((e) => e !== me && e.alive && e.job === me.job && e.atEase
       && Math.hypot(e.x - me.x, e.y - me.y) < 3 * TILE);
-    if (mate) mate.routine.cue(ph.answer, R.dur + rand(0.1, 0.4));
+    if (mate) mate.routine.cue(ph.answer, R.dur + dice(me.world).rand(0.1, 0.4));
   }
 }
 

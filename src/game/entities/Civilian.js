@@ -13,6 +13,7 @@ import { Dance, beatAt } from '../ai/Dance.js';
 import { pastimeHands, drawPastime, pastimeLean } from '../render/PastimeArt.js';
 import Character from './Character.js';
 import { bodyFrame, dancePose, postPose } from './CharacterAnim.js';
+import { dice } from '../systems/Rng.js';
 
 const { Body, Bounds } = Matter;
 
@@ -80,7 +81,7 @@ export default class Civilian extends Character {
     this.stuckT = 0;
     this.blocks = 0;       // sidesteps on the way (see update)
     this.dodge = 0;
-    this.dodgeSide = Math.random() < 0.5 ? -1 : 1; // the side of his next sidestep (they alternate)
+    this.dodgeSide = dice(this.world).next() < 0.5 ? -1 : 1; // the side of his next sidestep (they alternate)
     this.post = null;      // a patron's spot { x, y, face } (see sit)
     this.seated = false;   // on his seat: furniture is not in his way
     this.left = false;     // a patron has run off his spot
@@ -130,7 +131,7 @@ export default class Civilian extends Character {
       if (this.asleep && this.knocked === Infinity && this.brain.panicked) {
         // woken with a start: up and off, whatever his temper
         const d = this.brain.danger;
-        this.knocked = rand(0.5, 0.8);
+        this.knocked = dice(this.world).rand(0.5, 0.8);
         this.brain.bolt(d.x, d.y);
       }
       this.knocked -= dt;
@@ -189,7 +190,7 @@ export default class Civilian extends Character {
     const want = (it.speed / 60) * (gw ? gw.slow : 1);
     if (this.moving < want * 0.3) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt);
     if (this.stuckT > 0.8) {
-      this.dodge = rand(0.5, 0.9) * (this.dodgeSide = -this.dodgeSide);
+      this.dodge = dice(this.world).rand(0.5, 0.9) * (this.dodgeSide = -this.dodgeSide);
       this.stuckT = 0;
       if (++this.blocks >= 2 && (b.state === WALKER.FLEE || b.state === WALKER.HIDE)) { this.blocks = 0; sense.jam?.(this, dx, dy); b.blocked(); }
     }
@@ -267,7 +268,7 @@ export default class Civilian extends Character {
   // a runner's feet go from under him: flat out for a moment, sliding, then up and off again
   trip() {
     const v = Body.getVelocity(this.body), a = Math.hypot(v.x, v.y) > 0.3 ? Math.atan2(v.y, v.x) : this.angle;
-    this.knocked = rand(0.8, 1.3);
+    this.knocked = dice(this.world).rand(0.8, 1.3);
     this.downAngle = a + Math.PI;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE & ~CAT.EDGE, group: 0 };
     this.vel = { x: Math.cos(a) * 3, y: Math.sin(a) * 3 };
@@ -280,7 +281,7 @@ export default class Civilian extends Character {
   knock(angle) {
     if (!this.alive || (this.knocked > 0 && !this.asleep)) return;
     this.asleep = false;
-    this.knocked = rand(1.2, 2);
+    this.knocked = dice(this.world).rand(1.2, 2);
     this.downAngle = angle; // on his back, his head away from the blow
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE & ~CAT.EDGE, group: 0 };
     this.vel = { x: Math.cos(angle) * 3.5, y: Math.sin(angle) * 3.5 };

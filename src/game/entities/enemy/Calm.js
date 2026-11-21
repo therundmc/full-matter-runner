@@ -2,7 +2,7 @@
 // pastimes (ai/Pastimes.js: a chat with a colleague, a leak, a cigarette...), what his hands are at (CharacterAnim
 // hooks), his weapon put away (ai/Carry.js). Functions of the guard (`me`), DOM-free.
 import { ENEMY, AI } from '../../Config.js';
-import { rand, chance } from '../../../engine/math.js';
+import { chance } from '../../../engine/math.js';
 import { randomPoint } from '../../ai/Tactics.js';
 import { talks, pours, reliefSpot, gazeAt, STRETCH } from '../../ai/Pastimes.js';
 import { carry } from '../../ai/Carry.js';
@@ -10,6 +10,7 @@ import { STAGE } from '../../ai/Conduct.js';
 import { pastimeHands } from '../../render/PastimeArt.js';
 import { GESTURE } from '../../data/feel.js';
 import { ABSORBING, ONE_GO, S } from './States.js';
+import { dice } from '../../systems/Rng.js';
 
 // at ease (see pickActivity): what takes his hands, what a round is broken by, and the states in which a weapon
 // stays put away
@@ -93,7 +94,7 @@ export function doIdle(me, dt) {
     // no way there, or held up on the way too often (a mate standing in the only way, ai/Nav.js jams): an errand
     // is dropped, his post waits a while and he idles where he stands
     if (me.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true })) {
-      if (me.errand) { me.errand = null; me.activityT = 0; } else me.restUntil = me.world.time + rand(...AI.nav.jam.rest);
+      if (me.errand) { me.errand = null; me.activityT = 0; } else me.restUntil = me.world.time + dice(me.world).rand(...AI.nav.jam.rest);
     }
     return;
   }
@@ -113,33 +114,33 @@ export function doIdle(me, dt) {
 // cigarette, his pager, a stretch, a look at his watch, arms folded; or (the only ones left once the squad is
 // on edge) watch, scan, look behind
 export function pickActivity(me) {
-  const calm = me.director.phase === 'normal', r = Math.random(), q = Math.random();
+  const calm = me.director.phase === 'normal', D = dice(me.world), r = D.next(), q = D.next();
   const set = (activity, t, face = me.idleFace) => { me.activity = activity; me.activityT = t; me.idleFace = face; };
   me.actT = 0; me.errand = null; me.errandT = 0;
   if (me.routine) { me.routine.act = null; me.routine.cued = null; me.workSpot = null; me.onSpot = false; }
-  if (calm && me.job && (me.script?.stay || chance(0.8))) { set(me.job, rand(8, 14), me.home.angle); return; }
+  if (calm && me.job && (me.script?.stay || D.chance(0.8))) { set(me.job, D.rand(8, 14), me.home.angle); return; }
   if (calm) {
     const mate = me.chatCd <= 0 && findMate(me, AI.chat.near);
     if (mate) { chatWith(me, mate); return; }
     const spot = r < AI.relief.odds && me.reliefCd <= 0 && reliefSpot(me.world.map, me.world.props, me.x, me.y);
     if (spot) {
       me.errand = spot;
-      me.reliefCd = rand(...AI.relief.every);
-      set('piss', rand(...AI.relief.time), spot.face);
+      me.reliefCd = D.rand(...AI.relief.every);
+      set('piss', D.rand(...AI.relief.time), spot.face);
       return;
     }
-    const ahead = me.home.angle + rand(-0.6, 0.6);
+    const ahead = me.home.angle + D.rand(-0.6, 0.6);
     // about half the time something to do with his hands, the other half his job: watching
     const u = r - AI.relief.odds;
-    if (u >= 0 && u < 0.12) { set('smoke', rand(6, 10), ahead); return; }
-    if (u >= 0 && u < 0.19) { set('phone', rand(4, 7), ahead); return; }
+    if (u >= 0 && u < 0.12) { set('smoke', D.rand(6, 10), ahead); return; }
+    if (u >= 0 && u < 0.19) { set('phone', D.rand(4, 7), ahead); return; }
     if (u >= 0 && u < 0.26) { set('stretch', STRETCH); return; }
     if (u >= 0 && u < 0.33) { set('wrist', STRETCH); return; }
-    if (u >= 0 && u < 0.45) { set('cross', rand(4, 8)); return; }
+    if (u >= 0 && u < 0.45) { set('cross', D.rand(4, 8)); return; }
   }
-  if (q < 0.25) { set('turn', rand(1.5, 2.6)); me.turnTo = me.home.angle + rand(2.3, 4); }
-  else if (q < 0.55) set('scan', rand(3, 5));
-  else set('watch', rand(3, 6));
+  if (q < 0.25) { set('turn', D.rand(1.5, 2.6)); me.turnTo = me.home.angle + D.rand(2.3, 4); }
+  else if (q < 0.55) set('scan', D.rand(3, 5));
+  else set('watch', D.rand(3, 6));
 }
 
 // calm, on his feet, at his post or on his round, with nothing going on
@@ -161,7 +162,7 @@ function findMate(me, reach) {
 
 // stop for a word: both turn to each other and talk turn about, until the time is up or one is called away
 function chatWith(me, mate) {
-  const t = rand(...AI.chat.time), first = chance(0.5) ? 0 : 1;
+  const t = dice(me.world).rand(...AI.chat.time), first = dice(me.world).chance(0.5) ? 0 : 1;
   me.joinChat(mate, t, first);
   mate.joinChat(me, t, 1 - first);
 }
@@ -169,7 +170,7 @@ function chatWith(me, mate) {
 export function joinChat(me, mate, t, turn) {
   me.mate = mate; me.turn = turn; me.spoke = false;
   me.activity = 'chat'; me.actT = 0; me.errand = null;
-  me.chatCd = t + rand(...AI.chat.every);
+  me.chatCd = t + dice(me.world).rand(...AI.chat.every);
   me.idleFace = Math.atan2(mate.y - me.y, mate.x - me.x);
   if (me.state === S.PATROL) me.pauseT = t; else me.activityT = t;
 }
@@ -217,14 +218,14 @@ export function doPatrol(me, dt) {
     const mate = findMate(me, AI.chat.pass);
     if (mate) { chatWith(me, mate); return; }
   }
-  if (!me.goal) me.goal = me.route ? me.route[me.routeIdx] : randomPoint(me.world.map, me.home.x, me.home.y, 7);
+  if (!me.goal) me.goal = me.route ? me.route[me.routeIdx] : randomPoint(me.world.map, me.home.x, me.home.y, 7, dice(me.world).next);
   if (!me.goal) { me.pauseT = 1; return; }
   if (me.travel(dt, me.goal.x, me.goal.y, ENEMY.walkSpeed * (calm ? 1 : 1.25), { doors: true, glance: true })) {
     me.goal = null;
     if (me.route) me.routeIdx = (me.routeIdx + 1) % me.route.length;
-    me.pauseT = rand(0.8, 2.4);
+    me.pauseT = dice(me.world).rand(0.8, 2.4);
     me.lookBase = me.angle;
-    if (calm && me.routine && chance(0.6)) {
+    if (calm && me.routine && dice(me.world).chance(0.6)) {
       // a halt at what his job does on his round (data/posts.js)
       const R = me.routine, name = R.pick((n) => me.canPlay(n));
       if (name) {
@@ -232,12 +233,12 @@ export function doPatrol(me, dt) {
         R.begin(name);
         me.startPhase();
       }
-    } else if (calm && chance(0.3)) {
+    } else if (calm && dice(me.world).chance(0.3)) {
       // a longer halt: a cigarette, his pager, a stretch, a look at his watch
-      const k = PAUSES[Math.floor(rand(0, PAUSES.length))];
+      const k = PAUSES[Math.floor(dice(me.world).rand(0, PAUSES.length))];
       me.activity = k; me.actT = 0;
-      me.pauseT = ABSORBING.has(k) ? rand(4, 7) : STRETCH;
-      me.idleFace = me.angle + rand(-0.8, 0.8);
+      me.pauseT = ABSORBING.has(k) ? dice(me.world).rand(4, 7) : STRETCH;
+      me.idleFace = me.angle + dice(me.world).rand(-0.8, 0.8);
     }
   }
 }
@@ -250,13 +251,13 @@ export function doReturn(me, dt) {
       me.routeIdx = bi;
     }
     me.setState(S.PATROL);
-    me.pauseT = rand(0.5, 1.5);
+    me.pauseT = dice(me.world).rand(0.5, 1.5);
     return;
   }
   const h = me.home;
   if (me.travel(dt, h.x, h.y, ENEMY.walkSpeed * 1.1, { doors: true, glance: true })) {
     me.setState(S.IDLE);
     me.activity = 'watch';
-    me.activityT = rand(2, 4);
+    me.activityT = dice(me.world).rand(2, 4);
   }
 }

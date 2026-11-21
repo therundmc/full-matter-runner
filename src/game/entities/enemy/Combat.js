@@ -2,7 +2,7 @@
 // suppress, reload, panic) and played, his aim and his trigger, holding his fire (a comrade in the line, a hostage).
 // Geometry in ai/Tactics.js. Functions of the guard (`me`), DOM-free.
 import { ENEMY, AI } from '../../Config.js';
-import { rand, angDiff, chance, spread } from '../../../engine/math.js';
+import { rand, angDiff } from '../../../engine/math.js';
 import { dice } from '../../systems/Rng.js';
 import { findCover, findFlank, isCovered, randomPoint, tableToFlip } from '../../ai/Tactics.js';
 import { aimError } from '../../ai/Perception.js';
@@ -68,7 +68,7 @@ export function plan(me, p) {
   if (me.standT > 0 && me.def.kind === 'gun' && me.weapon.mag > 0) return me.setTactic('hold');
   if (me.def.kind === 'gun' && me.weapon.mag <= 0 && me.reloading <= 0 && me.reserveCount() <= 0) {
     // dry: hurl the empty gun at him (or drop it) and go on with fists
-    me.dropWeapon(me.sees ? Math.atan2(p.y - me.y, p.x - me.x) : me.angle + rand(-1, 1), me.sees ? 6 : 2);
+    me.dropWeapon(me.sees ? Math.atan2(p.y - me.y, p.x - me.x) : me.angle + dice(me.world).rand(-1, 1), me.sees ? 6 : 2);
     me.say('dry');
   }
   if (!me.armed) {
@@ -88,7 +88,7 @@ export function plan(me, p) {
     if (shotgun && me.lostT > 0.4 && !me.ambushed && me.lastKnown && planCover(me, me.lastKnown, 70, 4, true)) {
       me.setTactic('ambush');
       me.ambushed = true;
-      me.ambushT = rand(4, 7);
+      me.ambushT = dice(me.world).rand(4, 7);
       return;
     }
     if (!shotgun && me.lostT > 0.5 && me.lostT < 3 && me.suppressCD <= 0 && canSuppress(me)) {
@@ -114,7 +114,7 @@ export function plan(me, p) {
   }
   if (dist > rMax) return me.setTactic('advance');
   if (dist < rMin) return me.setTactic('backoff');
-  if (prev === 'hold' && chance(0.2) && me.director.wantsFlank(me) && planFlank(me)) return;
+  if (prev === 'hold' && dice(me.world).chance(0.2) && me.director.wantsFlank(me) && planFlank(me)) return;
   me.setTactic('hold');
 }
 
@@ -168,7 +168,7 @@ function tRush(me, dt, p) {
   }
   me.aimAt(p.x, p.y, dt, 1.4);
   const aimed = p.def.kind === 'gun' && dist > 40 && Math.abs(angDiff(p.angle, Math.atan2(-dy, -dx))) < 0.25;
-  if (aimed && me.dodgeCD <= 0) { me.dodge = chance(0.5) ? 0.28 : -0.28; me.dodgeCD = rand(0.9, 1.6); }
+  if (aimed && me.dodgeCD <= 0) { me.dodge = dice(me.world).chance(0.5) ? 0.28 : -0.28; me.dodgeCD = dice(me.world).rand(0.9, 1.6); }
   // a comrade held in front of him as a shield: round to his open side, not straight at the hostage
   const round = p.shield ? flankSide(p, me, me.seed > 50 ? 1 : -1) : 0;
   const side = round ? -round / SHIELD.flank.in : me.dodge !== 0 ? Math.sign(me.dodge) * 1.6 : Math.sin(me.world.time * 4 + me.seed) * 0.35;
@@ -197,12 +197,12 @@ function tStalk(me, dt, p) {
     me.halt();
     me.kneel = true;
     if (me.sees) me.aimAt(p.x, p.y, dt);
-    if ((me.hideT += dt) > 0.5) { me.hideT = 0; me.stalkCD = rand(1.2, 2.2); me.thinkT = 0; me.setTactic('rush'); }
+    if ((me.hideT += dt) > 0.5) { me.hideT = 0; me.stalkCD = dice(me.world).rand(1.2, 2.2); me.thinkT = 0; me.setTactic('rush'); }
   }
 }
 
 function tHold(me, dt, p) {
-  if ((me.strafeT -= dt) <= 0) { me.strafeT = rand(1.2, 2.6); me.strafe = chance(0.5) ? 0 : chance(0.5) ? 0.5 : -0.5; }
+  if ((me.strafeT -= dt) <= 0) { me.strafeT = dice(me.world).rand(1.2, 2.6); me.strafe = dice(me.world).chance(0.5) ? 0 : dice(me.world).chance(0.5) ? 0.5 : -0.5; }
   if (me.strafe) {
     const a = Math.atan2(p.y - me.y, p.x - me.x) + Math.PI / 2 * Math.sign(me.strafe);
     me.steer(Math.cos(a), Math.sin(a), ENEMY.walkSpeed * 0.9, 0.12);
@@ -237,7 +237,7 @@ function tCover(me, dt, p) {
     me.aimAt(lk.x, lk.y, dt);
     if (arrived) {
       me.sub = c.flip && Math.hypot(c.x - me.x, c.y - me.y) < 16 ? 'flip' : 'hide';
-      me.t = 0; me.hideT = rand(0.6, 1.2);
+      me.t = 0; me.hideT = dice(me.world).rand(0.6, 1.2);
     }
     return;
   }
@@ -267,7 +267,7 @@ function tCover(me, dt, p) {
   if (me.sees && me.tryFire(p)) me.shots++;
   const done = me.def.burst ? me.shots > 0 && me.burst === 0 : me.shots >= 2;
   if (done || me.t > 1.8) {
-    me.sub = 'hide'; me.t = 0; me.hideT = rand(0.8, 1.6);
+    me.sub = 'hide'; me.t = 0; me.hideT = dice(me.world).rand(0.8, 1.6);
     me.volleys++;
     if (me.needsReload()) me.thinkT = 0;
   }
@@ -303,7 +303,7 @@ function tSuppress(me, dt) {
   if (!lk) { me.thinkT = 0; return; }
   me.aimAt(lk.x, lk.y, dt);
   if (me.tryFire(lk, ENEMY.suppressWild)) me.burstLeft--;
-  if (me.burstLeft <= 0 || me.t > 2) { me.burstLeft = 0; me.suppressCD = rand(3, 5); me.thinkT = 0; me.setTactic('hold'); }
+  if (me.burstLeft <= 0 || me.t > 2) { me.burstLeft = 0; me.suppressCD = dice(me.world).rand(3, 5); me.thinkT = 0; me.setTactic('hold'); }
 }
 
 // get to nearby cover if any, then reload and shout it
@@ -320,11 +320,11 @@ export function tReload(me, dt) {
 
 function tPanic(me, dt, p) {
   if (!me.goal) {
-    const a = Math.atan2(me.y - p.y, me.x - p.x) + rand(-0.8, 0.8);
-    me.goal = randomPoint(me.world.map, me.x + Math.cos(a) * 160, me.y + Math.sin(a) * 160, 2) || { x: me.x, y: me.y };
+    const a = Math.atan2(me.y - p.y, me.x - p.x) + dice(me.world).rand(-0.8, 0.8);
+    me.goal = randomPoint(me.world.map, me.x + Math.cos(a) * 160, me.y + Math.sin(a) * 160, 2, dice(me.world).next) || { x: me.x, y: me.y };
   }
   if (me.travel(dt, me.goal.x, me.goal.y, ENEMY.runSpeed, { near: 12 })) me.halt();
-  if (me.sees && chance(0.5)) { me.aimAt(p.x, p.y, dt, 0.7); me.tryFire(p, 0.35); }
+  if (me.sees && dice(me.world).chance(0.5)) { me.aimAt(p.x, p.y, dt, 0.7); me.tryFire(p, 0.35); }
   if (me.panicT <= 0) me.thinkT = 0;
 }
 
@@ -342,15 +342,15 @@ export function tryFire(me, tg, wild = 0) {
   if (!me.onScreen()) return false;
   if (me.friendInLine(tg.x, tg.y, dist)) { me.strafe = me.seed > 50 ? 0.5 : -0.5; me.strafeT = 0.6; return false; }
   const a = me.angle;
-  me.angle += spread() * (aimError(me.settle, me.world.player.moving) + wild);
+  me.angle += dice(me.world).spread() * (aimError(me.settle, me.world.player.moving) + wild);
   const r = me.attack();
   me.angle = a;
   if (r !== true) return false;
   if (d.burst) {
     me.burst++;
-    me.cooldown = me.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
+    me.cooldown = me.burst >= d.burst ? dice(me.world).rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
     if (me.burst >= d.burst) me.burst = 0;
-  } else me.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25) * me.rate;
+  } else me.cooldown = d.enemyRate * ENEMY.fireRateMul * dice(me.world).rand(0.85, 1.25) * me.rate;
   return true;
 }
 

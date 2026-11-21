@@ -3,7 +3,7 @@
 // upon, footprints. The maths of it in ai/Perception.js. Functions of the guard (`me`), DOM-free.
 import { ENEMY, AI, PALETTE } from '../../Config.js';
 import { BOSS } from '../../data/barks.js';
-import { rand, angDiff, chance } from '../../../engine/math.js';
+import { angDiff, chance } from '../../../engine/math.js';
 import { dice } from '../../systems/Rng.js';
 import { detectionRate, inView, hearingError } from '../../ai/Perception.js';
 import { ALARMS } from '../../ai/Director.js';
@@ -178,8 +178,8 @@ export function witnessKill(me, victim) {
   me.witnessed = me.witnessed.filter((t) => now - t < 5);
   me.witnessed.push(now);
   const named = victim.boss && !victim.traits ? 'chief' : 'down', who = { N: victim.nick }; // (a boss with a name: by it)
-  if (me.witnessed.length >= 2 && me.panicT <= 0 && chance(me.kind === 'brute' ? 0.3 : 0.6)) {
-    me.panicT = rand(3, 5);
+  if (me.witnessed.length >= 2 && me.panicT <= 0 && dice(me.world).chance(me.kind === 'brute' ? 0.3 : 0.6)) {
+    me.panicT = dice(me.world).rand(3, 5);
     me.say('panic');
     me.thinkT = 0;
   } else if (me.aware === 2 && chance(0.7)) {
@@ -195,7 +195,7 @@ export function witnessKill(me, victim) {
   // his cry for the man who fell comes before anything else he would say
   me.barkT = 0;
   if (!me.say(named, who)) me.say('body');
-  me.suspect(src.x + rand(-24, 24), src.y + rand(-24, 24), 'witness', true);
+  me.suspect(src.x + dice(me.world).rand(-24, 24), src.y + dice(me.world).rand(-24, 24), 'witness', true);
 }
 
 // look for evidence: knocked-out mates, bodies, wrecked walls/doors/windows, empty posts

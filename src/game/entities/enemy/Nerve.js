@@ -4,12 +4,13 @@ import { ENEMY, AI } from '../../Config.js';
 import { rand, chance } from '../../../engine/math.js';
 import { backupOdds, backupGroup, recruits, yieldOdds, turnedAway, gunAtHand } from '../../ai/Squad.js';
 import { S } from './States.js';
+import { dice } from '../../systems/Rng.js';
 
 // The last man standing gives up: weapon thrown down, on his knees, hands up. He is out of the fight for good
 // (the world counts him out: 'surrender' clears the level) and it is the player's call to kill him anyway.
 export function surrender(me) {
   me.reloading = 0;
-  me.dropWeapon(me.angle + rand(-0.5, 0.5), 2.5);
+  me.dropWeapon(me.angle + dice(me.world).rand(-0.5, 0.5), 2.5);
   me.setState(S.YIELD);
   me.yielded = true;
   me.shaken = false;
@@ -34,7 +35,7 @@ export function loseNerve(me, dt) {
   const odds = yieldOdds(me.kind, {
     unarmed: !w || dry, alone: !me.director.engagedNear(me, R.alone), playerArmed: p.armed, dist, boss: me.boss,
   });
-  if (!chance(odds)) return false;
+  if (!dice(me.world).chance(odds)) return false;
   me.surrender();
   return true;
 }
@@ -52,7 +53,7 @@ export function updateYield(me, dt) {
     me.turnT = turnedAway(p, me, seen) ? me.turnT + dt : 0;
     if (me.turnT > R.wait && (me.nerveT -= dt) <= 0) {
       me.nerveT = 1;
-      const gun = chance(R.treachery[me.kind] ?? 0) && gunAtHand(w.items, me);
+      const gun = dice(me.world).chance(R.treachery[me.kind] ?? 0) && gunAtHand(w.items, me);
       if (gun) { betray(me, gun); return; }
     }
   }
@@ -96,7 +97,7 @@ function goForBackup(me, sent) {
   if (!alone && !outgunned) return false;
   me.fetched = true;
   const dist = Math.hypot(p.x - me.x, p.y - me.y);
-  if (!chance(backupOdds(me.kind, { alone, outgunned, dist, boss: me.boss }))) return false;
+  if (!dice(me.world).chance(backupOdds(me.kind, { alone, outgunned, dist, boss: me.boss }))) return false;
   const g = backupGroup(w.enemies, me);
   if (!g) return false;
   me.setState(S.BACKUP);

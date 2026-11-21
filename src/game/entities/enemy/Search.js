@@ -5,6 +5,7 @@ import { ENEMY, AI } from '../../Config.js';
 import { rand, chance } from '../../../engine/math.js';
 import { searchPoints } from '../../ai/Tactics.js';
 import { S } from './States.js';
+import { dice } from '../../systems/Rng.js';
 
 export function joinHunt(me, x, y) {
   if (me.knocked > 0 || me.aware === 2) return;
@@ -18,7 +19,7 @@ export function guard(me, x, y) {
   if (me.knocked > 0 || me.aware === 2) return;
   me.setState(S.GUARD);
   me.guardPt = { x, y };
-  me.guardT = rand(8, 14);
+  me.guardT = dice(me.world).rand(8, 14);
   me.meter = Math.max(me.meter, ENEMY.suspicious);
   me.showIcon('?', 1);
 }
@@ -64,7 +65,7 @@ export function doInvestigate(me, dt) {
   if (me.sub === '') {
     const speed = me.urgent ? ENEMY.runSpeed * 0.8 : ENEMY.walkSpeed * 1.2;
     if (me.travel(dt, st.x, st.y, speed, { doors: !me.urgent, near: 14, glance: !me.urgent }) || me.blockedAt(dt, st.x, st.y)) {
-      me.sub = 'look'; me.t = 0; me.lookT = rand(1.6, 2.6); me.lookBase = me.angle;
+      me.sub = 'look'; me.t = 0; me.lookT = dice(me.world).rand(1.6, 2.6); me.lookBase = me.angle;
     }
     return;
   }
@@ -120,7 +121,7 @@ export function doSearch(me, dt) {
   const hurry = me.director.phase === 'evasion' || me.director.phase === 'alert';
   if (me.sub === 'go') {
     if (me.travel(dt, pt.x, pt.y, hurry ? ENEMY.runSpeed * 0.7 : ENEMY.walkSpeed * 1.3, { doors: !hurry, near: 12, glance: true })) {
-      me.sub = 'look'; me.t = 0; me.lookT = rand(1.3, 2.2); me.lookBase = pt.origin ? me.angle : pt.look;
+      me.sub = 'look'; me.t = 0; me.lookT = dice(me.world).rand(1.3, 2.2); me.lookBase = pt.origin ? me.angle : pt.look;
       if (hurry && chance(0.3)) me.say('search');
     }
     return;

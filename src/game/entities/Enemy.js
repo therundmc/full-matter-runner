@@ -52,6 +52,7 @@ const AWARE = {
 export default class Enemy extends Character {
   constructor(world, x, y, angle, kind, weapon, roam = false) {
     super(world, x, y, angle, kind, 'enemy');
+    const D = dice(world); // (his gameplay rolls: systems/Rng.js)
     this.isEnemy = true;
     this.radius = ENEMY.radius;
     this.setWeapon(weapon, undefined, WEAPONS[weapon].shellReload ? ENEMY.spareShells : ENEMY.spareMags);
@@ -77,7 +78,7 @@ export default class Enemy extends Character {
     this.stim = null;          // what made us suspicious {x, y, kind}
     this.urgent = false;
     this.sees = false;
-    this.visT = rand(0, ENEMY.visionTick); this.visAcc = 0;
+    this.visT = D.rand(0, ENEMY.visionTick); this.visAcc = 0;
     this.seenAt = -99;
     this.lastKnown = null;
     this.lostT = 0;
@@ -85,7 +86,7 @@ export default class Enemy extends Character {
     this.path = null; this.pathIdx = 0; this.dest = null; this.repath = 0; this.stuck = 0;
     this.goal = null; this.target = null;
     this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
-    this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
+    this.activity = 'watch'; this.activityT = D.rand(2, 5); this.idleFace = angle; this.turnTo = angle;
     this.job = null;       // his life at his post (level.jobs): a data/posts.js script
     this.ducked = false;   // a bartender has been down behind his counter once (see hear)
     this.duckT = 0;        // s he stays down
@@ -94,14 +95,14 @@ export default class Enemy extends Character {
     this.errand = null;    // where he went for a moment ({ x, y, face, wall }: to relieve himself)
     this.errandT = 0;
     this.restUntil = 0;    // his post given up on until then (no way through to it): he idles where he stands
-    this.reliefCd = rand(...AI.relief.first);
+    this.reliefCd = D.rand(...AI.relief.first);
     this.mate = null;      // the colleague he is chatting with; turn: which of the two he is (0 | 1)
-    this.turn = 0; this.spoke = false; this.chatCd = rand(4, 25); this.chatScan = 0;
+    this.turn = 0; this.spoke = false; this.chatCd = D.rand(4, 25); this.chatScan = 0;
     this.dripT = 0;
     this.stow = 1; this.lower = 1; // weapon put away until something is up (ai/Carry.js)
     this.susT = 0; this.hideT = 0; this.shots = 0; this.ambushT = 0; this.ambushed = false; this.stalkCD = 0;
     this.glance = 0; this.glanceT = 0; this.lookBase = angle; this.lookT = 0;
-    this.pauseT = rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
+    this.pauseT = D.rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
     this.gate = -1; this.gateT = -9; this.gateFor = -1; this.gateWait = 0; // the doorway he holds / waits for
     this.probeT = 0; this.probeX = x; this.probeY = y;                     // ground covered lately (see follow)
     this.jams = new CellMemory();    // tiles he found jammed: his paths go round them a while (ai/Nav.js, see jammed)
@@ -112,7 +113,6 @@ export default class Enemy extends Character {
     this.case = null;                // a word he is having with the stranger (ai/Conduct.js, see challenge)
     this.eyes = null;                // something he glances at a moment, carrying on { x, y, until } (see glanceAt)
     this.react = 0; this.tactic = null; this.thinkT = 0; this.cover = null; this.coverT = 0;
-    const D = dice(world); // (his gameplay rolls: systems/Rng.js)
     this.burst = 0; this.volleys = 0; this.burstLeft = 0; this.suppressCD = D.rand(0, 1.5);
     this.dodge = 0; this.dodgeCD = 0; this.strafe = 0; this.strafeT = D.rand(1, 2);
     this.shoutT = 0; this.panicT = 0; this.witnessed = []; this.dizzyT = 0;
@@ -120,7 +120,7 @@ export default class Enemy extends Character {
     this.searchPt = null; this.localPts = null; this.checkTarget = null; this.guardPt = null; this.guardT = 0;
     this.fetchTarget = null; this.friend = null;
     this.arms = null;          // his weapon kept somewhere until the fight (see takeArms), or a brawler's fists
-    this.scanT = rand(0, ENEMY.scanTick);
+    this.scanT = D.rand(0, ENEMY.scanTick);
     this.icon = ''; this.iconT = 0; this.barkT = 0;
     this.pace = D.rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : heavyBuild(kind) ? 0.9 : 1);
     this.seed = rand(0, 100);
@@ -275,7 +275,7 @@ export default class Enemy extends Character {
     this.downAngle = angle; // on his back, his head away from the blow
     this.dormant = false;   // that wakes a man
     const along = opt.slide ?? angle;
-    this.dropWeapon(along + rand(-0.8, 0.8), this.yields ? 0.5 : rand(...DROP.knock)); // (his gun is to be snatched: it stays by him)
+    this.dropWeapon(along + dice(this.world).rand(-0.8, 0.8), this.yields ? 0.5 : dice(this.world).rand(...DROP.knock)); // (his gun is to be snatched: it stays by him)
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
     const sp = opt.speed ?? (cause === 'punch' ? ENEMY.knockSpeed.punch : ENEMY.knockSpeed.other);
@@ -293,7 +293,7 @@ export default class Enemy extends Character {
   // sliding on; dazed a few seconds, trying to get up (a free kill)
   slip(a) {
     const S = SLIP.enemy;
-    this.knock(a + Math.PI, 'slip', { time: rand(...S.daze), slide: a, speed: S.push, dazed: true });
+    this.knock(a + Math.PI, 'slip', { time: dice(this.world).rand(...S.daze), slide: a, speed: S.push, dazed: true });
     this.say('slip');
   }
 
@@ -320,7 +320,7 @@ export default class Enemy extends Character {
       this.angle = this.downAngle + Math.PI;
       if (this.passive) return;
       this.setState(S.DIZZY);
-      this.dizzyT = rand(...ENEMY.dizzy);
+      this.dizzyT = dice(this.world).rand(...ENEMY.dizzy);
       this.meter = Math.max(this.meter, 0.5);
     }
   }

@@ -2,10 +2,11 @@
 // held and waited for, keeping apart from the others, turning and sweeping his eyes. Functions of the guard (`me`),
 // DOM-free.
 import { ENEMY, AI, TILE } from '../../Config.js';
-import { rand, angDiff, approachAngle, chance } from '../../../engine/math.js';
+import { angDiff, approachAngle } from '../../../engine/math.js';
 import { throughDoor, pastDoor } from '../../ai/Tactics.js';
 import { cellAhead, giveWay as wayFor } from '../../ai/Nav.js';
 import { S } from './States.js';
+import { dice } from '../../systems/Rng.js';
 
 const { Body } = Matter;
 
@@ -126,7 +127,7 @@ export function follow(me, dt, speed, opts = {}) {
   }
   // calm guards pause a beat before stepping through a doorway
   if (opts.doors) {
-    if (ahead && key !== me.doorKey) { me.doorKey = key; me.doorT = rand(0.35, 0.8); }
+    if (ahead && key !== me.doorKey) { me.doorKey = key; me.doorT = dice(me.world).rand(0.35, 0.8); }
     else if (!inside && !ahead) me.doorKey = -1;
   }
   if (me.doorT > 0) {
@@ -174,7 +175,7 @@ export function follow(me, dt, speed, opts = {}) {
       me.stuck = 0;
       if (jammed(me, ux, uy)) { me.path = null; me.halt(); return true; } // no way through: he gives it up
       // in a door frame there is no room at the sides: back out of it
-      const side = heading + (inside ? Math.PI : chance(0.5) ? 1.4 : -1.4);
+      const side = heading + (inside ? Math.PI : dice(me.world).chance(0.5) ? 1.4 : -1.4);
       Body.setVelocity(me.body, { x: Math.cos(side) * speed, y: Math.sin(side) * speed });
       me.repath = 0;
       me.dest = null;
@@ -263,11 +264,11 @@ export function faceTo(me, x, y, rate, dt) { me.faceAngle(Math.atan2(y - me.y, x
 
 // look around a base direction with pauses between glances
 export function sweep(me, dt, base, amp = 1.1, rate = 3.2) {
-  if ((me.glanceT -= dt) <= 0) { me.glanceT = rand(0.5, 1.3); me.glance = rand(-amp, amp); }
+  if ((me.glanceT -= dt) <= 0) { me.glanceT = dice(me.world).rand(0.5, 1.3); me.glance = dice(me.world).rand(-amp, amp); }
   me.faceAngle(base + me.glance, rate, dt);
 }
 
 function walkGlance(me, dt) {
-  if ((me.glanceT -= dt) <= 0) { me.glanceT = rand(1.2, 3.5); me.glance = chance(0.55) ? 0 : rand(-0.9, 0.9); }
+  if ((me.glanceT -= dt) <= 0) { me.glanceT = dice(me.world).rand(1.2, 3.5); me.glance = dice(me.world).chance(0.55) ? 0 : dice(me.world).rand(-0.9, 0.9); }
   return me.glance;
 }

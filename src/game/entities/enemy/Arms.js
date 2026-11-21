@@ -1,9 +1,10 @@
 // A guard's weapon: the one kept somewhere until the fight (level `arms`), fetched; one picked up off the floor;
 // running to a friend when he has none. Functions of the guard (`me`), DOM-free.
 import { ENEMY, AI, TILE } from '../../Config.js';
-import { rand } from '../../../engine/math.js';
+
 import { findPath } from '../../../engine/nav/Pathfinding.js';
 import { S } from './States.js';
+import { dice } from '../../systems/Rng.js';
 
 // the weapon kept at `at` { x, y } px: the one lying or leaning nearest it, within a tile and a half (null: taken)
 export function keptAt(items, at) {
@@ -118,6 +119,6 @@ export function doFlee(me, dt) {
     if (lk) f.joinHunt(lk.x, lk.y);
     me.setState(S.GUARD);
     me.guardPt = lk || { x: f.x, y: f.y };
-    me.guardT = rand(6, 10);
+    me.guardT = dice(me.world).rand(6, 10);
   }
 }
