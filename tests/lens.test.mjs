@@ -308,3 +308,11 @@ test("lens: every uniform PostGL's shaders declare is set by render, with a numb
     delete globalThis.document;
   }
 });
+
+test('lens: at the wheel no hot air bends the picture (it moves no px there), on foot it does', () => {
+  const lens = new Lens(), hot = [{ x: 10, y: 10, kind: 'fire' }];
+  const foot = lens.uniforms(view({ heat: hot }));
+  assert.ok([...foot.heat].some((n) => n !== 0), 'a fire shimmers on foot');
+  const wheel = lens.uniforms(view({ heat: hot, drive: { k: 0.5, angle: 0, x: 0, y: 0 } }));
+  assert.ok([...wheel.heat].every((n) => n === 0), 'none at the wheel');
+});

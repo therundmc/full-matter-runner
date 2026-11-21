@@ -217,9 +217,10 @@ export default class Lens {
       put(waves, i - w0, w.x, w.y, w.t * k.speed, k.bend * life * Math.sqrt(life));
     }
 
-    // (the QUALITY option: no shimmer, and the lens' glow and shafts not run at all: PostGL)
+    // (the QUALITY option: no shimmer, and the lens' glow and shafts not run at all: PostGL; at the wheel no heat
+    // bends the picture either: it moves no px there)
     const Q = quality(), heat = this.slots.heat.fill(0), HB = c.heat.blast;
-    let n = Q.shimmer ? 0 : c.heat.max;
+    let n = Q.shimmer && !(world && v.drive) ? 0 : c.heat.max;
     for (const e of this.embers) if (n < c.heat.max) put(heat, n++, e.x, e.y, (HB.r * v.scale) / H, HB.k * (1 - e.t / HB.life));
     for (const h of world && v.heat || []) if (n < c.heat.max) put(heat, n++, h.x, h.y, (c.heat[h.kind].r * v.scale) / H, c.heat[h.kind].k);
 
