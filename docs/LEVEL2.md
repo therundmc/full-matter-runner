@@ -1012,3 +1012,9 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   (`parasol`, `planter`, `neon_sign_cafe`), and the bank's narrow crash cushion is laid at once (`crash_cushion_hit`
   deleted). level2a.js unchanged but for the cushion's place in the list. The unplaced sets (the car wash, the tyre
   yard, the suburb's) are STOCK in tools/generate_assets.py, checked by tests/sprites.test.mjs.
+- 2026-11-21: CLEANUP (branch cleanup/systems). systems/Route.js `checkRoute` (tools/build_level2a.py, tests/route.test.mjs);
+  a pursuer joining from behind is never placed back off the start of the leg past the bend; a checkpoint counts only
+  the men its retry brings back (Pursuit.aboard); a toll crash is decided in Pursuit.wreck before 'pursuerWreck' (one
+  fire-ball, the boom's, the strong beat); tyre smoke by the step's time; the pursuers' rolls from the world's dice
+  (systems/Rng.js); the unused `miss` hook deleted; the cars pruned once far behind. A gate car past the cap of
+  CHASE.pursuit.most still joins when no car can drop out for it (kept: tests/toll.test.mjs wants it).
