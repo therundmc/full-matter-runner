@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { OUTRO, outroPhase, routePath, routeSpeed, slideStep, fadeAlpha, outroOver, barsK, camBlend, crossed } = await load('game/systems/Outro.js');
+const { routePath } = await load('game/systems/RoutePath.js');
+const { OUTRO, outroPhase, routeSpeed, slideStep, fadeAlpha, outroOver, barsK, camBlend, crossed } = await load('game/systems/Outro.js');
 
 const STEP = 1 / 60;
 

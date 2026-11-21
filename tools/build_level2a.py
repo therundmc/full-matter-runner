@@ -53,6 +53,7 @@ import math
 import os
 import random
 import struct
+import subprocess
 
 from levelkit import Level, SIZES, SOLID as BLOCKS
 
@@ -2145,3 +2146,5 @@ if __name__ == '__main__':
                  'legs and bends: the frontage road, the on-ramp, the merge), and THE TOLL: the road opens to four lanes, a plaza',
                  'under its lit roof, a wooden arm or a steel boom at the end of each lane (event 3), the freeway\'s start.',
              ])
+    # the route's legs, bends, checkpoints and events hold together (systems/Route.js checkRoute)
+    subprocess.run(['node', '-e', "import('./src/game/systems/Route.js').then(async (R) => { const e = R.checkRoute((await import('./src/game/data/levels/level2a.js')).default.chase); if (e.length) { console.error(e.join('\\n')); process.exit(1); } })"], cwd=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'), check=True)

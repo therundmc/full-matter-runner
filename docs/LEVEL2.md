@@ -367,8 +367,10 @@ brushes.
     his flank it falls back at once; it ploughs through what is left as he does; the first to scrape a car set as a
     `snare` is wrecked on it, one jammed in a narrow way is wrecked there, and the next scrape by); out of it, slots
     again. A car on another leg than his sees him where the route puts him on its own leg (Pursuit.tgFor): ahead of
-    him, it waits CHASE.bend.clear px past his way out, out of his lane. A pursuer event's `miss: true` makes it skip
-    the bend (on into what shuts the road: the hook for "one misses the turn").
+    him, it waits CHASE.bend.clear px past his way out, out of his lane. (The `miss` hook, a car skipping the bend,
+    was never used by a level: deleted 2026-11-21.) systems/Route.js checkRoute (run by tools/build_level2a.py and
+    tests/route.test.mjs) checks the legs are in order and do not overlap, each bend goes from a leg before its own
+    and is the only one into it, no checkpoint stands inside a bend's span, every checkpoint and event is on a leg.
   - Legs with no bend between them (leg 1, the merge, then the toll's: 4 lanes, the plaza's 4, 4, 2) are driven on from one to the next by
     column: the car keeps its row (a leg's lanes may differ: Drive never moves it onto one), its cruise is picked up as
     after a hit, the view is eased across (CHASE.camera.across) when the framing changes; a leg's `track` (0..1) makes

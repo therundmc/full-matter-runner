@@ -19,7 +19,7 @@
 import { TILE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
 import { CHASE } from '../data/chase.js';
-import { routePath } from './Outro.js';
+import { routePath } from './RoutePath.js';
 
 // the legs of a `chase` block, as above
 export function legsOf(o = {}) {
@@ -47,9 +47,9 @@ export function legAt(legs, x) {
 // the lane of rows (tiles) nearest row, or row itself when there are none
 export const nearestLane = (rows, row) => (rows?.length ? rows.reduce((b, r) => (Math.abs(r - row) < Math.abs(b - row) ? r : b)) : row);
 
-// The bends of a `chase` block: [{ i, at, x (px), from, to (legs), speed, path (Outro.routePath: { length, at(p) }),
-// length, start, end ({ x, y } px: its line's first and last points) }]
-export function bendsOf(o = {}, legs = legsOf(o), C = CHASE.bend) {
+// The bends of a `chase` block: [{ i, at, x (px), from, to (legs), speed, path (RoutePath.routePath: { length,
+// at(p) }), length, start, end ({ x, y } px: its line's first and last points) }]
+function bendsOf(o = {}, legs = legsOf(o), C = CHASE.bend) {
   return (o.bends || []).map((B, i) => {
     const pts = B.path.map(([c, r]) => [c * TILE, r * TILE]), last = pts[pts.length - 1];
     last[1] = nearestLane(legs[B.to]?.lanes, last[1] / TILE) * TILE; // (ends on a lane of its leg)
@@ -57,7 +57,7 @@ export function bendsOf(o = {}, legs = legsOf(o), C = CHASE.bend) {
     const path = routePath(pts, radii, C.radius * TILE);
     return {
       i, at: B.at, x: B.at * TILE, from: legAt(legs, B.at * TILE), to: B.to, speed: B.speed ?? C.speed, path,
-      length: path.length, start: { x: pts[0][0], y: pts[0][1] }, end: { x: last[0], y: last[1] }, miss: !!B.miss,
+      length: path.length, start: { x: pts[0][0], y: pts[0][1] }, end: { x: last[0], y: last[1] },
     };
   });
 }
@@ -106,7 +106,7 @@ export function project(path, x, y, p = 0, span = Infinity, step = 4) {
 }
 
 // how far across the line at p (px; +: to the right of the way it runs, the +y side going +x) a point is
-export function offsetAt(path, p, x, y) {
+function offsetAt(path, p, x, y) {
   const q = path.at(p);
   return -(x - q.x) * Math.sin(q.a) + (y - q.y) * Math.cos(q.a);
 }
@@ -126,7 +126,7 @@ export function bendStep(st, b, dt, want = Infinity, C = CHASE.bend) {
 }
 
 // its pose at st.p, the slide sprung toward the turn's (bendStep without moving it on: dt 0 leaves the slide)
-export function bendPose(st, b, dt = 0, C = CHASE.bend) {
+function bendPose(st, b, dt = 0, C = CHASE.bend) {
   const q = b.path.at(st.p), [k, d] = C.spring, want = (q.turn || 0) * C.slip * clamp(st.v / b.speed, 0, 1);
   st.slipV += ((want - st.slip) * k - st.slipV * d) * dt;
   st.slip += st.slipV * dt;
@@ -154,4 +154,33 @@ export function bandOf(leg) {
   if (!L?.length) return { band: null, half: TILE * 1.75, rows: null };
   const rows = L.map((r) => r * TILE);
   return { band: [rows[0], rows[rows.length - 1]], half: rows.length > 1 ? (rows[rows.length - 1] - rows[0]) / (rows.length - 1) / 2 : TILE * 1.75, rows };
+}
+
+// What is wrong with a `chase` block's route (the builder's and the tests' check; [] when nothing): legs in order of
+// their columns, each from before its to, none overlapping the next; each bend from a leg before the one it hands
+// the car to, never two into one leg; no checkpoint inside a bend's span (from its `at` to its line's end: a retry
+// there starts on the leg before it with no bend ahead), each checkpoint and event on a leg
+export function checkRoute(o = {}) {
+  const errors = [], L = o.legs || [], cols = (b) => `${b.from}..${b.to}`;
+  L.forEach((g, k) => {
+    if (!(g.from < g.to)) errors.push(`leg ${k} (${cols(g)}): from is not before to`);
+    if (k && g.from < L[k - 1].from) errors.push(`leg ${k} (${cols(g)}) starts before leg ${k - 1} (${cols(L[k - 1])})`);
+    else if (k && g.from < L[k - 1].to) errors.push(`leg ${k} (${cols(g)}) overlaps leg ${k - 1} (${cols(L[k - 1])})`);
+  });
+  const legs = legsOf(o), on = (c) => legs.some((g) => g.from <= c && c < g.to);
+  const into = new Map();
+  (o.bends || []).forEach((B, i) => {
+    const from = legAt(legs, B.at * TILE);
+    if (!(B.to < legs.length)) errors.push(`bend ${i} (col ${B.at}): no leg ${B.to} to hand the car to`);
+    if (!(from < B.to)) errors.push(`bend ${i} (col ${B.at}): from leg ${from}, which is not before its leg ${B.to}`);
+    if (into.has(B.to)) errors.push(`bend ${i} (col ${B.at}): leg ${B.to} already has bend ${into.get(B.to)} into it`);
+    else into.set(B.to, i);
+    const end = Math.max(...B.path.map(([c]) => c));
+    for (const cp of o.checkpoints || []) {
+      if (cp.at >= B.at && cp.at <= end) errors.push(`checkpoint ${cp.name} (col ${cp.at}) inside bend ${i} (cols ${B.at}..${end})`);
+    }
+  });
+  for (const cp of o.checkpoints || []) if (!on(cp.at)) errors.push(`checkpoint ${cp.name} (col ${cp.at}) on no leg`);
+  for (const e of o.events || []) if (!on(e.at)) errors.push(`event ${e.kind} (col ${e.at}) on no leg`);
+  return errors;
 }
