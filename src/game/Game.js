@@ -145,6 +145,7 @@ export default class Game {
     // it cannot reach without the DOM is handed to it: the voices playing, the module-level caches' bytes
     this.perf = new Perf(this, {
       voices: () => (Audio.ctx ? Audio.active.filter((a) => a.end > Audio.ctx.currentTime).length : 0),
+      music: () => Music.liveVoices,
       extra: () => ({ sprites: { cvs: spriteBytes().bytes }, 'retry cache': { cvs: bakedBytes() }, 'car clouds': { cvs: carFxBytes() } }),
     });
     this.steps = 0;                    // simulation steps run this frame

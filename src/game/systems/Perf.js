@@ -91,12 +91,13 @@ export default class Perf {
   #refresh = []; #graph = [];
 
   // game: the Game (or a stand-in with the same fields); prof: the profiler (PROF); src: what Perf cannot reach
-  // without the DOM, as functions: voices() (audio voices playing), extra() ({ name: { arr, cvs } } bytes of the
-  // module-level caches: the sprites, the retry's kept painting, the car clouds)
-  constructor(game, { prof = PROF, voices = () => 0, extra = () => ({}) } = {}) {
+  // without the DOM, as functions: voices() (sound voices playing), music() (the track's one-shots in flight:
+  // Music.liveVoices), extra() ({ name: { arr, cvs } } bytes of the module-level caches: the sprites, the retry's
+  // kept painting, the car clouds)
+  constructor(game, { prof = PROF, voices = () => 0, music = () => 0, extra = () => ({}) } = {}) {
     this.#game = game;
     this.#prof = prof;
-    this.#src = { voices, extra };
+    this.#src = { voices, music, extra };
   }
 
   get mode() { return this.#mode; }
@@ -273,7 +274,7 @@ export default class Perf {
       fires: w.fires?.lit?.()?.length ?? 0,
       smokeCells: r ? (r.x1 - r.x0) * (r.y1 - r.y0) : 0,
       smokeIdle: !!S && S.quietT > 4 && F.peak < 0.002 && !S.rib?.n,
-      voices: this.#src.voices(),
+      voices: this.#src.voices(), musicVoices: this.#src.music(),
     };
   }
 }
