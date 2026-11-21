@@ -263,19 +263,21 @@ test('checkpoints: resumed, the score as it was kept (the chain under way not ke
 });
 
 // ---------------------------------------------------------------- the game
-test('game: a retry after a death keeps the chase\'s checkpoint; RESTART and a start from the menus forget it; the tutorial\'s room as before', () => {
+test('game: a retry after a death keeps the chase\'s checkpoint and the tutorial\'s room; RESTART and a start from the menus forget both', () => {
   const g = { tutorialAt: { name: 'T', stage: 2 }, chaseAt: { name: 'C', i: 2 }, taught: new Set(['x']) };
   new LevelFlow(g).forget(true, true);             // R / the pad's A / RETRY, dead
   assert.deepEqual(g.chaseAt, { name: 'C', i: 2 });
   assert.equal(g.tutorialAt.stage, 2);
   new LevelFlow(g).forget(true, false);            // RESTART in the pause, Backspace
   assert.equal(g.chaseAt, null, 'from the beginning');
-  assert.equal(g.tutorialAt.stage, 2, 'the tutorial still at its last room (unchanged)');
-  assert.ok(g.taught.has('x'));
+  assert.equal(g.tutorialAt, null, 'the tutorial from its beginning too');
+  assert.ok(g.taught.has('x'), 'its lessons taught kept');
   g.chaseAt = { name: 'C', i: 1 };
+  g.tutorialAt = { name: 'T', stage: 1 };
   new LevelFlow(g).forget(false, false);           // the menus, the LEVELS page, the next level
   assert.equal(g.chaseAt, null);
   assert.equal(g.tutorialAt, null);
+  assert.equal(g.taught.size, 0);
   // which way each goes
   const calls = [], stub = { levelId: 'level2a', startLevel: (id, o) => calls.push([id, o]) };
   new LevelFlow(stub).retry();

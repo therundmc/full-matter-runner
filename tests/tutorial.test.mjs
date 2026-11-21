@@ -14,6 +14,7 @@ const { POSTS } = await load('game/data/posts.js');
 const { MATCH_FALLS } = await load('game/ai/Pastimes.js');
 const { default: Input } = await load('engine/Input.js');
 const { default: Game } = await load('game/Game.js');
+const { default: LevelFlow } = await load('game/flow/LevelFlow.js');
 
 const px = (v) => v * TILE;
 // a lesson's slow motion played to its end, nothing pressed (its cap at the latest)
@@ -831,6 +832,28 @@ test('tutorial: a retry starts again at the last place reached, the rooms before
   s.tick();
   assert.equal(s.t.stage, 3, 'he stands in the back hall');
   assert.deepEqual(s.t.hints(), []);
+});
+
+test('tutorial: RETRY after a death resumes at the last room reached, RESTART starts it from the very beginning', () => {
+  // the flow's start, as far as the tutorial sees it: what the game keeps, then the room World starts it at
+  const g = { levelId: 'tutorial', tutorialAt: null, chaseAt: null, taught: new Set() }, flow = new LevelFlow(g), starts = [];
+  g.startLevel = (id, o) => {
+    flow.forget(o.retry, o.resume);
+    const at = g.tutorialAt, s = stub(at?.name === level.name ? at.stage : 0, g);
+    s.tick();
+    starts.push({ stage: s.t.stage, opening: !!s.t.scene });
+  };
+  g.tutorialAt = { name: level.name, stage: 3 }; // reached the back hall (Tutorial keeps it there)
+  g.taught.add('vault');
+  flow.retry();
+  assert.deepEqual(starts.at(-1), { stage: 3, opening: false }, 'RETRY: in the back hall again');
+  assert.deepEqual(g.tutorialAt, { name: level.name, stage: 3 });
+  flow.restart();
+  assert.deepEqual(starts.at(-1), { stage: 0, opening: true }, 'RESTART: the flat, the man with the match');
+  assert.equal(g.tutorialAt.stage, 0, 'the back hall forgotten');
+  flow.retry();
+  assert.deepEqual(starts.at(-1), { stage: 0, opening: true }, 'a death then: the flat again');
+  assert.ok(g.taught.has('vault'), 'a lesson given is not slowed for again');
 });
 
 test('tutorial: the shooter, pointed at from one stage and fought in the next, is still there on a retry of the second', () => {

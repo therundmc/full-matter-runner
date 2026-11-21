@@ -50,25 +50,26 @@ export default class LevelFlow {
   // CONTINUE: the furthest level opened
   continueGame() { this.game.startLevel(urlLevel() || latest(this.game.progress, has) || firstLevel()); }
 
-  // RESTART: the current level again from its beginning (the pause's RESTART, Backspace in play or dead, R on the
-  // results); the tutorial, taught room by room, still opens on its last room reached (forget)
+  // RESTART: the current level again from its very beginning, the tutorial too (the pause's RESTART, Backspace in
+  // play or dead, R on the results); only the lessons already taught are kept (forget)
   restart() { const g = this.game; g.startLevel(g.levelId || urlLevel() || firstLevel(), { retry: true }); }
 
   // RETRY, after a death (R, the pad's A / Y, a click, RETRY in the death screen's pause): the same level, from the
-  // last checkpoint reached where the level has them (the chase: systems/Checkpoints.js, Game.chaseAt), else its start
+  // last place reached where the level has them (the tutorial's room: Game.tutorialAt; the chase's checkpoint:
+  // systems/Checkpoints.js, Game.chaseAt), else its start
   retry() { const g = this.game; g.startLevel(g.levelId || urlLevel() || firstLevel(), { retry: true, resume: true }); }
 
-  // what a new start keeps of the last run: a retry keeps the tutorial's last room reached and its lessons taught; a
-  // retry after a death (resume) keeps the chase's last checkpoint reached too
+  // what a new start keeps of the last run: the same level again (retry) keeps its lessons taught; a retry after a
+  // death (resume) keeps the tutorial's last room and the chase's last checkpoint reached too
   forget(retry, resume) {
     const g = this.game;
-    if (!retry) { g.tutorialAt = null; g.taught = new Set(); }
-    if (!resume) g.chaseAt = null;
+    if (!retry) g.taught = new Set();
+    if (!resume) { g.tutorialAt = null; g.chaseAt = null; }
   }
 
-  // retry: the same level again (the tutorial then starts at the last room reached: Game.tutorialAt, kept by
-  // systems/Tutorial.js); resume: at the chase's last checkpoint (Game.chaseAt, kept by systems/Checkpoints.js);
-  // state: what it opens on ('intro': the banner; 'cinematic': the opening, ui/Cinematic.js)
+  // retry: the same level again (its lessons taught kept: Game.taught); resume: at the last place reached (the
+  // tutorial's room: Game.tutorialAt, kept by systems/Tutorial.js; the chase's checkpoint: Game.chaseAt, kept by
+  // systems/Checkpoints.js); state: what it opens on ('intro': the banner; 'cinematic': the opening, ui/Cinematic.js)
   startLevel(id, { retry = false, resume = false, state = 'intro' } = {}) {
     const g = this.game;
     g.levelId = LEVELS[id] ? id : firstLevel();
