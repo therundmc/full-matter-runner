@@ -1,5 +1,5 @@
-// The shapes of LOCK's marks as lists of pixels (data/aim.js AIM.lock, AIM.worn; render/AimArt.js lays
-// them down): worn paint, a stencil sprayed on the floor a long time ago. The wear is a hash of the mark's own bits
+// The shapes of the aim's floor marks as lists of pixels (data/aim.js AIM.worn: LOCK's chevron, the throw's, the
+// vault's arcs and bar; render/AimArt.js lays them down): worn paint, a stencil sprayed on the floor a long time ago. The wear is a hash of the mark's own bits
 // (never of the frame or of where it stands), so a mark keeps its chips while its man walks, and two men do not
 // wear the same. DOM-free, pure.
 import { AIM } from '../data/aim.js';
@@ -62,21 +62,4 @@ export function chevronBits(seed, size, W = AIM.worn) {
     }
   }
   return out;
-}
-
-// the stray specks of spray round a mark of radius r: [{ x, y }], W.flecks of them at most, the same every time
-export function flecks(seed, r, W = AIM.worn) {
-  const out = [];
-  for (let i = 0; i < W.flecks; i++) {
-    const a = grit(seed, 900 + i) * TAU, d = r + W.stray[0] + grit(seed, 950 + i) * (W.stray[1] - W.stray[0]);
-    out.push({ x: Math.round(Math.cos(a) * d), y: Math.round(Math.sin(a) * d) });
-  }
-  return out;
-}
-
-// how tight the circle is: R.r[0] round a man near the line, R.r[1] once the line is on him, closing in over
-// R.snap s (`age`: s since it took him); whole px
-export function ringRadius(on, age, R = AIM.lock.ring) {
-  if (!on) return R.r[0];
-  return Math.round(R.r[1] + (R.r[0] - R.r[1]) * Math.max(0, 1 - age / R.snap));
 }

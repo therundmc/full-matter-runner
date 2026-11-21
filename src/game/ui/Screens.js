@@ -13,7 +13,7 @@ const TAUNTS = [
   'TRY THE DOOR NEXT TIME.',
   'THROW SOMETHING AT THEM.',
   'DID YOU THINK THEY WOULD MISS?',
-  'PRESS {restart}. AGAIN. AND AGAIN.', // ({action}: that action's cap for the device in use, data/controls.js)
+  'PRESS {retry}. AGAIN. AND AGAIN.', // ({action}: that action's cap for the device in use, data/controls.js)
 ];
 // deaths that deserve their own line, by cause (Character.kill)
 const CAUSE_TAUNTS = {
@@ -226,7 +226,7 @@ export function describeDeath(cause, killer) {
 const DEAD = { slam: 0.14, line: 0.24, taunt: 0.38, prompt: 0.3 }; // s: the title lands, the cause, the taunt, the prompt
 
 // The death screen: a red wash, black bars slammed in, YOU'RE DEAD stamped down, what killed him on a red band, a
-// taunt and the restart prompt at once (R restarts from the first frame; the prompt only says so).
+// taunt and the retry prompt at once (R / a click / the pad's A: Game.retry, at the last checkpoint or room reached).
 // death: { cause, by: describeDeath(...), n: deaths so far }; device: whose caps the prompt shows
 export function drawDead(ctx, W, H, t, seed, death, device) {
   const s = H / 720, ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
@@ -294,7 +294,7 @@ export function drawDead(ctx, W, H, t, seed, death, device) {
   const pt = t - DEAD.prompt;
   if (pt > 0) {
     const pulse = 0.82 + 0.18 * Math.sin(t * 9);
-    const list = device === 'pad' ? [['restart', 'RESTART']] : [['retry', ''], ['attack', 'RESTART']];
+    const list = device === 'pad' ? [['retry', 'RETRY']] : [['retry', ''], ['attack', 'RETRY']];
     ctx.save();
     ctx.globalAlpha = ease(pt / 0.15);
     drawPrompts(ctx, list, W / 2, H - bar / 2, 40 * s * pulse ** 0.3, device, { color: PALETTE.yellow, gap: 0.5, font: 0.7 });

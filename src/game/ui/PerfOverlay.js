@@ -92,7 +92,7 @@ function worldRows(s) {
     row(`PARTICLES ${w.particles}  ROUNDS ${w.projectiles}  DEBRIS ${w.debris}`),
     row(`CORPSES ${w.corpses}  STAINS AGEING ${w.stains}`),
     row(`LIGHTS ${w.lights}  IN VIEW ${w.lit}  FLASHES ${w.flashes}  FIRES ${w.fires}`),
-    row(`SMOKE CELLS ${w.smokeCells}${w.smokeIdle ? ' (IDLE)' : ' (STEPPED)'}  VOICES ${w.voices}`),
+    row(`SMOKE CELLS ${w.smokeCells}${w.smokeIdle ? ' (IDLE)' : ' (STEPPED)'}  VOICES ${w.voices}  MUSIC ${w.musicVoices}`),
   ];
 }
 

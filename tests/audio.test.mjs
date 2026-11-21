@@ -362,15 +362,15 @@ test('music: at the top of a chain every fourth bar rolls into a crash, and the 
   assert.ok(bars.filter((b) => b.plan.swell).every((b) => b.bar === 7), 'reversed cymbals only into a section');
 });
 
-test('music: the jukebox plays its own band on the bars of the song while it is heard, and only then', () => {
-  const bars = playMusic(12 * BAR, [[4 * BAR, () => Music.setJukebox(0.8)], [8 * BAR, () => Music.setJukebox(0)]], 0.25);
-  Music.setJukebox(0);
-  const played = bars.map((b) => !!b.plan.juke);
-  assert.ok(!played[1] && played[6] && !played[11], played.join());
-  for (const b of bars.filter((x) => x.plan.juke)) {
-    assert.ok(b.plan.juke.tune.length >= 4 && b.plan.juke.bass.length >= 4);
-    for (const n of [...b.plan.juke.tune, ...b.plan.juke.bass]) assert.ok(n.s >= 0 && n.s + n.len <= 16 && n.m > 30 && n.m < 90, JSON.stringify(n));
-  }
+test('music: the jukebox has no band of its own: Music.setJukebox stays in the API and does nothing', async () => {
+  const { default: Soundtrack } = await load('audio/Music.js');
+  assert.equal(typeof Soundtrack.setJukebox, 'function');
+  const before = JSON.stringify(Soundtrack.game);
+  Soundtrack.setJukebox(0.8);
+  assert.equal(JSON.stringify(Soundtrack.game), before);
+  assert.equal(Music.setJukebox, undefined, 'the players have none');
+  const bars = playMusic(4 * BAR, [], 0.25);
+  assert.ok(bars.length >= 3 && bars.every((b) => !('juke' in b.plan)));
 });
 
 test('music: a fight that stops at once still plays its minimum, a new one during the closing bar carries on', () => {

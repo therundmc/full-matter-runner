@@ -8,7 +8,7 @@
 export const PAD_BINDINGS = {
   A: 'Space',      // slide, vault, climb, dive; a menu's ENTER
   X: 'KeyE',       // pick up / swap / open a trunk / take a guard as a shield (from behind)
-  Y: 'KeyR',       // reload; restart once dead; retry on the results
+  Y: 'KeyR',       // reload; retry once dead; restart on the results
   Start: 'Escape', // pause (and back out of it)
   RB: 'Mouse0',    // attack / shoot / take down / finish (held: an automatic keeps firing, as the mouse button)
   LB: 'Mouse2',    // throw: held, aimed and let go (pick up when the hands are empty)
@@ -19,20 +19,20 @@ export const PAD_BINDINGS = {
 // the virtual cursor of the right stick: world px from the player, close at a light push, far at a full one
 export const PAD_AIM = { near: 70, far: 150, follow: 0.35 }; // follow: s without the right stick before the aim turns to where he walks
 
-// action -> its name on a key cap ('kbm') or a pad's button ('pad'). ui/Glyphs.js draws them.
+// action -> its name on a key cap ('kbm') or a pad's button ('pad'), for the prompts on screen (the tutorial's hints,
+// the HUD, the cards and screens). ui/Glyphs.js draws them. One word a meaning: RETRY is the death screen's (Game.retry:
+// the last checkpoint or room reached, else the level's start), RESTART the level from its beginning (Game.restart;
+// on the results: R / Y).
 export const ACTIONS = {
   move: { kbm: 'ZQSD', pad: 'LS' },
-  aim: { kbm: 'MOUSE', pad: 'RS' },
-  look: { kbm: 'SHIFT', pad: 'LT' },
   attack: { kbm: 'LMB', pad: 'RB' },
   throw: { kbm: 'RMB', pad: 'LB' },
   use: { kbm: 'E', pad: 'X' },
   action: { kbm: 'SPACE', pad: 'A' },
   reload: { kbm: 'R', pad: 'Y' },
-  pause: { kbm: 'ESC', pad: 'START' },
   confirm: { kbm: 'ENTER', pad: 'A' },
-  restart: { kbm: 'R', pad: 'A' },
-  retry: { kbm: 'R', pad: 'Y' },
+  retry: { kbm: 'R', pad: 'A' },    // the death screen (the pad's Y retries too)
+  restart: { kbm: 'R', pad: 'Y' },  // the results
   menu: { kbm: 'ESC', pad: 'B' },   // the results' way back to the title
 };
 

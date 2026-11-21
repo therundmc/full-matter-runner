@@ -6,7 +6,7 @@
 //     rumble (optional), dead: the pause opened from the death screen (optional) }
 // The navigator answers with plain actions that Game.js applies:
 //   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' (from the
-//   beginning) | 'retry' (after a death: at the last checkpoint, Game.retry) | 'quit'
+//   beginning, Game.restart) | 'retry' (after a death: at the last checkpoint or room, Game.retry) | 'quit'
 //   | 'reset' | 'replayTutorial'
 // Items: { label, page } opens a sub-page, { label, act } fires an action, { label, slider: key, value },
 // { label, toggle: key, value }, { label, choice: key, value, options, show } one of a few values (`show`: what is
