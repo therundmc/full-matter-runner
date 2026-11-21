@@ -49,7 +49,7 @@ import { cuesOn } from './render/Readability.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
 import { POST } from './data/post.js';
-import { quality, setQuality, levelOf, QualityWatch } from './systems/Quality.js';
+import { quality, setQuality, qualityLevel, QualityWatch } from './systems/Quality.js';
 import { devMode, devParam, DEV_KEYS } from './data/build.js';
 import Perf from './systems/Perf.js';
 import { PROF } from '../engine/Profiler.js';
@@ -59,8 +59,9 @@ import { bakedBytes } from './render/MapRenderer.js';
 import { carFxBytes } from './render/CarFxArt.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
-// results, play <-> pause; the tutorial ends play -> fall -> the next level's intro; a chase with more to come ends
-// play -> continued (TO BE CONTINUED, ui/Screens.js drawContinued) -> results
+// results -> [hitlist ->] the next level's intro (or the title); play / dead <-> pause; the tutorial ends play -> fall
+// -> the next level's intro; a chase with more to come ends play -> continued (TO BE CONTINUED, ui/Screens.js
+// drawContinued) -> results
 // (the title and the pause are the menu: ui/Menu.js for its pages, ui/MenuArt.js for its picture)
 const VOLUMES = ['master', 'music', 'sfx', 'ambience'];
 // ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room;
@@ -147,9 +148,6 @@ export default class Game {
       extra: () => ({ sprites: { cvs: spriteBytes().bytes }, 'retry cache': { cvs: bakedBytes() }, 'car clouds': { cvs: carFxBytes() } }),
     });
     this.steps = 0;                    // simulation steps run this frame
-    // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
-    const mark = devParam('mark');
-    if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
     // the kill cam (systems/KillCam.js), but for ?killcam=off (a developer's switch, to compare)
     this.killCamOn = killcamOn(devParam('killcam'));
     // the picture between two steps, but for ?interp=off (a developer's switch, to compare: drawn as stepped)
@@ -227,7 +225,7 @@ export default class Game {
   // The QUALITY option put in force (data/quality.js): what the renderers read from now on, and the scene's size
   // with it (fit). AUTO goes on from the level it had settled on.
   applyQuality() {
-    this.watch.level = setQuality(levelOf(this.settings)).level;
+    this.watch.level = setQuality(qualityLevel(this.settings)).level;
     this.watch.rest();
     this.resize();
   }
@@ -243,7 +241,8 @@ export default class Game {
     this.save();
   }
 
-  // the aim's setting as the world reads it: LOCK's floor chevron (render/AimArt.js)
+  // the aim's setting as the world's picture reads it: LOCK's floor chevron (render/AimArt.js only); set before every
+  // frame the world is drawn (paint), so that the option changed in the pause shows at once
   aimTo(world) {
     world.aimMark = !!this.settings.aimMark;
   }
@@ -308,11 +307,12 @@ export default class Game {
   // CONTINUE: the furthest level opened
   continueGame() { this.startLevel(urlLevel() || latest(this.progress, has) || this.firstLevel()); }
 
-  // the current level again from its beginning (RESTART in the pause, Backspace)
-  newGame() { this.startLevel(this.levelId || urlLevel() || this.firstLevel(), { retry: true }); }
+  // RESTART: the current level again from its beginning (the pause's RESTART, Backspace in play or dead, R on the
+  // results); the tutorial, taught room by room, still opens on its last room reached (forget)
+  restart() { this.startLevel(this.levelId || urlLevel() || this.firstLevel(), { retry: true }); }
 
-  // a retry after a death (R, the pad's A, a click, RETRY in the death screen's pause): the same level, from the last
-  // checkpoint reached where the level has them (the chase: systems/Checkpoints.js, this.chaseAt)
+  // RETRY, after a death (R, the pad's A / Y, a click, RETRY in the death screen's pause): the same level, from the
+  // last checkpoint reached where the level has them (the chase: systems/Checkpoints.js, this.chaseAt), else its start
   retry() { this.startLevel(this.levelId || urlLevel() || this.firstLevel(), { retry: true, resume: true }); }
 
   // what a new start keeps of the last run: a retry keeps the tutorial's last room reached and its lessons taught; a
@@ -332,7 +332,6 @@ export default class Game {
     this.world = null;   // (nothing here holds the old world while the new one is built: it can be collected then)
     this.interp.still(); // (its bodies held there would keep the old world, all its buffers, alive through the new one)
     this.world = new World(this, LEVELS[this.levelId]);
-    this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
     // he gets up off the ground (takes the gun off the car's seat) the first time only: a retry starts on his feet (with
     // the gun in hand), at once
@@ -392,7 +391,7 @@ export default class Game {
   }
 
   // out of the tutorial by the window: a moment of slow motion (he lands in a roll) going black, then the leap seen
-  // from the alley (he falls, rolls, gets up and goes), and the next level opens on him three weeks later
+  // from the alley (he falls, rolls, gets up and goes), and the next level opens on him the next day (ui/cine/Leap.js)
   onTutorialEnd() {
     this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
@@ -524,11 +523,11 @@ export default class Game {
   pause() {
     this.input.padLost = this.input.focusLost = false;
     if (this.state === 'play') this.world.player.interrupt?.();
-    const from = { state: this.state, t: this.stateT };
+    // (what it was opened from first: the pause's page reads it, RETRY or RESUME)
+    this.pausedFrom = { state: this.state, t: this.stateT };
     this.menu.reset('pause');
     this.pick.reset();
     this.setState('pause');
-    this.pausedFrom = from;
   }
   // back to what the pause was opened from (the death screen where it was)
   resume() {
@@ -593,7 +592,9 @@ export default class Game {
     if (inp.hit('F8')) { inp.pressed.delete('F8'); this.perf.cycle(); }
     if (this.state === 'hitlist') {
       // the hit list between two levels: the marker crosses the dead man out (heard from the picture, HitList.js),
-      // then a key or a click goes on to the next level, or to the menu after the last
+      // then a key or a click goes on to the next level, or to the menu after the last; the menu's music under it
+      Music.setTrack(MENU_TRACK);
+      Music.setIntensity(0);
       const go = ['Enter', 'NumpadEnter', 'Space', 'Escape', 'PadB'].some((c) => inp.hit(c)) || inp.mouseHit(0);
       if (go && this.stateT > 1) {
         const next = this.after;
@@ -616,14 +617,14 @@ export default class Game {
       return;
     }
     if (this.state === 'pause') {
-      // (R / Y restart from the pause's own page only: not from its options)
+      // (R / Y from the pause's own page only, not from its options: RETRY over the death screen, else RESTART)
       // (a line confirmed is pressed down for a beat, then does what it says: nothing else is heard meanwhile)
       const root = () => this.menu.stack[0].sel;
       if (this.pick.busy) {
         if (this.pick.update(dt, root())) { const a = this.menu.activate(); if (a) this.applyMenu(a); }
-      } else if (this.menu.depth === 0 && inp.hit('KeyR')) { if (this.pausedFrom?.state === 'dead') this.retry(); else this.newGame(); }
+      } else if (this.menu.depth === 0 && inp.hit('KeyR')) { if (this.pausedFrom?.state === 'dead') this.retry(); else this.restart(); }
       else {
-        if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
+        this.toggleVision(inp);
         this.updateMenu(inp);
         if (this.state === 'pause') this.pick.update(dt, root());
       }
@@ -670,9 +671,9 @@ export default class Game {
       return;
     }
 
-    // play / dead / outro: run the simulation (R reloads while alive, retries once dead; Backspace restarts anytime,
-    // from the beginning)
-    if (inp.hit('Backspace')) { this.newGame(); inp.consume(); return; }
+    // play / dead / fall / outro / continued: run the simulation (R reloads while alive, retries once dead; Backspace
+    // restarts from the beginning, in play or dead only: never over a level already finished)
+    if ((this.state === 'play' || this.state === 'dead') && inp.hit('Backspace')) { this.restart(); inp.consume(); return; }
     if (this.state === 'dead' && inp.hit('KeyR')) { this.retry(); inp.consume(); return; }
     if (this.state === 'fall' && this.stateT >= FALLEN) {
       // the leap: the world is no longer seen and waits; SPACE held goes on to the next level
@@ -690,9 +691,10 @@ export default class Game {
     }
     const outro = this.state === 'outro' || this.state === 'fall' || this.state === 'continued'; // the world plays on by itself
     if (this.state === 'continued') {
-      // TO BE CONTINUED: a fresh key or a click passes it once it is up, else the results follow by themselves
+      // TO BE CONTINUED: skipped like a comic page once it is up, by HOLDING SPACE / pad A (ui/cine/Hold.js), never by
+      // a key, a stick's step or a click still going from the drive; else the results follow by themselves
       const v = finishView(this.stateT);
-      const skip = v.skip && (inp.pressed.size > 0 || inp.mouseHit(0));
+      const skip = v.skip && this.holdSkip(dt);
       if (skip || v.over) { inp.consume(); this.showResults(); return; }
     }
     if (this.state === 'outro') {
@@ -710,7 +712,7 @@ export default class Game {
       inp.consume();
       return;
     }
-    // once dead: R and the pad's A / Y restart at once, a click after a moment (he may have died clicking)
+    // once dead: the pad's A retries at once (R / Y: above), a click after a moment (he may have died clicking)
     if (this.state === 'dead' && (inp.hit('PadA') || (this.stateT > 0.5 && inp.mouseHit(0)))) { this.retry(); inp.consume(); return; }
     this.padAim(dt);
 
@@ -783,14 +785,14 @@ export default class Game {
   // a comic page is skipped by holding SPACE (a pad's A: bound to it, data/controls.js), nothing else (ui/cine/Hold.js)
   holdSkip(dt) { return this.skip.update(dt, this.input.down('Space') || this.input.down('PadA')); }
 
-  // the results (ui/Results.js): R / Y retries; ENTER / SPACE / A / a click first fills the screen at once, then goes
+  // the results (ui/Results.js): R / Y restarts the level; ENTER / SPACE / A / a click first fills the screen at once, then goes
   // on to the next level (the menu after the last); ESC / START / B go to the menu. Its ticks and stamp are heard here.
   updateResults(inp) {
     const r = this.results, end = resultsTimeline(r).end, key = (...codes) => codes.some((c) => inp.hit(c));
     for (const b of resultsBeats(r, this.resultsT ?? 0, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
     this.resultsT = this.stateT;
     const go = key('Enter', 'NumpadEnter', 'Space') || inp.mouseHit(0);
-    if (key('KeyR')) this.newGame();
+    if (key('KeyR')) this.restart();
     else if (this.stateT > 0.3 && key('Escape', 'PadB')) this.toTitle();
     else if (go && this.stateT < end) { this.stateT = end; this.resultsT = end; }
     else if (go && this.stateT > 0.3) {
@@ -844,9 +846,12 @@ export default class Game {
     inp.mouse.y = at.y;
   }
 
+  // debug: F2 shows what the guards see (in play, and from the pause)
+  toggleVision(inp) { if (inp.hit('F2')) this.world.showVision = !this.world.showVision; }
+
   // read once per simulation step (key presses live until a step consumes them)
   debugKeys(inp, aim) {
-    if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
+    this.toggleVision(inp);
     if (inp.hit('F3')) this.overview = !this.overview;
     if (inp.hit('F4')) this.world.debugPhysics = !this.world.debugPhysics;
     this.sandbox.update(inp, aim, this.time);
@@ -864,7 +869,7 @@ export default class Game {
     const { x, y } = inp.mouse, dx = x - this.lastMouse.x, moved = dx !== 0 || y !== this.lastMouse.y;
     this.lastMouse = { x, y };
     const rects = this.menuRects, at = rects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
-    const on = (r) => r.page ?? nav.top.id;   // the page a rect's item is on (the title's and the pause's: the top one)
+    const on = (r) => r.page;   // the page a rect's item is on (menuDrawn: one drawn for a page no longer on top is not the new one's)
     const key = (...codes) => codes.some((c) => inp.hit(c));
     // a gamepad's RB / RT play the left button: they do not click in a menu (A does)
     const click = inp.device !== 'pad' && inp.mouseHit(0);
@@ -883,7 +888,7 @@ export default class Game {
       const r = rects.find((q) => q.i === this.grab && on(q) === nav.top.id), it = nav.page.items[this.grab];
       if (!r?.track || !it?.slider) this.grab = null;
       else if (inp.mouseDown(0)) this.setSetting(it.slider, Math.round(clamp((x - r.track.x) / r.track.w, 0, 1) * 100) / 100, false);
-      else { saveSettings(this.settings); this.audible(it.slider); if (it.slider === 'rumble') this.rumble.sample(); this.grab = null; }
+      else { this.save(); this.audible(it.slider); if (it.slider === 'rumble') this.rumble.sample(); this.grab = null; }
     } else {
       if (this.pointed(at, moved, dx)) nav.point(on(at), at.i);
       if (click) {
@@ -930,11 +935,19 @@ export default class Game {
       case 'start': this.startLevel(a.level); return true;
       case 'replayTutorial': this.startLevel('tutorial'); return true;
       case 'resume': this.resume(); return true;
-      case 'restart': this.newGame(); return true;
+      case 'restart': this.restart(); return true;
       case 'retry': this.retry(); return true;
       case 'quit': this.toTitle(); return true;
       default: return false;
     }
+  }
+
+  // The rects of the menu's items as drawn (ui/MenuArt.js, ui/title/Title.js), each told the page it was drawn for
+  // (OPTIONS' sheets say theirs, the rest are the top page's): the next frame's updateMenu never takes a rect of a page
+  // that has left the top for an item of the new one
+  menuDrawn(rects) {
+    const top = this.menu.top.id;
+    return (rects || []).map((r) => (r.page ? r : { ...r, page: top }));
   }
 
   // a volume changed: heard at its new level (the music speaks for itself)
@@ -1026,7 +1039,7 @@ export default class Game {
     if (inWorld) this.world.cues = cuesOn(this.state, !!this.world.tutorial?.scene); // render/Readability.js
     if (inWorld) this.aimTo(this.world);
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
-    else if (!inWorld) this.safeDraw(ctx, () => { this.titleRects = drawTitle(ctx, W, H, this.stateT, this.titleView()); });
+    else if (!inWorld) this.safeDraw(ctx, () => { this.titleRects = this.menuDrawn(drawTitle(ctx, W, H, this.stateT, this.titleView())); });
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));
     else if (this.state === 'fall' && this.stateT >= FALLEN) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALLEN));
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
@@ -1148,11 +1161,12 @@ export default class Game {
         ctx.globalAlpha = 1;
       }
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.death, this.input.device);
-      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, { pick: this.pick, card: pauseCard(this.levelId, this.world.level, this.world), bare: ctx === this.ctx });
+      if (this.state === 'pause') this.menuRects = this.menuDrawn(drawMenu(ctx, W, H, t, this.menu, { pick: this.pick, card: pauseCard(this.levelId, this.world.level, this.world), bare: ctx === this.ctx }));
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
       if (this.state === 'continued') drawContinued(ctx, W, H, finishView(this.stateT), this.world.level.chase.next, t);
       if (this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN)) drawHold(ctx, W, H, this.skip, this.input.device);
+      if (this.state === 'continued' && finishView(this.stateT).skip) drawHold(ctx, W, H, this.skip, this.input.device); // 2A's end
       if (this.state === 'play' && this.world?.drive?.drag?.on) drawHold(ctx, W, H, this.skip, this.input.device); // 2A's opening
       if (this.state === 'outro') drawHold(ctx, W, H, this.skip, this.input.device); // the getaway
     });
@@ -1229,12 +1243,11 @@ export default class Game {
     if (this.input.device === 'pad' && !(this.state === 'play' && this.padAimAt)) return;
     const { x, y } = this.input.mouse;
     const s = this.canvas.height / 720;
-    // at the wheel, out of his arc (systems/CarGun.js): a still grey cross, his gun cannot point there
-    const gun = this.state === 'play' && this.world?.drive?.on ? this.world.drive.gun : null, off = gun?.aimed && !gun.aimed.ok;
-    // in play the cue is in the world (LOCK, render/AimArt.js); the mouse keeps a small dot where it is, the
-    // gamepad's stick has no point to show
+    // in play the cue is in the world (LOCK, render/AimArt.js); the mouse keeps a small dot where it is, grey at the
+    // wheel out of his gun's arc (systems/CarGun.js; AimArt offArc draws the rest); the gamepad's stick has no point
     if (this.state === 'play') {
       if (this.input.device === 'pad') return;
+      const gun = this.world?.drive?.on ? this.world.drive.gun : null, off = gun?.aimed && !gun.aimed.ok;
       const r = Math.max(1, Math.round(AIM.dot.r * s)), e = Math.max(1, Math.round(AIM.dot.edge * s));
       ctx.fillStyle = AIM.ink;
       ctx.fillRect(Math.round(x) - r - e, Math.round(y) - r - e, (r + e) * 2, (r + e) * 2);
@@ -1242,11 +1255,12 @@ export default class Game {
       ctx.fillRect(Math.round(x) - r, Math.round(y) - r, r * 2, r * 2);
       return;
     }
-    const r = (off ? 8 : 9 + Math.sin(t * 8) * 1.5) * s;
+    // in the menus and screens: a neon cross, turning
+    const r = (9 + Math.sin(t * 8) * 1.5) * s;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(off ? Math.PI / 4 : t * 1.5);
-    for (const [col, lw] of [[PALETTE.ink, 5 * s], [off ? '#8a8494' : neon(t, 4), 2.5 * s]]) {
+    ctx.rotate(t * 1.5);
+    for (const [col, lw] of [[PALETTE.ink, 5 * s], [neon(t, 4), 2.5 * s]]) {
       ctx.strokeStyle = col;
       ctx.lineWidth = lw;
       ctx.beginPath();

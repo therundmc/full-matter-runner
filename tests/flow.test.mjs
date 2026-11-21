@@ -3,6 +3,9 @@
 // the death screen.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { load } from './setup.mjs';
 
 const { default: Input } = await load('engine/Input.js');
@@ -136,4 +139,148 @@ test('game: pause and resume go back to the state the pause was opened from, the
   Game.prototype.resume.call(g);
   assert.equal(g.state, 'play');
   assert.ok(calls.includes('hold'));
+});
+
+// ---------------------------------------------------------------- Game.advance, state by state, on a fake input
+// A game with only what advance reads before the world's step: the actions it takes are recorded, and reaching the
+// step (padAim, its first call there) ends the frame ('sim').
+const { default: HoldSkip } = await load('game/ui/cine/Hold.js');
+const { CHASE } = await load('game/data/chase.js');
+const { SKIP } = await load('game/data/staging.js');
+const { DEV_KEYS } = await load('game/data/build.js');
+const SIM = new Error('the world steps');
+function harness(state, stateT = 0) {
+  const g = Object.create(Game.prototype), calls = [];
+  Object.assign(g, {
+    input: new Input(null, { pads: () => [] }), state, stateT, dev: true, skip: new HoldSkip(), paged: false, time: 0,
+    levelId: 'tutorial', world: { level: { chase: { next: 'THE GAS STATION' } }, outro: { car: { exploded: false } } }, calls,
+  });
+  for (const m of ['restart', 'retry', 'showResults', 'endOutro', 'startLevel', 'completeLevel', 'pause', 'clearScreen']) g[m] = () => calls.push(m);
+  g.padAim = () => { throw SIM; };
+  return g;
+}
+// one frame of dt s: keys pressed this frame, keys held, a click; 'sim' when it went on to the world's step
+function frame(g, { hit = [], held = [], click = false, dt = 1 / 60 } = {}) {
+  const inp = g.input;
+  inp.keys = new Set(held);
+  for (const k of hit) inp.pressed.add(k);
+  if (click) inp.mouse.clicked[0] = true;
+  let out = 'done';
+  try { g.advance(dt); } catch (e) { if (e !== SIM) throw e; out = 'sim'; }
+  inp.consume();
+  g.stateT += dt;
+  return out;
+}
+
+test('game: Backspace restarts in play and dead only, never over a level already finished', () => {
+  for (const s of ['play', 'dead']) {
+    const g = harness(s, 1);
+    frame(g, { hit: ['Backspace'] });
+    assert.deepEqual(g.calls, ['restart'], s);
+  }
+  for (const [s, t] of [['outro', 0.5], ['continued', 0.5], ['fall', 0.1]]) {
+    const g = harness(s, t);
+    assert.equal(frame(g, { hit: ['Backspace'] }), 'sim', `${s}: the world plays on`);
+    assert.ok(!g.calls.includes('restart'), s);
+  }
+  // the tutorial's leap, on its page: it still goes on to the next level, finished
+  const g = harness('fall', 60);
+  frame(g, { hit: ['Backspace'] });
+  assert.deepEqual(g.calls.filter((c) => c !== 'clearScreen'), ['completeLevel', 'startLevel']);
+});
+
+test('game: TO BE CONTINUED is skipped by holding SPACE once it is up, never by a key, a stick\'s step or a click', () => {
+  const F = CHASE.finish, g = harness('continued', F.skipAfter + 0.05);
+  for (const hit of [['NavDown'], ['KeyD'], ['Enter'], ['PadA']]) assert.equal(frame(g, { hit, held: ['KeyD'], click: true }), 'sim', hit[0]);
+  assert.ok(!g.calls.includes('showResults'));
+  // SPACE still down from the drive (a shove) when it came up: let go first
+  const h = harness('continued', F.skipAfter - 0.5);
+  while (h.stateT < F.skipAfter + SKIP.hold * 2) frame(h, { held: ['Space'] });
+  assert.ok(!h.calls.includes('showResults'), 'a SPACE still down from the drive');
+  frame(h);
+  let n = 0;
+  while (!h.calls.includes('showResults') && n++ < 200) frame(h, { held: ['Space'] });
+  assert.ok(h.calls.includes('showResults'), 'held: on to the results');
+  assert.ok(n / 60 >= SKIP.hold - 0.02 && h.stateT < F.hold, 'after the hold, before it ends by itself');
+  // left alone, the results follow by themselves
+  const k = harness('continued', F.hold);
+  frame(k);
+  assert.deepEqual(k.calls, ['showResults']);
+});
+
+test('game: the pause\'s page reads what it was opened from (RETRY over the death screen)', () => {
+  const seen = [];
+  const g = Object.assign(Object.create(Game.prototype), {
+    state: 'dead', stateT: 2, input: { padLost: false, focusLost: false, holdMouse() {} }, pick: { reset() {} }, skip: { reset() {} }, world: { player: {} },
+  });
+  g.menu = new Menu('main', () => {
+    seen.push(g.pausedFrom?.state);
+    return { settings: {}, progress: { done: [], unlocked: ['tutorial'] }, best: () => null, levels: [], dead: g.pausedFrom?.state === 'dead' };
+  });
+  seen.length = 0;
+  g.pause();
+  assert.ok(seen.length > 0 && seen.every((s) => s === 'dead'), 'the page was built knowing it');
+  assert.equal(g.menu.item.label, 'RETRY');
+});
+
+// a game with what updateMenu reads, on a real menu (its actions recorded, not applied)
+function menuGame(root, settings = {}) {
+  const g = Object.assign(Object.create(Game.prototype), {
+    input: new Input(null, { pads: () => [] }), state: 'title', time: 0, grab: null, lastMouse: { x: 0, y: 0 }, dwell: null,
+    settings: { master: 1, music: 1, sfx: 1, ambience: 1, shake: 1, rumble: 1, ...settings }, fullChoice: false,
+    pick: { press() {} }, rumble: { sample() {}, tick() {} }, menuRects: [], applied: [],
+  });
+  g.menu = new Menu(root, () => ({ settings: g.settings, progress: { done: [], unlocked: ['tutorial'] }, best: () => null, levels: [] }));
+  g.applyMenu = (a) => { g.applied.push(a); return false; };
+  return g;
+}
+
+test('game: a slider let go saves the player\'s fullscreen choice, never the browser\'s state', () => {
+  const was = globalThis.localStorage;
+  globalThis.localStorage = memory();
+  try {
+    const g = menuGame('audio', { master: 0.4, fullscreen: true }); // in fullscreen now, never chosen: the browser's
+    g.grab = 0;
+    g.menuRects = [{ i: 0, page: 'audio', x: 0, y: 0, w: 100, h: 10, track: { x: 0, w: 100 } }];
+    g.updateMenu(g.input); // the button is up: the drag is over
+    assert.equal(g.grab, null);
+    const kept = JSON.parse(globalThis.localStorage.getItem('fmr.settings.v1'));
+    assert.equal(kept.master, 0.4);
+    assert.equal(kept.fullscreen, false, 'fullChoice, as save() keeps it');
+  } finally {
+    if (was === undefined) delete globalThis.localStorage; else globalThis.localStorage = was;
+  }
+});
+
+test('game: a menu rect drawn for a page that has left the top is never taken for an item of the new one', () => {
+  const g = menuGame('main');
+  // drawn for the title's first page (untagged: menuDrawn says which); OPTIONS' own rects keep their page
+  const rects = g.menuDrawn([{ i: 1, x: 0, y: 0, w: 50, h: 20 }, { i: 0, page: 'audio', x: 0, y: 40, w: 50, h: 20 }]);
+  assert.deepEqual(rects.map((r) => r.page), ['main', 'audio']);
+  g.menuRects = rects;
+  g.menu.open('options'); // the page changed after that draw
+  const before = JSON.stringify(g.menu.stack);
+  g.input.mouse.x = 10; g.input.mouse.y = 10; g.input.mouse.clicked[0] = true;
+  g.updateMenu(g.input);
+  assert.equal(JSON.stringify(g.menu.stack), before, 'OPTIONS\' item 1 not clicked through a rect of the first page');
+  assert.deepEqual(g.applied, []);
+  // drawn again for OPTIONS, the same spot clicks its item
+  g.menuRects = g.menuDrawn([{ i: 1, x: 0, y: 0, w: 50, h: 20 }]);
+  g.input.consume();
+  g.input.mouse.clicked[0] = true;
+  g.updateMenu(g.input);
+  assert.equal(g.menu.top.id, 'video', 'VIDEO\'s sheet entered');
+});
+
+test('build: DEV_KEYS holds every function key the game reads, so that a release build ignores them all', () => {
+  const read = new Set(), walk = (dir) => {
+    for (const f of readdirSync(dir)) {
+      const p = join(dir, f);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (f.endsWith('.js')) for (const m of readFileSync(p, 'utf8').matchAll(/(?:hit|down)\('(F\d+)'\)/g)) read.add(m[1]);
+    }
+  };
+  walk(fileURLToPath(new URL('../src', import.meta.url)));
+  assert.ok(read.size >= 5, [...read].join(' '));
+  for (const k of read) assert.ok(DEV_KEYS.includes(k), `${k} is read but not a developer's key`);
 });
