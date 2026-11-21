@@ -384,6 +384,9 @@ src/
       player/             the same for Player: Throw, Shield (the human shield), Sliding (the slide and its kick, a
                           vault into a man), Execution (finishing a man on the floor), Takedown (taken down unseen);
                           Hands (what they share)
+      prop/               the same for Prop: Hits (marks, tears, splashes, damage zones, sawn in two), Contents
+                          (screens, bottles, spills, leaks, a table tipped over, doors, wires), Wreck (damage states,
+                          collapse, its parts shed), Look (shadow, doors, parts, what hangs overhead)
       anim/               CharacterAnim's poses beside the standing one: Traverse (vault, ladder, roll, slide, kick),
                           Seat (at a wheel, the Uzi grabbed, sat on the ground, the swig), Chores (at his post, a dancer,
                           a trunk, a hand on a door or a lock, a broken weapon), Finish (executions), Takedown (both
@@ -632,7 +635,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   lows driven less), clean out of a fight. A riser, a reversed cymbal and a snare roll announce
   the fight at once, the combat form takes over on the next bar line, plays at least `MIN_FIGHT_BARS`, and hands
   back through a closing bar (fill) to the song's break. Sections end on fills and reversed cymbals into crashes.
-- Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
+- Prop destruction (entities/Prop.js and entities/prop/, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
   - every hit paints a mark at the real impact point into the prop's own canvas (so it moves with it): 9 mm holes,
     pellet pocks, 7.62 entry + exit blow-out (Penetration exit point and remaining energy), grazing furrows / metal
     scrapes / ricochets, blunt dents with radiating cracks, knife slashes across the swing, blast scorch + shrapnel.

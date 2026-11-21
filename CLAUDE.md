@@ -328,7 +328,8 @@
   heavy objects use `world.physics.freezeIfHeavy(body)`.
 - Enemy and Player are composed of modules of functions of the instance (`me` first): entities/enemy/ (Senses, Word,
   Search, Calm, Post, Nerve, Combat, Arms, Moves, Look, States) and entities/player/ (Throw, Shield, Sliding,
-  Execution, Takedown, Hands); CharacterAnim's other poses live in entities/anim/ over Rig and are re-exported by it.
+  Execution, Takedown, Hands); Prop likewise (entities/prop/: Hits, Contents, Wreck, Look); CharacterAnim's other
+  poses live in entities/anim/ over Rig and are re-exported by it.
   New behaviour goes in the module of its kind; a one-line delegate on the class only when it is used outside it.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - A car in trouble (systems/CarFx.js, numbers `CARFX` in data/carfx.js; LOOKS ONLY, never a body a car can touch):
