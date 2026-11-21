@@ -328,10 +328,3 @@ export function gritDrive(g, G = GRIT) {
   const makeup = rms((x) => x) / rms((x) => gritCurve(pre * x));
   return { pre, wet, dry: 1 - wet, makeup, tone: G.tone[0] + (G.tone[1] - G.tone[0]) * g };
 }
-
-// the jukebox's band (an old slow rock): bass (R root, F fifth, O octave), two tune lines taken in turn (digits:
-// chord tones upward), drums
-export const JUKE = {
-  bass: 'R.....F.R...F.O.', tunes: ['3...2.3.4...2...', '4.3.2...3.4.5...', '2...3.4.3...1...', '5...4.3.2.3.4...'],
-  drums: [['kick', '9.......7.9.....'], ['snare', '....8.......8...'], ['hat', '5.3.5.3.5.3.5.3.']],
-};
