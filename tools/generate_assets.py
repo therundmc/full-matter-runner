@@ -92,7 +92,6 @@ GORE_OL = hx('#2a0812')
 CLEAR = (0, 0, 0, 0)
 
 BLOOD = ramp('#a3101e', 0.5, 0.28, 0.25)
-BLOOD_POOL = hx('#7a0a16')
 FLESH = hx('#e8687e')
 FLESH_L = hx('#ff9fb0')
 BONE = hx('#f2ead2')
@@ -1037,126 +1036,6 @@ def face_px(ch, u, v, L, r):
         if u < -0.6 and abs(v) > r - 1.3:
             return ch['skin'][max(0, i - 1)]     # the jowls
     return ch['skin'][i]
-
-
-def sleeve_col(ch, k_, L, side):
-    i = tidx(L)
-    if ch['kind'] == 'brute':
-        return ch['skin'][i]
-    if ch['kind'] == 'heavy' and abs(side) < 0.3:
-        return WHITE[max(1, i)]
-    return ch['top'][i]
-
-
-POSE_DEAD = dict(torso=(15.0, 11.4, -0.1, 4.6, 4.8), head_ang=-0.38, head_r=3.6,
-                 arms=[[(21.0, 3.2), (25.6, 2.0)], [(17.4, 19.2), (12.6, 19.6)]],
-                 legs=[[(11.0, 9.0), (7.0, 5.8), (3.0, 3.6)], [(11.0, 13.6), (7.6, 16.2), (4.0, 18.6)]])
-
-
-def splat(cv, cx, cy, rx, ry, rng, ragged=0.35, cols=None):
-    cols = cols or (BLOOD_POOL, BLOOD[1], BLOOD[2])
-    for y in range(int(cy - ry - 2), int(cy + ry + 3)):
-        for x in range(int(cx - rx - 2), int(cx + rx + 3)):
-            e = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2
-            if e <= 1.0 - ragged * rng.random() + ragged * 0.5:
-                c = cols[0] if e > 0.55 else cols[1]
-                cv.set(x, y, c)
-    cv.set(int(cx - rx * 0.3), int(cy - ry * 0.3), cols[2])
-
-
-def draw_body(ch, w, h, pose, dead=False, headless=False, seed=0):
-    rng = random.Random(1337 + seed)
-    cv = Cv(w, h)
-    tcx, tcy, tang, thx, thy = pose['torso']
-    neck = rot(tcx, tcy, tang, thx + 0.2, 0)
-    ha = pose['head_ang']
-    hr = pose['head_r']
-    hcx, hcy = neck[0] + math.cos(ha) * (hr - 0.5), neck[1] + math.sin(ha) * (hr - 0.5)
-
-    blood = Cv(w, h)
-    if dead and not headless:
-        splat(blood, hcx + 0.8, hcy + 1.2, hr + 1.4, hr + 0.6, rng)
-    if headless:
-        splat(blood, neck[0] + 1.6, neck[1] + 0.4, 2.6, 2.4, rng)
-        for _ in range(9):
-            a = ha + rng.uniform(-1.0, 1.0)
-            d = rng.uniform(3.0, 8.0)
-            x, y = neck[0] + math.cos(a) * d, neck[1] + math.sin(a) * d
-            blood.set(x, y, BLOOD[rng.choice([1, 2, 2])])
-            if rng.random() < 0.4:
-                blood.set(x + 1, y, BLOOD[1])
-    cv.over(blood)
-    if ch['kind'] == 'player':
-        cv.over(coat_spread(ch, w, h, tcx, tcy, tang, thx - 0.8, thy, 9.0, 4.4))
-
-    # legs + shoes
-    legs = Cv(w, h)
-    for leg in pose['legs']:
-        fill_capsule(legs, leg, 1.55, lambda k, L, s, i, t: tone(ch['pants'], L))
-    for leg in pose['legs']:
-        (ax, ay), (bx, by) = leg[-2], leg[-1]
-        a = math.atan2(by - ay, bx - ax)
-        fx, fy = bx + math.cos(a) * 0.4, by + math.sin(a) * 0.4
-        fill_shape(legs, fx, fy, 1.5, 1.45, lambda u, v, L: tone(ch['shoe'], L), ang=a)
-    legs.outline()
-    cv.over(legs)
-
-    # torso
-    torso = Cv(w, h)
-    fill_shape(torso, tcx, tcy, thx, thy, lambda u, v, L: chest_px(ch, u, v, L, thx, thy),
-               ang=tang, kind='rect', bevel=2.2, corner=1.6, taper=0.22)
-    if headless:
-        def stump(u, v, L):
-            d = math.hypot(u / 1.25, v / 2.0)
-            if d < 0.35:
-                return BONE
-            if d < 0.6:
-                return FLESH_L if L > 0.7 else FLESH
-            return BLOOD[2] if d < 0.85 else BLOOD[1]
-        sx, sy = rot(tcx, tcy, tang, thx - 0.2, 0)
-        fill_shape(torso, sx, sy, 1.6, 2.4, stump, ang=tang)
-        for (du, dv) in [(1.3, -1.6), (1.4, 0.8), (1.0, 2.2), (1.2, -0.4)]:
-            px_, py_ = rot(sx, sy, tang, du, dv)
-            torso.set(px_, py_, BLOOD[rng.choice([1, 2])])
-    torso.outline()
-    cv.over(torso)
-
-    # arms + hands
-    arms = Cv(w, h)
-    for sgn, arm in zip((-1, 1), pose['arms']):
-        sh = rot(tcx, tcy, tang, thx - 1.4, sgn * (thy - 0.7))
-        pts = [sh] + arm
-        fill_capsule(arms, pts[:-1] + [pts[-1]], 1.15,
-                     lambda k, L, s, i, t: sleeve_col(ch, k, L, s))
-    for arm in pose['arms']:
-        hx_, hy_ = arm[-1]
-        fill_shape(arms, hx_, hy_, 1.3, 1.3, lambda u, v, L: tone(ch['skin'], L))
-    arms.outline()
-    cv.over(arms)
-
-    if not headless:
-        head = Cv(w, h)
-        fill_shape(head, hcx, hcy, hr, hr, lambda u, v, L: face_px(ch, u, v, L, hr), ang=ha, pad=0.05)
-        k = ch['kind']
-        if k == 'player':
-            for vv in (-2.0, 0.0, 2.0):
-                head.set(*rot(hcx, hcy, ha, hr + 0.5, vv), ch['hair'][2])
-        eye = hx('#2a1420')
-        for vv in (-1.5, 1.5):
-            ex, ey = rot(hcx, hcy, ha, 0.1, vv)
-            head.set(ex, ey, eye)
-        if k == 'player':
-            # his scarf, pulled down off his mouth
-            for vv in (-1.5, -0.5, 0.5, 1.5):
-                head.set(*rot(hcx, hcy, ha, -3.0, vv), ch['lining'][1])
-        mx, my = rot(hcx, hcy, ha, -2.0, 0.2)
-        head.set(mx, my, BLOOD[0] if dead else dk(ch['skin'][1], 0.3))
-        if dead:
-            head.set(*rot(hcx, hcy, ha, -2.0, 1.2), BLOOD[2])
-            head.set(*rot(hcx, hcy, ha, 0.9, -0.6), BLOOD[2])
-        head.outline()
-        cv.over(head)
-    return cv
 
 
 def coat_spread(ch, w, h, cx, cy, ang, hip, half, length, flare):
@@ -15734,8 +15613,6 @@ def build():
         out[(g, cid + '_torso')] = draw_torso(ch)
         out[(g, cid + '_head')] = draw_head(ch)
         out[(g, cid + '_down')] = knocked_down(ch)
-        out[(g, cid + '_dead0')] = draw_body(ch, 30, 22, POSE_DEAD, dead=True, seed=i)
-        out[(g, cid + '_dead1')] = draw_body(ch, 30, 22, POSE_DEAD, dead=True, headless=True, seed=i)
         out[(g, cid + '_gib_head')] = gib_head(ch)
         out[(g, cid + '_gib_arm')] = gib_arm(ch)
         out[(g, cid + '_gib_leg')] = gib_leg(ch)
@@ -18335,7 +18212,7 @@ def fine(fn, name):
     return r
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (40, 40)), ('_head', (HEAD_W, HEAD_H)), ('_down', (51, 49)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_head', (HEAD_W, HEAD_H)), ('_down', (51, 49)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (17, 19)), ('_rag_head', (10, 10)), ('_rag_arm', (17, 6)), ('_rag_leg', (20, 7)),
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]

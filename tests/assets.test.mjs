@@ -54,7 +54,7 @@ test('assets: every look a level gives a guard, and every civilian look, has its
   assert.ok(FINE.test('characters/cueball_head_hurt'));
   for (const kind of [...Object.values(level1.looks), ...Object.keys(CIVILIAN_LOOKS)]) {
     assert.ok(KINDS[kind] || CIVILIAN_LOOKS[kind], kind);
-    for (const part of ['torso', 'head', 'dead0', 'rag_torso', 'gib_head']) assert.ok(png(`characters/${kind}_${part}`).w > 0, `${kind}_${part}`);
+    for (const part of ['torso', 'head', 'rag_torso', 'gib_head']) assert.ok(png(`characters/${kind}_${part}`).w > 0, `${kind}_${part}`);
   }
   // the customers of the bar are each his own man
   const patrons = level1.ambient.patrons.map((p) => p[0]).filter((k) => k !== 'tramp');
