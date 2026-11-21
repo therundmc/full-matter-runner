@@ -138,7 +138,7 @@ export function reliefSpot(map, props, x, y) {
     let best = null, bd = REACH * 1.2;
     for (const p of props) {
       const d = Math.hypot(p.x - x, p.y - y);
-      if (p.type === 'urinal' && !p.dead && d < bd) { bd = d; best = p; }
+      if (p.def?.use === 'urinal' && !p.dead && d < bd) { bd = d; best = p; }
     }
     if (best) {
       const f = best.body.angle + Math.PI / 2; // the way it faces, off its wall
@@ -146,7 +146,7 @@ export function reliefSpot(map, props, x, y) {
     }
     for (const p of props) {
       const d = Math.hypot(p.x - x, p.y - y);
-      if (p.type === 'toilet' && !p.dead && d < bd) { bd = d; best = p; }
+      if (p.def?.use === 'toilet' && !p.dead && d < bd) { bd = d; best = p; }
     }
     if (!best) return null;
     const a = Math.round(Math.atan2(y - best.y, x - best.x) / (Math.PI / 2)) * (Math.PI / 2);

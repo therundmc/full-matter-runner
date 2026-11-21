@@ -16,12 +16,15 @@
 // height = how high a pole's or a ceiling's thing sits, as parallax (fraction of its distance to the centre of the
 // view; the other mounts have none: data/mounts.js parallaxOf);
 // pole = [colour, width] of the post drawn from its foot to its head. sign = animated neon lettering (render/Lighting.js).
+// use = what people use it for, as the AI looks for it (never by its type's name): 'urinal', 'toilet' (ai/Pastimes.js
+// reliefSpot), 'washer', 'arcade' (a customer working his machine: entities/Civilian.js), 'seat' (the chair a
+// customer gets up from: systems/Ambient.js).
 
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
   table_round: { static: true, vault: true, material: 'wood', r: 14, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true, flips: 'table_round_flipped' },
   desk: { static: true, vault: true, material: 'wood', w: 46, h: 24, hp: 14, chips: '#6a4026', sound: 'wood', blocksPath: true, sparks: true },
-  chair: { material: 'wood', w: 14, h: 14, hp: 6, kg: 5, mu: 0.42, chips: '#7a4a2a', sound: 'wood' },
+  chair: { use: 'seat', material: 'wood', w: 14, h: 14, hp: 6, kg: 5, mu: 0.42, chips: '#7a4a2a', sound: 'wood' },
   armchair: { static: true, material: 'fabric', w: 26, h: 26, hp: 10, chips: '#9a1f2a', sound: 'wood' },
   sofa: { static: true, vault: true, material: 'fabric', w: 64, h: 28, hp: 14, chips: '#c04a8a', sound: 'wood', blocksPath: true },
   plant: { material: 'ceramic', r: 7.5, hp: 4, kg: 18, mu: 0.5, chips: '#3a8a3a', dirt: true, sound: 'wood' },
@@ -47,12 +50,12 @@ export const PROPS = {
   // a laundromat's plastic basket, a load of washing in it (level 1: the man doing his laundry)
   laundry_basket: { material: 'plastic', w: 18, h: 13, hp: 4, kg: 4, mu: 0.55, chips: '#3a86c8', sound: 'wood' },
   // a wall urinal (the wall behind it) and the partition between two toilets (its bracket end on the wall)
-  urinal: { material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
+  urinal: { use: 'urinal', material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
   stall: { material: 'wood', w: 4, h: 48, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },
-  toilet: { material: 'ceramic', w: 13, h: 21, hp: 6, static: true, chips: '#eee', sound: 'glass', water: true, blocksPath: true },
+  toilet: { use: 'toilet', material: 'ceramic', w: 13, h: 21, hp: 6, static: true, chips: '#eee', sound: 'glass', water: true, blocksPath: true },
   bed: { static: true, vault: true, material: 'fabric', w: 44, h: 64, hp: 18, chips: '#7a3aa0', sound: 'wood', blocksPath: true },
   pool_table: { static: true, vault: true, material: 'wood', w: 80, h: 44, hp: 28, chips: '#1e7a3a', sound: 'wood', blocksPath: true },
-  arcade: { static: true, material: 'plastic', w: 22, h: 27, hp: 10, chips: '#333', sparks: true, glass: true, sound: 'metal', blocksPath: true,
+  arcade: { use: 'arcade', static: true, material: 'plastic', w: 22, h: 27, hp: 10, chips: '#333', sparks: true, glass: true, sound: 'metal', blocksPath: true,
     light: { r: 64, color: '#3ae8ff', intensity: 0.7, flicker: 'tv', y: 6 } },
   crate: { vault: true, material: 'wood', w: 19, h: 19, hp: 8, kg: 45, mu: 0.5, chips: '#a07040', sound: 'wood' },
   barrel: { material: 'metal', r: 9, hp: 1, kg: 176, mu: 0.4, chips: '#c02020', explosive: true, blast: 92, sound: 'metal' },
@@ -129,7 +132,7 @@ export const PROPS = {
   bottle_shelf: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
   // the bar's own bottles, racked on the wall behind the counter (a shallow shelf: the bartender walks past it)
   back_bar: { static: true, material: 'wood', w: 40, h: 8, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
-  washer: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sound: 'metal', blocksPath: true },
+  washer: { use: 'washer', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sound: 'metal', blocksPath: true },
   // a closed shop's alarm (level `alarms`, systems/Alarms.js): shot off the wall, it shuts up
   alarm_box: { mount: 'wall', fixture: true, static: true, material: 'metal', w: 10, h: 5, hp: 3, chips: '#c4c8ce', sparks: true, sound: 'metal' },
   // the house's fuse box on an outside wall (level `power`, systems/Power.js): smashed, the lights go out inside

@@ -504,7 +504,7 @@ export default class Ambient {
     const w = this.world, L = A.leave, r = this.r, { x, y, face } = civ.post;
     let chair = null, best = L.chair;
     for (const p of w.props) {
-      const d = p.type === 'chair' && !p.dead ? Math.hypot(p.x - x, p.y - y) : Infinity;
+      const d = p.def?.use === 'seat' && !p.dead ? Math.hypot(p.x - x, p.y - y) : Infinity;
       if (d < best) { best = d; chair = p; }
     }
     if (chair) {

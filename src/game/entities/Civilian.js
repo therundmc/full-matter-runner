@@ -49,18 +49,18 @@ export const crouchScale = (crouch) => 1 - Math.min(Math.max(0, crouch), BALL) *
 // one he empties) and the one beside it at his right (the pile on its lid). Searched once, within MACHINE px.
 const MACHINE = 44;
 function findMachines(ch, kind) {
-  const c = Math.cos(ch.post.face), s = Math.sin(ch.post.face), near = (type, fwd, side) => {
+  const c = Math.cos(ch.post.face), s = Math.sin(ch.post.face), near = (use, fwd, side) => {
     const x = ch.post.x + c * fwd - s * side, y = ch.post.y + s * fwd + c * side;
     let best = null, bd = MACHINE;
     for (const p of ch.world.props) {
-      const d = p.type === type && !p.dead ? Math.hypot(p.x - x, p.y - y) : Infinity;
+      const d = p.def?.use === use && !p.dead ? Math.hypot(p.x - x, p.y - y) : Infinity;
       if (d < bd) { bd = d; best = p; }
     }
     return best;
   };
   if (kind === 'arcade') return { cab: near('arcade', 16, 0) };
   const drum = near('washer', 22, 0);
-  const pile = ch.world.props.find((p) => p.type === 'washer' && p !== drum && !p.dead && Math.hypot(p.x - (ch.post.x + c * 22 - s * 23), p.y - (ch.post.y + s * 22 + c * 23)) < 14) || null;
+  const pile = ch.world.props.find((p) => p.def?.use === 'washer' && p !== drum && !p.dead && Math.hypot(p.x - (ch.post.x + c * 22 - s * 23), p.y - (ch.post.y + s * 22 + c * 23)) < 14) || null;
   return { drum, pile };
 }
 

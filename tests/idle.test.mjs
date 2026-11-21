@@ -91,7 +91,7 @@ test('relief: against the nearest wall out in a yard, at the toilet on bathroom 
   assert.ok(Math.abs(Math.abs(y.face) - Math.PI) < 1e-6 || Math.abs(y.face - Math.PI) < 1e-6, 'faces the west wall');
   assert.ok(y.x > TILE && y.x < TILE + 16 && y.y === at(1, 2)[1], 'a step from it');
   // the bathroom: in front of the toilet that still stands, facing it
-  const props = [{ type: 'toilet', x: 6.5 * TILE, y: 1.3 * TILE, dead: true }, { type: 'toilet', x: 7.5 * TILE, y: 1.3 * TILE },
+  const props = [{ type: 'toilet', def: { use: 'toilet' }, x: 6.5 * TILE, y: 1.3 * TILE, dead: true }, { type: 'toilet', def: { use: 'toilet' }, x: 7.5 * TILE, y: 1.3 * TILE },
     { type: 'sink', x: 5.5 * TILE, y: 1.3 * TILE }];
   const b = reliefSpot(map, props, ...at(7, 2));
   assert.ok(b && !b.wall);
