@@ -211,7 +211,7 @@
 - ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN`: the stages of data/campaign.js in a row, made or not; the made stage
   after a done one is open, an old save too; `levelDone`: a level is done when its last made stage is; best results
   are kept by stage, `levelBest`)
-  and systems/Settings.js in localStorage; `Game.startLevel(id)`, `newGame()`, `?level=<id>` forces a level.
+  and systems/Settings.js in localStorage; `Game.startLevel(id)`, `restart()` (RESTART: the level from its beginning) and `retry()` (RETRY: from its checkpoint or room), `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
   next night, at the bar. The three men (CUEBALL, LUCKY, JITTERS: tools/comic/STYLE.md) are his targets: CUEBALL is
@@ -306,10 +306,10 @@
   builds) flips it to compare. QUALITY (OPTIONS / VIDEO: AUTO / LOW / MEDIUM / HIGH, data/quality.js, systems/Quality.js
   `quality()`) says what is drawn; looks only, never gameplay.
 - Release switch: src/game/data/build.js `BUILD.release` (false while developing): true for a shipped build turns the
-  debug keys, `window.game` and the URL switches (`?level=`, `?killcam=`, `?mark=`, `?post=`) off unless `?dev=1`
+  debug keys, `window.game` and the URL switches (`?level=`, `?killcam=`, `?interp=`, `?post=`) off unless `?dev=1`
   (`devMode`, `devParam`); the QA robot and tools/shot.mjs need it false. A run where a sandbox cheat was used is never a record.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off (dev only, no option). The aim cue is LOCK (the user's pick; data/aim.js `AIM.lock`, render/AimArt.js, no style to choose; lab station 23 AIM; its mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`), F8 perf overlay (OFF / COMPACT / FULL: frame, CPU per section, GPU, memory by owner, world
+  times), F6 lens on / off (dev only, no option). The aim cue is LOCK (the user's pick; data/aim.js `AIM.lock`, render/AimArt.js, no style to choose; lab station 23 AIM; its mark on the man: the corner ticks, `AIM.lock.corners`; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`), F8 perf overlay (OFF / COMPACT / FULL: frame, CPU per section, GPU, memory by owner, world
   counts; systems/Perf.js, ui/PerfOverlay.js, engine/Profiler.js `PROF` guarded by `PROF.on`; `game.perf.snapshot()`).
   `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node

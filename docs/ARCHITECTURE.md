@@ -347,12 +347,11 @@ src/
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       AimArt.js           the aim's cue, LOCK (data/aim.js), over the lighting, told by systems/AimCue.js (the line
                           of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in Game.padAim); the
-                          mouse keeps a dot (Game.drawCursor). LOCK is worn stencil paint: a chevron
-                          on the floor along the aim only with the AIM MARK option (World.aimMark, Settings
-                          `aimMark`, off by default), a mark round the man it takes (AIM.lock.mark;
-                          `?mark=ring|tick|point|corners` to compare), and the vault's mark in the same paint
-                          (`drawVaultMark`, AIM.hop); the pixels and their wear come from systems/AimMark.js
-                          (pure, deterministic per mark: no flicker)
+                          mouse keeps a dot (Game.drawCursor). LOCK: corner ticks round the man it takes
+                          (AIM.lock.corners) and, only with the AIM MARK option (World.aimMark, Settings `aimMark`,
+                          off by default), a chevron of worn stencil paint on the floor along the aim; the vault's
+                          mark in the same paint (`drawVaultMark`, AIM.hop); the pixels and their wear come from
+                          systems/AimMark.js (pure, deterministic per mark: no flicker)
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
