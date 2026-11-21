@@ -4,7 +4,7 @@
 // total, then the grade is stamped down, a new record flashes, and the prompts come up (retry, next level, menu).
 // The timeline and its sounds are pure (resultsTimeline, resultsBeats: unit-tested); drawResults paints a moment of it.
 import { PALETTE } from '../Config.js';
-import { clamp, hash } from '../../engine/math.js';
+import { clamp, hash, easeOut as ease } from '../../engine/math.js';
 import { text, glitchText, thousands, clock, fitSize } from './Text.js';
 import { drawPrompts } from './Glyphs.js';
 
@@ -21,7 +21,6 @@ export const RESULTS = {
 const GRADE_COLOR = { S: PALETTE.yellow, A: PALETTE.pink, B: PALETTE.cyan, C: PALETTE.white, D: '#8a7f96' };
 const GREY = '#8a7f96';
 
-const ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
 
 // when each beat of the results comes (s from the start of the screen)
 export function resultsTimeline(r, R = RESULTS) {

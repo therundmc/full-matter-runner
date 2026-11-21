@@ -134,8 +134,8 @@
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
   guard up close with free hands snatches his gun (`SNATCH` in data/feel.js).
 - Human shield (the user's design: systems/Shield.js rules, `SHIELD` in data/feel.js, Player.startShield /
-  updateShield): E / pad X behind a STANDING guard only (never one down) with empty hands or a one-handed weapon
-  (`oneHanded`) takes him in a choke hold (CharacterAnim `drawPair`: the two painted as one pair in layers, the arm
+  updateShield in entities/player/Shield.js): E / pad X behind a STANDING guard only (never one down) with empty hands or a one-handed weapon
+  (`oneHanded`) takes him in a choke hold (CharacterAnim `drawPair`, entities/anim/Shield.js: the two painted as one pair in layers, the arm
   round his neck, numbers `SHIELD.pose`; he is carried at the pair's speed so his legs walk it: never put there with
   no velocity); held in front, he stops rounds, pellets and thrown things from the front arc (3 hits, his corpse 2
   more), never a blow; the player walks slower, no SPACE; a click fires over his shoulder (empty hands: the neck, a
@@ -143,7 +143,7 @@
   right click / LB throws him (held: aimed), knocking down whom he hits; gunmen hold their fire a moment, brutes less,
   blades flank; bare hands take his pistol as they take him. Taught in the tutorial on the gunman by the corridor's
   fire door (wave trigger `shield`: two gunmen come up the stairs); lab station 29.
-- Finishers / takedowns per weapon: data/finishers.js (`CharacterAnim.execPose`); kill tags `SCORING.tags` +
+- Finishers / takedowns per weapon: data/finishers.js (`CharacterAnim.execPose`, entities/anim/Finish.js); kill tags `SCORING.tags` +
   `Scoring.killTags`, fed by the `how` of `kill`; a body that does not crawl may twitch (`THROES`, data/wounds.js).
 - Ways to die: a rare crawl ON HIS BELLY (about one in ten, `crawl` odds, `CRAWL`, fx/CrawlPose.js), `curl`, `SPASM`
   (fx/DyingPose.js), `BEHEAD`; a body thrown at a wall stays sat against it (Ragdoll `propUp`, `SIT`).
@@ -151,10 +151,10 @@
 - Guards ignore an unarmed player outside the level's `premises` (Director.isThreat). A stranger who acts up is
   challenged before being fought (ai/Conduct.js, data/conduct.js). Guards remember jams and replan (ai/Nav.js).
 - Bar life: guards at their `jobs`, `ambient.patrons` who panic each his own way (`AMBIENT.panic`), weapons carried
-  away / low / raised (ai/Carry.js), pastimes (ai/Pastimes.js, Enemy.pickActivity), hands busy (`busyHands()`); a
+  away / low / raised (ai/Carry.js), pastimes (ai/Pastimes.js, Enemy.pickActivity in entities/enemy/Calm.js), hands busy (`busyHands()`); a
   customer at the arcade and a man at his washing work their machine (`arcadeAt`, `laundryAt`, Civilian.atMachine).
 - Guards may start bare-handed (level `arms`, levelkit `actor(arms=...)`): their weapon kept somewhere (a bat behind
-  a counter, against a wall, the cue), fetched once the fight is on (Enemy.armsDue / armUp, AI.arms), or a brawler
+  a counter, against a wall, the cue), fetched once the fight is on (Enemy.armsDue / armUp in entities/enemy/Arms.js, AI.arms), or a brawler
   ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
 - Kill cam (systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, its lens `POST.killcam`): a zoom punch-in, slow motion that drops and snaps back, hit-stops on his violent kills, finishers, long chains and their end; a plain kill gets nothing; never at the wheel or in a staged shot; `?killcam=off` to compare; lab station 28.
 - At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
@@ -193,7 +193,7 @@
   get out (the QA robot reports `guard-stuck`).
 - The getaway is THE BOSS's convertible (model `convertible`, entities/Vehicle.js: `seat`, `door`, `cabin`, `hat`;
   systems/Outro.js, numbers data/outro.js `OUTRO`): he vaults the door into the seat (anyone can be sat at a wheel: `Vehicle.seatIn`,
-  CharacterAnim `seatPose`, `ch.riding`, data/feel.js `SEAT`), the key, the wheelspin and its rubber, then
+  CharacterAnim `seatPose` in entities/anim/Seat.js, `ch.riding`, data/feel.js `SEAT`), the key, the wheelspin and its rubber, then
   `exit.route` (the path of the point `OUTRO.pivot` ahead of its middle; `exit.slide`: the share of the slide a
   bend) and the hat off the rear seat at the first hard swing; the boss's Uzi lies on the passenger seat (Vehicle
   `gun`, drawn by the car: not pickable in level 1, it is level 2A's gun). It cannot be destroyed (`armoured`). The car is 5.4 m
@@ -237,7 +237,7 @@
   GAS BOTTLE standing by it (prop `propane`, lab station 35: kept for the end, `prop.staged`: no round or fire sets
   it off before), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). The living room is a forced way: a lane one metre wide between two burning trails (builder
+  Enemy.drawTail in entities/enemy/Look.js, his name card). The living room is a forced way: a lane one metre wide between two burning trails (builder
   `LANE`, kept clear by the stages' `keep`), the big table across its end before the kitchen door: the vault (round it
   is through the fire). Two men come up the stairs, no more; during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched EMPTY (`FORCE`, stage `snatch`, `leaves` 0):
@@ -330,6 +330,11 @@
 - Physics: give every dynamic body kg + mu (`setMaterial`) and a `material`; read velocities with
   `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz); use `impulse()` (momentum) for hits/blasts;
   heavy objects use `world.physics.freezeIfHeavy(body)`.
+- Enemy and Player are composed of modules of functions of the instance (`me` first): entities/enemy/ (Senses, Word,
+  Search, Calm, Post, Nerve, Combat, Arms, Moves, Look, States) and entities/player/ (Throw, Shield, Sliding,
+  Execution, Takedown, Hands); Prop likewise (entities/prop/: Hits, Contents, Wreck, Look); CharacterAnim's other
+  poses live in entities/anim/ over Rig and are re-exported by it.
+  New behaviour goes in the module of its kind; a one-line delegate on the class only when it is used outside it.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - A car in trouble (systems/CarFx.js, numbers `CARFX` in data/carfx.js; LOOKS ONLY, never a body a car can touch):
   engine smoke by damage stage through Smoke.lay plus the billows seen at night (render/CarFxArt.js), sparks for as

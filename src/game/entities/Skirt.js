@@ -5,7 +5,7 @@
 // stride; standing still it hangs as a short hem. Cosmetic only: it has no body and touches no hit circle.
 // Numbers: data/feel.js COAT.
 import { COAT } from '../data/feel.js';
-import { clamp, lerp, angDiff } from '../../engine/math.js';
+import { clamp, lerp, angDiff, damped } from '../../engine/math.js';
 
 const TAU = Math.PI * 2;
 const num = (v) => (Number.isFinite(v) ? v : 0);
@@ -30,7 +30,7 @@ export function stepSkirt(S, back, vx, vy, phase, dt, tuck = 0, spread = 0) {
   const goal = back + (k > 0 ? clamp(angDiff(back, Math.atan2(-vy, -vx)), -COAT.trail, COAT.trail) * k : 0);
   if (S.w === null || !Number.isFinite(S.w) || !Number.isFinite(S.v)) { S.w = goal; S.v = 0; }
   // a damped spring on the angle (semi-implicit: stable for the steps it is given)
-  S.v += (COAT.freq * COAT.freq * angDiff(S.w, goal) - 2 * COAT.damp * COAT.freq * S.v) * dt;
+  S.v = damped(S.v, angDiff(S.w, goal), COAT.freq, COAT.damp, dt);
   S.w += S.v * dt;
   // it cannot wrap round him: held within `swing` of straight behind
   let r = angDiff(back, S.w);

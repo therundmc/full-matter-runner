@@ -9,7 +9,7 @@ import { KILLFEED, BREAK } from '../data/feel.js';
 import { drawIndicators } from './Indicators.js';
 import { drawPrompts } from './Glyphs.js';
 import { keyLabel } from '../data/controls.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, easeOut } from '../../engine/math.js';
 import { CHASE } from '../data/chase.js';
 
 // how much of the HUD is there (1 but while it comes in: level 2A's opening has none, it fades in as the car pulls
@@ -176,7 +176,7 @@ export function underRoad(m, W, pad, s) {
 // crooked like the level's card and TO BE CONTINUED, a pink rule drawn out under it
 function drawPart(ctx, v, W, pad, s, t) {
   if (!v) return;
-  const ease = (k) => 1 - (1 - k) ** 3, k = ease(v.k), y = pad + 62 * s, a = FADE * v.a;
+  const k = easeOut(v.k), y = pad + 62 * s, a = FADE * v.a;
   text(ctx, 'CHECKPOINT', W / 2, y - 18 * s, 11 * s, PALETTE.pink, { alpha: a * k * 0.9 });
   text(ctx, v.name, W / 2, y, 26 * s * (1 + (1 - k) * 0.6), PALETTE.white, { alpha: a * clamp(v.k * 2, 0, 1), rot: -0.035 });
   ctx.fillStyle = PALETTE.pink;

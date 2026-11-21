@@ -81,8 +81,11 @@ src/
       Ballistics.js       traceBullet, lineOfSight, occlusion (blast transmission)
       Rng.js              the world's GAMEPLAY dice (`world.rng`, made first in World, seeded once from Math.random so
                           the QA seed reaches it): what decides the game rolls them (pursuers' slots and cooldowns, a
-                          wreck's fire, guards' reactions, hearing, aim error and spread, pastimes, the director's
-                          nerves); what only looks keeps Math.random (`dice(world)`; a stub world: Math.random)
+                          wreck's fire, guards' reactions, hearing, aim error and spread, timers, tactics, dodges,
+                          glances, pastimes, nerve, the director's nerves, a passer-by's sidestep and time down); what
+                          only looks or is only heard keeps Math.random (sparks, blood, a bark's line and whether it is
+                          said, `seed`) (`dice(world)`; a stub world: Math.random). The street's traffic and passers-by
+                          (systems/Ambient.js, ai/Civilians.js) roll their own dice seeded from the level's name
       Route.js            the chase's route (level `chase`: legs and scripted bends, distances along it, bendStep);
                           `checkRoute(chase)`: what is wrong with one (run by tools/build_level2a.py and the tests)
       RoutePath.js        a route's line (straight lines, corners rounded off): the chase's bends, level 1's getaway
@@ -398,6 +401,29 @@ src/
                           kind level `looks` draws him as), Civilian, Prop (a billboard's face: Board), Vehicle, Door, Window, Debris, Ragdoll,
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per
                           gun family: data/feel.js `recoil`; pure, unit-tested)
+      enemy/              the guard's behaviour, functions of the guard (`me`) that Enemy delegates to (the class keeps
+                          his state, his step `update` with one behaviour per state, his knock-down and his drawing):
+                          Senses (sight, hearing, the meter, evidence, footprints), Word (a word with a stranger),
+                          Search (the squad's orders, the suspicious states, the hunt), Calm (at ease, on his round,
+                          his pastimes, his hands, his weapon put away), Post (his job at his post: routine, seat,
+                          posture, spots, what the phases give off), Nerve (giving up, betrayal, going for help),
+                          Combat (tactics, aim, fire, holding it), Arms (his weapon kept somewhere, fetched, picked up),
+                          Moves (paths, jams, giving way, doorways, turning), Look (what is drawn besides his body);
+                          States (the states and the sets they share). A method used only inside its module is a plain
+                          function there; the rest keep a one-line delegate on the class (subclasses such as Boss
+                          override those, tests call them)
+      player/             the same for Player: Throw, Shield (the human shield), Sliding (the slide and its kick, a
+                          vault into a man), Execution (finishing a man on the floor), Takedown (taken down unseen);
+                          Hands (what they share)
+      prop/               the same for Prop: Hits (marks, tears, splashes, damage zones, sawn in two), Contents
+                          (screens, bottles, spills, leaks, a table tipped over, doors, wires), Wreck (damage states,
+                          collapse, its parts shed), Look (shadow, doors, parts, what hangs overhead)
+      anim/               CharacterAnim's poses beside the standing one: Traverse (vault, ladder, roll, slide, kick),
+                          Seat (at a wheel, the Uzi grabbed, sat on the ground, the swig), Chores (at his post, a dancer,
+                          a trunk, a hand on a door or a lock, a broken weapon), Finish (executions), Takedown (both
+                          poses), Shield (the pair), Down (on his knees, knocked down, getting up: drawDown), over Rig
+                          (the limbs, the hand holds, the muzzle, the legs' key frames, the painted parts, the scratch
+                          points: a leaf, so no cycle reaches a const before it is set); CharacterAnim re-exports them
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
                           TraversalFx (the player's flourish on a vault, a slide, a landing, a roll)
                           Casings (a spent case out of the ejection port, to the gun's right: speed, spin, hops, the
@@ -641,7 +667,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   lows driven less), clean out of a fight. A riser, a reversed cymbal and a snare roll announce
   the fight at once, the combat form takes over on the next bar line, plays at least `MIN_FIGHT_BARS`, and hands
   back through a closing bar (fill) to the song's break. Sections end on fills and reversed cymbals into crashes.
-- Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
+- Prop destruction (entities/Prop.js and entities/prop/, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
   - every hit paints a mark at the real impact point into the prop's own canvas (so it moves with it): 9 mm holes,
     pellet pocks, 7.62 entry + exit blow-out (Penetration exit point and remaining energy), grazing furrows / metal
     scrapes / ricochets, blunt dents with radiating cracks, knife slashes across the swing, blast scorch + shrapnel.
@@ -773,7 +799,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   lines `BARKS.chat`) and a leak (`reliefSpot`: a wall of the yard, a toilet; it leaves a puddle). Any character
   may define `busyHands()` (hands taken by something else than the weapon or the walk: guards' and patrons'
   pastimes, a passer-by's pockets or bag, hands up in a panic), read by `standPose`.
-- Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, head turn, feet, hands, weapon,
+- Animation (entities/CharacterAnim.js: newPose, standPose, the painting drawPose / paintPose; the other poses in
+  entities/anim/, re-exported by it): each frame a pose (torso offset/angle/scale, head turn, feet, hands, weapon,
   as offsets from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended
   over it so every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and
   exit speeds. The gait (entities/Gait.js, `GAIT`) is a real one: cadence and stride grow with the speed (a walk
@@ -985,7 +1012,8 @@ the others who saw it only glance at the stranger (`Enemy.glanceAt`: the head tu
 let off is remembered `memory` s (his next word opens at the warning). His gauge shows his patience running out, a
 third per stage. A gun in hand is no matter for words: it is a threat, as before.
 
-- **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
+- **Guard** (`entities/Enemy.js`, his behaviour in `entities/enemy/`: `Enemy.perceive` is enemy/Senses.js
+  `perceive`, `Enemy.doCombat` / `plan` / the `t*` tactics enemy/Combat.js, and so on), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
   pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /
   `investigate` / `check` (body, knocked-out mate, wreckage, empty post) / `search` / `guard` / `dizzy`;
   alert `combat` / `hunt` / `fetch` (pick a weapon up) / `flee` (unarmed: run to an armed mate) / `backup` (run

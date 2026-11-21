@@ -10,9 +10,13 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 export const frac = (v) => v - Math.floor(v);
 // r = [a, b]: the point k of the way from a to b
 export const lerpRange = (r, k) => r[0] + (r[1] - r[0]) * k;
-// smoothstep of k clamped to 0..1; the smoother quintic (k not clamped)
+// smoothstep of k clamped to 0..1; the smoother quintic (k not clamped); the cubic ease out of k clamped to 0..1
 export const smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 export const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+export const easeOut = (k) => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+// a damped spring's speed after h s (semi-implicit Euler: move it by the speed returned): v pulled by the offset d
+// to its rest (an angle's: angDiff), w its frequency (rad/s), z its damping ratio
+export const damped = (v, d, w, z, h) => v + (w * w * d - 2 * z * w * v) * h;
 // one arch of a sine over k in [a, b], 0 outside
 export const bump = (k, a = 0, b = 1) => (k <= a || k >= b ? 0 : Math.sin((Math.PI * (k - a)) / (b - a)));
 

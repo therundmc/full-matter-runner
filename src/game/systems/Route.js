@@ -17,7 +17,7 @@
 // anchored at (x0, s0): a point x on it is s0 + (x - x0) along the route; in a bend it is the bend's s0 + p - pivot
 // (p: px along its line of the point `pivot` px ahead of the car's middle, the one that keeps to it).
 import { TILE } from '../Config.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, smooth } from '../../engine/math.js';
 import { CHASE } from '../data/chase.js';
 import { routePath } from './RoutePath.js';
 
@@ -130,7 +130,7 @@ function bendPose(st, b, dt = 0, C = CHASE.bend) {
   const q = b.path.at(st.p), [k, d] = C.spring, want = (q.turn || 0) * C.slip * clamp(st.v / b.speed, 0, 1);
   st.slipV += ((want - st.slip) * k - st.slipV * d) * dt;
   st.slip += st.slipV * dt;
-  const m = clamp((st.p - st.p0) / C.merge, 0, 1), off = st.off0 * (1 - m * m * (3 - 2 * m));
+  const m = clamp((st.p - st.p0) / C.merge, 0, 1), off = st.off0 * (1 - smooth(m));
   const a = q.a + st.slip, nx = -Math.sin(q.a), ny = Math.cos(q.a);
   return { x: q.x + nx * off - Math.cos(a) * C.pivot, y: q.y + ny * off - Math.sin(a) * C.pivot, a, q };
 }

@@ -7,13 +7,12 @@
 // Pose numbers are pose px in her own frame (+x where she faces, +y her right), as in render/PastimeArt.js.
 import { DANCE } from '../data/feel.js';
 import { BODY_SCALE } from '../Config.js';
-import { TAU, clamp, lerp, angDiff, smooth, frac } from '../../engine/math.js';
+import { TAU, clamp, lerp, angDiff, smooth, smoother, frac } from '../../engine/math.js';
 
 const R = DANCE.routine;
 const LOOP = R.reduce((n, m) => n + m.beats, 0);
 const START = [];
 for (let i = 0, b = 0; i < R.length; b += R[i++].beats) START.push(b);
-const smoother = (k) => { k = clamp(k, 0, 1); return k * k * k * (k * (k * 6 - 15) + 10); };
 const mod = (v, n) => ((v % n) + n) % n;
 
 export { LOOP };

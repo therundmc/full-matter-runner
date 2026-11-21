@@ -9,10 +9,9 @@
 // in the air and its ember on the road). The butt is no body: nothing meets it.
 // DOM-free but for the butt left on the road (painted through the world's decals).
 import { CHASE } from '../data/chase.js';
-import { clamp, rand } from '../../engine/math.js';
+import { clamp, rand, smooth } from '../../engine/math.js';
 import { spriteOpt, drawSprite } from '../../engine/Assets.js';
 
-const smooth = (u) => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
 
 // ---------------------------------------------------------------- pure
 // The beat t s in: { mouth: 0..1 the hand at his mouth, flare: 0..1 the ember in the drag, breath: he lets the smoke

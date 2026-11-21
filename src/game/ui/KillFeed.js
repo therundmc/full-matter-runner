@@ -6,9 +6,8 @@
 // side is render/WorldRenderer.drawStamps and ui/HUD.js. DOM-free.
 import { KILLFEED } from '../data/feel.js';
 import { SCORING } from '../data/scoring.js';
-import { clamp, lerp } from '../../engine/math.js';
+import { clamp, lerp, easeOut as ease } from '../../engine/math.js';
 
-const ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
 
 // the colour tier of a chain: an index into cfg.tiers, or cfg.tiers.length at the top multiplier (neon)
 export function tierOf(combo, multiplier, cfg = KILLFEED, rules = SCORING.combo) {
