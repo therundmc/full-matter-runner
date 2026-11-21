@@ -277,7 +277,7 @@ test('shield: his own rounds go past the man he holds', () => {
   const shots = [];
   w.addProjectile = (pr) => shots.push(pr);
   w.fx = null;
-  p.muzzlePos = () => ({ x: 14, y: 6, a: 0 });
+  p.stepMuzzle = p.muzzlePos = () => ({ x: 14, y: 6, a: 0 });
   p.eject = noop;
   p.weapon.mag = 3;
   try { p.fire(WEAPONS.pistol); } catch { /* the flash needs a real world: the round is out already */ }

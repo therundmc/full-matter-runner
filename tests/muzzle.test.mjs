@@ -218,3 +218,20 @@ test('muzzle: a pistol is held out in both hands, on its grip up to the trigger 
     assert.ok(guard > 0, `${id}: the hands stop short of the trigger guard`);
   }
 });
+
+test('muzzle: a man never drawn (off the picture, headless) fires from his barrel in the pose of the step, as a draw would note it', () => {
+  for (const [id, d] of GUNS) {
+    const man = () => {
+      const { def, ...st } = standing(d);
+      return Object.assign(Object.create(Character.prototype), st, { weapon: { type: id, mag: 1 }, body: { position: { x: 300, y: 120 } }, angle: 0.3, lower: 1, pose: newPose(), pose2: newPose() });
+    };
+    const ch = man();
+    const raised = Character.prototype.muzzlePos.call(ch); // (nothing noted: where it is when raised on a target)
+    const m = ch.stepMuzzle();
+    const drawn = man();
+    drawn.noteMuzzle(standPose(drawn, drawn.pose)); // (what the draw notes)
+    const n = drawn.muzzlePos();
+    assert.ok(Math.hypot(m.x - n.x, m.y - n.y) < 1e-9 && Math.abs(m.a - n.a) < 1e-9, `${id}: the drawn barrel`);
+    assert.ok(Math.hypot(m.x - raised.x, m.y - raised.y) > 1, `${id}: carried low, not where it is raised`);
+  }
+});

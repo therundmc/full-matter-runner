@@ -488,6 +488,14 @@ export default class Character {
     return p;
   }
 
+  // muzzlePos in the pose of this very step (stancePose): what fires or smokes off the picture, or never drawn at all
+  // (headless), does it from his barrel as it is now, not as it was drawn last (or never); the draw that follows
+  // notes the same pose, so the flash and the round stay on the drawn barrel
+  stepMuzzle() {
+    if (this.def.kind === 'gun') this.noteMuzzle(this.stancePose());
+    return this.muzzlePos();
+  }
+
   // the muzzle in the pose he is drawn in (CharacterAnim.muzzleIn), into the aim's frame
   noteMuzzle(P) {
     const d = this.def;
@@ -536,14 +544,14 @@ export default class Character {
   fume(dt) {
     this.barrel = Math.max(0, this.barrel - dt * BARREL.cool);
     if ((this.fumeT -= dt) > 0 || this.barrel < BARREL.from || !this.hasGun) return;
-    const m = this.muzzlePos();
+    const m = this.stepMuzzle();
     this.world.smoke?.wisp(this, m.x, m.y, dt, BARREL.every);
   }
 
   fire(d) {
     const w = this.world;
     const a = this.angle;
-    const enemy = this.team === 'enemy', m = this.muzzlePos();
+    const enemy = this.team === 'enemy', m = this.stepMuzzle();
     for (let i = 0; i < d.pellets; i++) {
       const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
@@ -1006,8 +1014,18 @@ export default class Character {
     else drawPose(ctx, this, P);
   }
 
-  // his pose as he stands now: the stance and whatever he is at over it
+  // his pose as he is drawn now (stancePose), its blow's trail sampled and its muzzle noted
   livePose() {
+    const P = this.stancePose();
+    // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
+    if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
+    this.noteMuzzle(P);
+    return P;
+  }
+
+  // his pose as he stands now: the stance and whatever he is at over it (nothing else touched: the step reads it
+  // too, stepMuzzle)
+  stancePose() {
     const P = standPose(this, this.pose);
     this.ownPose?.(P); // a pose of his own over the stance (Civilian: a dancer's moves)
     // a slide can chain into a vault: the vault blends out of whatever the slide pose was
@@ -1026,9 +1044,6 @@ export default class Character {
     if (this.doorHand) doorHandPose(this, P);
     if (this.lockHand) lockHandPose(this, P);
     if (this.broke && !this.execution && !this.takedown) brokePose(this, P);
-    // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
-    if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
-    this.noteMuzzle(P);
     return P;
   }
 }
