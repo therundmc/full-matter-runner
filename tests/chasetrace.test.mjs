@@ -1,7 +1,7 @@
-// THE CHASE, STEP FOR STEP: scripted runs of level 2A (its real map, props, route and events; Drive, Pursuit,
-// Lorries, Toll and ChaseCam stepped in World.step's order), both dice seeded (Math.random and world.rng), his
-// car's and every pursuer's place, angle and state hashed every step and compared with a recorded trace
-// (tests/fixtures/chase-trace.json). A refactor of the chase code must leave it identical. A deliberate change of
+// THE CHASE, STEP FOR STEP: four scripted 20 s runs of level 2A (its real map, props, route and events; Drive,
+// Pursuit, Lorries, Toll and ChaseCam stepped in World.step's order), both dice seeded (Math.random and world.rng),
+// his car's and every pursuer's place, angle and state hashed every step and compared with a recorded trace
+// (tests/fixtures/chase-trace.json, recorded on the code before the chase was split into systems/drive/ and pursuit/). A refactor of the chase code must leave it identical. A deliberate change of
 // behaviour records it again: CHASE_TRACE_RECORD=1 node --test tests/chasetrace.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -64,7 +64,7 @@ Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined
 };
 
 // just enough of World for the chase on level 2A's real map, its props from col c0 to c1, the dice seeded
-function world(c0, c1, seed) {
+function world(c0, c1, seed, god) {
   const events = new EventBus(), physics = new PhysicsWorld({ events, muAt: () => 1, substeps: 2 });
   const map = new TileMap(level2a.tiles);
   physics.add(map.buildBodies());
@@ -80,7 +80,7 @@ function world(c0, c1, seed) {
   };
   w.player = {
     body, alive: true, hidden: false, angle: 0, isPlayer: true, team: 'player', reloading: 0, reloadDur: 1, world: w,
-    invulnerable: true, weapon: null, ammo: {}, get x() { return body.position.x; }, get y() { return body.position.y; },
+    invulnerable: god, weapon: null, ammo: {}, get x() { return body.position.x; }, get y() { return body.position.y; },
     get def() { return WEAPONS[this.weapon ? this.weapon.type : 'fists']; },
     setWeapon(type, mag) { this.weapon = type ? { type, mag } : null; },
     kill(a, cause, killer) { this.alive = false; w.onKill(this, cause, killer); },
@@ -105,8 +105,8 @@ const keys = () => {
 };
 
 // his convertible at col, row, the seat's gun taken in the beat, the whole chase from there on
-function start(col, row, seed, c1) {
-  const w = world(col - 4, c1, seed), v = vehicle(w, CHASE.vehicle, col * TILE, row * TILE);
+function start(col, row, seed, c1, god) {
+  const w = world(col - 4, c1, seed, god), v = vehicle(w, CHASE.vehicle, col * TILE, row * TILE);
   v.gun = true;
   const chase = { ...C, intro: null, water: null, van: [col, row] };
   w.drive = new Drive(w, chase, v);
@@ -122,6 +122,7 @@ function start(col, row, seed, c1) {
 function script(s, i) {
   const { w, d, P, input, v } = s;
   input.held.clear();
+  if (s.idle) return null; // (hands off: the told shots land)
   const g = w.toll?.guide(v.x, v.y);
   if (g) {
     const u = Math.abs(d.u), stop = (30 * u * u) / CHASE.pull + 4;
@@ -169,7 +170,7 @@ function trace(s, steps) {
     const b = v.body, row = [b.position.x, b.position.y, b.angle, d.v, d.u, d.slip, d.legI, d.dead, d.far];
     for (const c of P.cars) row.push(c.n, c.state, c.slot, c.v.body.position.x, c.v.body.position.y, c.v.body.angle, c.s, c.driver, c.gunman);
     for (const L of w.lorries.list) row.push(L.state, L.p.body.position.x, L.p.body.position.y);
-    row.push(P.tell?.car.n ?? -1, P.tell?.t ?? -1, P.attack?.car.n ?? -1, P.attack?.kind ?? '', P.turn, w.kills.length, w.exited);
+    row.push(P.tell?.car.n ?? -1, P.tell?.t ?? -1, P.attack?.car.n ?? -1, P.attack?.kind ?? '', P.turn, w.kills.length, w.exited, w.killed?.cause ?? '', !!d.coasting);
     const str = row.map(n).join(',');
     hashes.push(hashString(str).toString(16));
     if (i % 60 === 0) samples.push([i, str]);
@@ -178,11 +179,12 @@ function trace(s, steps) {
 }
 
 // a run with both dice seeded (Math.random given back after)
-function run(col, row, seed, c1, steps) {
+function run(col, row, seed, c1, steps, god = true) {
+  const idle = !god;
   const real = Math.random;
   Math.random = seeded(seed * 7919 + 1);
   try {
-    return trace(start(col, row, seed, c1), steps);
+    return trace({ ...start(col, row, seed, c1, god), idle }, steps);
   } finally {
     Math.random = real;
   }
@@ -195,6 +197,8 @@ const RUNS = {
   lorry: () => run(280, C.lanes[1], 3, 445, 1200),
   // the bend onto the on-ramp, the two lanes opening to four, the toll's plaza and its two (20 s)
   ramp: () => run(420, C.lanes[1], 1, 700, 1200),
+  // mortal: hands off the wheel and the gun, a told shot kills him: the car coasts on, stops (20 s)
+  mortal: () => run(100, C.lanes[0], 4, 380, 1200, false),
 };
 
 const recorded = (() => { try { return JSON.parse(readFileSync(FIXTURE, 'utf8')); } catch { return null; } })();
