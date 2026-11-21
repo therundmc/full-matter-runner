@@ -178,7 +178,9 @@ ROOF_GLOW = dict(bulkhead=(56, 30), skylight=(62, 0), skylight_tv=(54, 0))
 
 
 def js(v):
-    return json.dumps(v).replace('"', "'")
+    """JSON in the levels' single quotes (left double-quoted when a string holds an apostrophe)."""
+    s = json.dumps(v)
+    return s if "'" in s else s.replace('"', "'")
 
 
 class Level:
@@ -255,6 +257,12 @@ class Level:
 
     def Y(self, v):
         return round(self._along(v, self.cut_y), 4)
+
+    def drawn_x(self, v):
+        """X's inverse: a level column (after the cuts) in the builder's drawing."""
+        for c in self.cut_x:
+            v += v >= c
+        return v
 
     def at(self, col, row):
         return self.X(col), self.Y(row)
