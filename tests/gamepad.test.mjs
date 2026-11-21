@@ -7,7 +7,7 @@ const { default: Input } = await load('engine/Input.js');
 const { PAD_BINDINGS, PAD_CONTROLS, keyLabel, ACTIONS } = await load('game/data/controls.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
-const { pulls } = await load('game/entities/Player.js');
+const { pulls } = await load('game/entities/player/Hands.js');
 
 // a fake standard-mapping pad: press(name, value), stick(axis pair, x, y); `pads` stands for navigator.getGamepads
 function fakePad() {
