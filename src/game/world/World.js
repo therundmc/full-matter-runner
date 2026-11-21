@@ -433,7 +433,7 @@ export default class World {
   moves(fn) { this.moving.add(fn); }
 
   // the points the world's own systems move by hand: sparks and smoke, rounds, rats and pigeons, the pool balls (on
-  // their table), a car's billows, the streaks of air past his car, the cigarette's smoke and butt (2A's opening),
+  // their table), a car's billows, the streaks of air past his car, the cigarette's smoke, butt and camera point (2A's opening),
   // loose paper, litter. (Each in one list only: Movers)
   movesOwn() {
     this.moves((out) => {
@@ -442,7 +442,7 @@ export default class World {
       const d = this.drive;
       if (d) {
         out.push(d.wind);
-        if (d.drag) { out.push(d.drag.smoke); if (d.drag.butt) out.push([d.drag.butt]); }
+        if (d.drag) { out.push(d.drag.smoke, [d.drag.at]); if (d.drag.butt) out.push([d.drag.butt]); }
       }
     });
   }

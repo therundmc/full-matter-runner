@@ -16,9 +16,9 @@
 // `live`) with the pad in hand (`pad`), but for a menu's tick (ui).
 import { RUMBLE } from '../data/rumble.js';
 import { familyOf } from '../data/feel.js';
+import { clamp01 } from '../../engine/math.js';
 
 const EPS = 1e-3;
-const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0);
 
 // 1 within `near` of (x, y), nothing from `far` on, linear between
 export const fade = (d, near, far) => (d <= near ? 1 : d >= far ? 0 : 1 - (d - near) / (far - near));

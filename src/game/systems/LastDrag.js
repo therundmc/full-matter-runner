@@ -109,7 +109,8 @@ export default class LastDrag {
       if (!ph.held && !this.butt) this.flick();
       // the camera's point: the hood, then him, then the butt
       const him = this.local(0, 0), to = t < I.pan ? this.at : this.butt ? this.butt : him, k = 1 - Math.exp(-I.follow * dt);
-      this.at = { x: this.at.x + (to.x - this.at.x) * k, y: this.at.y + (to.y - this.at.y) * k };
+      this.at.x += (to.x - this.at.x) * k; // (one point, moved in place: drawn between two steps, World.movesOwn)
+      this.at.y += (to.y - this.at.y) * k;
       if (ph.done) this.end();
     }
     this.fly(dt);
