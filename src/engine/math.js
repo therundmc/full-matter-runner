@@ -4,6 +4,8 @@ export const randi = (a, b) => Math.floor(rand(a, b + 1));
 export const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const chance = (p) => Math.random() < p;
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+// v kept to 0..1 (not a number: 0)
+export const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0);
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const frac = (v) => v - Math.floor(v);
 // r = [a, b]: the point k of the way from a to b

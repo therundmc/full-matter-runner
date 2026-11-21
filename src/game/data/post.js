@@ -1,6 +1,6 @@
 // The lens: the last pass of the picture, done on the graphics card (render/PostGL.js), driven by render/Lens.js.
 // The user's rule for it: at rest it is hardly seen (he found a stronger resting look "far too much"); it is a
-// kill, a blast, a slide that it underlines. Keep the resting numbers low and put the punch in the events.
+// kill, a blast that it underlines. Keep the resting numbers low and put the punch in the events.
 // Everything here is a look setting; nothing reads gameplay. Lengths in px are for a 1080 px high picture.
 export const POST = {
   enabled: true,           // false (or ?post=0 in the address): the game draws as before, on its 2D canvas alone
@@ -63,7 +63,6 @@ export const POST = {
     curve: 0.006,          // barrel of the glass (0 = flat)
     scan: 0.06,            // darkness of the scan lines
     mask: 0.02,            // phosphor triads
-    bleed: 0,              // colour running sideways, like tape
     grain: 0.045,
     vignette: 0.6,
     vignetteFrom: 0.45,    // share of the way to the corners where the vignette starts
@@ -73,53 +72,35 @@ export const POST = {
     tape: { bands: 26, rate: 24, shift: 0.11, from: 0.6, roll: 0.006, rollRate: 47 },
   },
 
-  // ---- 7. speed: the picture smears along a slide, a roll, a dive; it streams from the player in slow motion.
-  // OFF (all 0): the user tried the blurs in play and does not like how they look. Same for `tube.bleed` and for
-  // the soft edges below; only the picture behind the results is still blurred.
+  // ---- 7. speed, AT THE WHEEL ONLY (level 2A, systems/Drive.js; the user asked for it there: the street did not
+  // feel fast). On foot nothing smears or streams the picture: the user tried those blurs in play and did not like them.
+  // The EDGES of the picture go with the speed, the road stays as drawn: no blur anywhere, and nothing at all within
+  // band[0] of the middle line (his car, both lanes, who is alongside) nor within car[0] picture heights of his car
+  // wherever it goes (up on a kerb: all of it again from car[1] on). There the scene is drawn 1:1 (Game.fit) and the
+  // lens samples each of its px as it is: no barrel (`tube.curve`), no scan lines (`tube.scan`: they beat with a car
+  // changing lanes under them), no zoom kick, no colour fringe (render/Lens.js `flat`). NOTHING THAT RESAMPLES THE
+  // PICTURE (the user, 2026-11-19: "the cars are deformed at the edges of the screen"): what is left only ADDS to the
+  // picture or dims it, every px of the scene stays where it was drawn:
+  //   lines: streaks of air drawn in the band (the band cut in rows `rows` world px high), on `share` of the rows,
+  //   running back along the road at `run` picture heights a second (each row its own pace and length), bone taking
+  //   the colour of the lights they cross, `glow` at most
+  //   dark: the band darkened by this share
+  // How much of it: none under `from` (share of flat out), all of it flat out, along `curve` (over 1: it comes late:
+  // at 60 km/h about half); eased at `ease` 1/s. A jolt of the car adds to it for an instant (`kick`: by beat of the
+  // world's 'ride' event, dying at `decay` 1/s; no zoom kick: it resampled the whole picture, and the shove is thrown
+  // every second). The speed itself is sold in the world (data/chase.js fx, camera)
   speed: {
-    slide: 0, roll: 0, dive: 0, slow: 0, ease: 9,   // picture heights; ease 1/s
-    // AT THE WHEEL ONLY (level 2A, systems/Drive.js; the user asked for it there: the street did not feel fast). The
-    // EDGES of the picture go with the speed, the road stays as drawn: no blur anywhere, and nothing at all within
-    // band[0] of the middle line (his car, both lanes, who is alongside) nor within car[0] picture heights of his
-    // car wherever it goes (up on a kerb: all of it again from car[1] on). There the scene is drawn 1:1 (Game.fit)
-    // and the lens samples each of its px as it is: no barrel (`tube.curve`), no scan lines (`tube.scan`: they beat
-    // with a car changing lanes under them), no zoom kick, and the lens' own colour fringe kept to the band too
-    // (render/Lens.js `flat`). In the band, from the picture itself:
-    //   streaks: the lights of the street (neons, lamps, lit windows) leave short trails behind them along the road,
-    //   row by row (`rows` world px a row, each its own length, drawn again `flick` times a second): pixel combs,
-    //   never a smooth smear; `len` picture heights the longest, flat out; `mix` of it laid over the picture
-    //   lines: streaks of air drawn in the band, one world px thick, on `share` of the rows, running back along the
-    //   road at `run` picture heights a second (each row its own pace and length), bone taking the colour of the
-    //   lights they cross, `glow` at most
-    //   pull: the band stretched along the road by this share flat out (what is in it runs past faster)
-    //   split: the colours parted along the road (px at 1080), fringe: px added to the lens' own fringe
-    //   dark: the band darkened by this share
-    // How much of it: none under `from` (share of flat out), all of it flat out, along `curve` (over 1: it comes
-    // late: at 60 km/h about half); eased at `ease` 1/s. A jolt of the car adds to it for an instant (`kick`: by
-    // beat of the world's 'ride' event, dying at `decay` 1/s), with `fringe` px of colour at a kick of 1 (no zoom
-    // kick: it resampled the whole picture, and the shove is thrown every second).
-    // NOTHING THAT RESAMPLES THE PICTURE (the user, 2026-11-19: "the cars are deformed at the edges of the screen"):
-    // the trails (`mix`), the stretch (`pull`), the colours parted (`split`, `fringe`, kick.fringe) each moved or
-    // smeared the px of whatever was in the band, the cars parked along the kerb and the ones abreast of him first.
-    // They are 0, and render/Lens.js lets none of them through at the wheel whatever is written here (driveLens).
-    // What is left only ADDS to the picture or dims it: the streaks of air (`lines`) and the band's darkening
-    // (`dark`), which a jolt deepens for an instant; every px of the scene stays where it was drawn, a car at the
-    // edge is the same pixels as in the middle. The speed itself is sold in the world (data/chase.js fx, camera)
     drive: {
       from: 0.3, curve: 1.1, ease: 4, cap: 1.6, // cap: the speed's look and a jolt's added together, at most
-      band: [0.24, 0.46], car: [0.28, 0.4], len: 0.17, rows: 2, flick: 14, mix: 0,
+      band: [0.24, 0.46], car: [0.28, 0.4], rows: 2,
       lines: { share: 0.24, run: 3.4, glow: 0.5 },
-      pull: 0, split: 0, fringe: 0, dark: 0.3,
-      kick: { shove: 0.9, hit: 0.6, clip: 0.8, crash: 1, torn: 0.25, kerb: 0.2, decay: 5, fringe: 0 },
+      dark: 0.3,
+      kick: { shove: 0.9, hit: 0.6, clip: 0.8, crash: 1, torn: 0.25, kerb: 0.2, decay: 5 },
     },
   },
 
-  // ---- 8. focus: the edges of the picture go soft; more when looking far (Shift); everything behind the results
-  focus: {
-    edge: 0, title: 0, look: 0, dead: 0, pause: 0, results: 0.8, ease: 6,   // (the pause: sharp, cut paper over it)
-    // where it goes soft: from `from` of the way out (the picture `tall` times taller than wide for it, k: its scale)
-    shape: { from: 0.42, tall: 1.08, k: 0.78 },
-  },
+  // ---- 8. focus: the whole picture soft behind the results (no soft edges in play: the user did not like them)
+  focus: { results: 0.8, ease: 6 },
 
   // ---- 9. shafts: light streaming out of the brightest lamps in view
   // (each of the 10 steps of a shaft `decay` of the one before, the sum divided by `norm`)
