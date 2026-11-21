@@ -32,7 +32,7 @@ import Vehicle from '../entities/Vehicle.js';
 import CarGun from './CarGun.js';
 import LastDrag from './LastDrag.js';
 import { routeOf, legAt, along, enterBend, nearestLane } from './Route.js';
-import { bendFloor, bendMove, bendWheel, drive, roundCorners } from './chase/shared.js';
+import { bendFloor, bendMove, bendWheel, driveBody, roundCorners } from './chase/shared.js';
 import { doorOf, gripOf, headingOf, kmh, seatOf, slideStep, speedStep, steerOf, steerStep, yawStep } from './drive/rules.js';
 import { arm, grabStep, launch, shot, skipGrab, stand } from './drive/opening.js';
 import { camStep, frame, lock, normalOff, trackY } from './drive/camera.js';
@@ -170,6 +170,8 @@ export default class Drive {
   clearLanes(dt) { clearLanes(this, dt); }
   // a car he shoved (b) running into o (its onCollide while this drive is on: drive/contacts.js)
   knock(b, o, pair) { knock(this, b, o, pair); }
+  // stalled, the way it eases itself out (drive/fronts.js; through the drive, so that a test may stand in for it)
+  unstick(dt, own) { return unstick(this, dt, own); }
 
   // he is in: out of the world's bodies and of `chars` (nothing sees or hits him), carried at the seat (`driving`:
   // the drive he is at; `hidden`: not drawn with the others: the car draws him sat at the wheel when it is an open
@@ -181,7 +183,7 @@ export default class Drive {
     if (b.isSleeping) Sleeping.set(b, false);
     roundCorners(b, CHASE.corner);
     this.was = { air: b.frictionAir, friction: b.friction };
-    drive(b);
+    driveBody(b);
     v.moving = true;
     v.lightsOut = false;
     v.driver = this;
@@ -287,7 +289,7 @@ export default class Drive {
     }
     // the controls: the wheel only (up / down the picture); the speed is the road's. Stalled, the car eases itself
     // out sideways, his way if he steers (unstick: its sideways speed held, whatever the crawl or what it rubs on)
-    const own = busy ? 0 : steerOf(input), free = unstick(this, dt, own), steer = free ?? own;
+    const own = busy ? 0 : steerOf(input), free = this.unstick(dt, own), steer = free ?? own;
     // (a slide scrubs it: the speed it runs at falls with the slip, and comes back as it straightens)
     const SL = C.slide, scrub = SL.scrub * clamp((Math.abs(this.slip) - SL.free) / (SL.most - SL.free), 0, 1);
     this.v = speedStep(this.v, this.cruise * (1 - scrub), dt, C);

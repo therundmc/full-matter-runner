@@ -68,7 +68,7 @@ export function skipGrab(d) {
 }
 
 // the gun off the seat and into his hand
-export function take(d, g) {
+function take(d, g) {
   g.took = true;
   d.car.gun = false;
   arm(d, { ...g.arms, seat: false });

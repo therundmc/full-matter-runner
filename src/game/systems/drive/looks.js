@@ -63,7 +63,7 @@ export function fx(d, dt) {
 
 // the air it moves at speed: dust off the rear wheels, something light whipped up in its wake now and then, and
 // the streaks of air past it (kept here, drawn by render/PursuitArt.js)
-export function air(d, dt, rear) {
+function air(d, dt, rear) {
   const w = d.world, C = d.C, F = C.fx, v = d.car, W = F.wind;
   if (d.v > F.dust.from) {
     for (const r of rear) {

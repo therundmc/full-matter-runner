@@ -67,7 +67,7 @@ export function contact(d, o, pair) {
 // share the overlap equally between a chair and two tons of car, and hold it up), at any speed: met at a crawl
 // and kept, a bag pinned between the car and a wall held it up
 // (k: the share of the car's speed it goes at; a bend's smash gives a heavy one less, spun more)
-export function fling(d, o, pair, vel, k = rand(...d.C.hit.fling.v)) {
+function fling(d, o, pair, vel, k = rand(...d.C.hit.fling.v)) {
   const F = d.C.hit.fling, v = d.car, side = v.toSprite(o.position.x, o.position.y).sy < v.h / 2 ? -1 : 1;
   const sp = Math.max(F.least, Math.hypot(vel.x, vel.y) * k), a = Math.atan2(vel.y, vel.x) + side * rand(...F.side);
   const spin = d.bend ? d.C.bend.smash.spin : F.spin;
@@ -83,7 +83,7 @@ export function fling(d, o, pair, vel, k = rand(...d.C.hit.fling.v)) {
 // IN A BEND, a car he meets (parked, a wreck: CHASE.bend.smash.flank) is scraped along its flank: the contact is
 // never resolved (the script's line kept; `pair.flank`: a sensor CarFx still showers sparks along, for as long as
 // the two overlap: flankStep), the other car rocked off his flank. True the first time this car is met
-export function flankOn(d, o, pair) {
+function flankOn(d, o, pair) {
   const F = d.C.bend.smash.flank, v = d.car, b = v.body;
   pair.isActive = false;
   pair.isSensor = true;
@@ -132,7 +132,7 @@ export function flankStep(d, dt) {
 
 // the first touch of a car he scrapes in a bend: its alarm and its hazards, a mirror torn off, the panel crumpled
 // there, a burst of sparks and glass, the picture shaken
-export function flanked(d, h) {
+function flanked(d, h) {
   const w = d.world, C = d.C, v = d.car, e = h.e, a = Math.atan2(h.vy, h.vx);
   e.hit?.(0, h.x, h.y, a + Math.PI / 2, 1, 'blunt');
   e.startAlarm?.();
@@ -148,7 +148,7 @@ export function flanked(d, h) {
 }
 
 // the first thing smashed in a bend: told once a bend ('chaseSmash': the slow motion, systems/ChaseCam.js)
-export function smashed(d, x, y) {
+function smashed(d, x, y) {
   const st = d.bend;
   if (!st || st.smashed) return;
   st.smashed = true;
@@ -161,7 +161,7 @@ export function smashed(d, x, y) {
 // physics would share the blow between 2 t and 1.3 t and stop him): he only loses the share of his speed asideKeep
 // says (shovedAside), is turned a little off it, his tail kicked out. Closing on it slower than `least` px/step,
 // or he crawling under `slow`: the physics as it is (it leans on it and pushes). { sq, side, along, again } or null
-export function aside(d, o, pair, vel, ov, nx, ny) {
+function aside(d, o, pair, vel, ov, nx, ny) {
   const C = d.C, A = C.aside, w = d.world, v = d.car, b = v.body, e = o.entity;
   const ca = Math.cos(b.angle), sa = Math.sin(b.angle), along = vel.x * ca + vel.y * sa;
   const closing = (vel.x - ov.x) * nx + (vel.y - ov.y) * ny, was = d.asides.get(e);
@@ -306,7 +306,7 @@ export function react(d, h) {
 // He shoved a parked car aside (aside): what it cost him (asideKeep of his speed along his nose, never less), and
 // what it looks and sounds like: its alarm and a dent, sparks along the way it went, its glass on a square hit, the
 // picture shaken and his body thrown by how square it was. Told on 'carShoved' ({ car, by, x, y, sq, side })
-export function shovedAside(d, h) {
+function shovedAside(d, h) {
   const w = d.world, C = d.C, v = d.car, e = h.e, { sq, side, along, again } = h.aside, hard = 0.4 + 0.6 * sq;
   const a = Math.atan2(h.vy, h.vx);
   if (again) { w.particles.sparks(h.x, h.y, a + side * 0.6, 1.1, 5, 300); return; } // (still pushing it out: nothing more lost)

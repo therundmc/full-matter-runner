@@ -237,7 +237,8 @@ export const CHASE = {
     space: 170, catch: 0.06, hold: 40, clear: 320, close: [0.7, 0.55],
     apex: { slow: 0.72, in: 0.1, hold: 0.22, out: 0.3 },
     smash: {
-      kg: 450, heavy: [0.45, 0.8], spin: 0.5, burst: 6, cost: 0.025, heavyCost: 0.09, floor: 0.6,
+      // (a pursuer's: what it throws goes up to `aim` rad off its way, off the floor's friction `fly` s)
+      kg: 450, heavy: [0.45, 0.8], spin: 0.5, burst: 6, cost: 0.025, heavyCost: 0.09, floor: 0.6, aim: 0.6, fly: 0.4,
       // (a dent `inset` px inside the flank)
       flank: { push: 0.9, spin: 0.012, drag: 0.35, dent: 0.07, dents: 9, inset: 3,
         // its first touch (Drive.flanked): [n, px/s] of sparks and of glass, the mirror torn off at [from, to] px/s,
@@ -334,22 +335,34 @@ export const CHASE = {
   //   taken `back` px further back while it is shut (`tries` times), never off the start of his leg; the alley car
   //   comes out at `cross` px/step and turns into the far lane `radius` px before it
   pursuit: {
+    // (`turnAt`: its heading turns at the full `turn` from turnAt[0] px/step, turnAt[1] of it at a standstill; its
+    // wheel thrown over (its slide) with its heading `wheel` rad off the one it wants; `bob`: its body on its wheels
+    // [rad/s, px at the cruise speed]; `again`: s a knock from his car counts as his doing, a wreck then 'shoved';
+    // `seen`: px past the picture's edges a car still counts as on it)
     vehicle: 'pursuer', max: 14.5, accel: 14, brake: 14, turn: 2.6, nose: 0.18, heading: 0.45, pullOut: 0.6, close: 0.045, lateral: 0.07,
+    turnAt: [3, 0.2], wheel: 0.04, bob: [9, 0.3], again: 2, seen: 10,
     steer: 4,
     slots: { abreast: [0, 'other'], lead: [165, 'other'], ahead: [220, 'his'], far: [340, 'other'] }, more: 175,
     shuffle: [4, 7], flip: 14, side: 80, settle: 18,
     look: 0.9, pad: 70, margin: 6, gap: 20,
     ease: 300, astray: 300, size: [140, 58],
-    held: { stand: 80, gain: 0.04, cross: 50, crossGain: 0.05, crawl: 1 }, tail: 6, over: 22,
+    // (the lines it tries round what is in its way: its slot's, the lanes', the road's middle and `off` px either
+    // side of its own, never over `out` px past the outer lanes; on a line `near` px off it is going across; its
+    // look ahead at `least` px/step at least; `held.going`: px/step over which what is in its way is going too)
+    held: { stand: 80, gain: 0.04, cross: 50, crossGain: 0.05, crawl: 1, going: 1 }, tail: 6, over: 22,
+    lines: { off: 60, out: 20, near: 6, least: 2 },
     attack: { round: ['shot', 'ram', 'shot', 'brake'], cool: [1.1, 1.8], lone: { gunner: 'lead', rammer: 'abreast', blocker: 'ahead' } },
     ram: { settle: 0.5, shy: 1, wind: 0.5, flash: 0.08, back: 1, lean: 1.5, lead: 10, v: 5, dur: 0.32 },
     block: { settle: 0.6, wind: 0.45, drop: 3.2, dur: 0.9 },
     hurt: 2.5,
     knock: { dv: 2.2, stun: 0.6 },
     shoved: { cost: 0.5, throw: 6, drag: 4, spin: 0.02, stun: 0.7 },
-    wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight', 'traffic_light', 'street_tree', 'bus_shelter', 'bollard'] },
+    wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, shake: 0.25, poles: ['streetlight', 'traffic_light', 'street_tree', 'bus_shelter', 'bollard'] },
     rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2, tyre: { hp: 5, skip: 0.6 } },
+    // (run on down a toll's lane, it steers onto it and straightens `lane` of the way a step; who is within its half
+    // length and `reach` px is looked at to be run down; its smoke and rubber stop under `fx.still` px/step)
     out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1, stop: [30, 16],
+      lane: 0.2, reach: 16,
       // what its exit looks like (Pursuit.exitFx; looks only, nothing of it touches his car). `ball`: the engine
       // goes as it is stopped: [flames, px/s, the flash's radius px, its colour], and it burns from then on (`burn`);
       // while it slides: smoke off each tyre (`smoke`: [chance a wheel a step, px, s]) and rubber on the road (as
@@ -357,7 +370,10 @@ export const CHASE = {
       // the roadside: `crash` [sparks, glass, pieces lost, shake]. The sparks from under it, its tyres' smoke in the
       // air, its engine's fire-ball and the one of a burning wreck that hits the roadside: systems/CarFx.js
       fx: { ball: [26, 190, 120, '#ffb060'], burn: true, smoke: [0.6, 7, 1.1], shed: [0.16, 0.34], fling: [120, 260],
-        crash: [22, 14, 3, 0.3] } },
+        crash: [22, 14, 3, 0.3], still: 1.5 } },
+    // wrecked in a bend (Pursuit pileUp): it keeps `keep` of its speed, slews round at `spin` rad/step [least, most],
+    // `pieces` torn off it up to `spread` rad off its way at `fling` px/s
+    pile: { keep: 0.35, spin: [0.04, 0.07], pieces: 3, spread: 1.2, fling: [120, 240] },
     limp: 0.6, lost: 1600, most: 4, rubber: { far: 520, t: 1.2, close: 200, held: 3, room: [120, 280] },
     spawn: { behind: 330, over: 5, clear: 260, near: 300, room: [60, 150], back: 200, tries: 4, cross: 6.5, radius: 150 },
   },
@@ -384,7 +400,8 @@ export const CHASE = {
     range: 300, grace: 1, cool: [1.6, 2.4], quiet: 520, straight: 0.3, cone: 1.75, keep: 5,
     glint: 0.15, line: 0.6,
     band: { half: 22, lead: 40 },
-    tracer: 0.14, window: 14,
+    // (the round's line drawn `past` px beyond the bracket when it misses; the picture shaken `shake` as it kills him)
+    tracer: 0.14, window: 14, past: 30, shake: 0.5,
     lab: { every: 3.2, range: 380 },
   },
   // the lorry backing out across the street (event 2, systems/Lorries.js): told `tell` s before it moves (a beep and
@@ -428,7 +445,9 @@ export const CHASE = {
     wreck: { short: 200, room: 80, from: 1500, past: 110, run: 7 },
   },
   // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane
-  alley: { red: 0.7, pad: 10 },
+  // (its red lane off once the car's nose is `through` of a tile into his lanes' band, or `after` s with no lanes;
+  // gone over `fade` s)
+  alley: { red: 0.7, pad: 10, through: 0.5, after: 2, fade: 0.3 },
   // HOW THE CHASE OPENS, the first time only (the level's `chase.intro: 'drag'`; systems/LastDrag.js; a retry skips
   // it: Drive.skipGrab; SPACE / pad A held skips it: data/staging.js SKIP). The car stands in its lane, engine and
   // lamps off; he finishes his cigarette and flicks it out over the door, then the engine, and the gun off the seat

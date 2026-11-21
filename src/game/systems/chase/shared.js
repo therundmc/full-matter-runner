@@ -14,11 +14,11 @@ const { Body, Sleeping } = Matter;
 // ---------------------------------------------------------------- bodies
 // what a driven body runs into: over the dead, over what is already in pieces (a loose bit weighs nothing, yet the
 // physics shares an overlap equally: one landing under it threw two tons sideways), over what lies on the floor
-export const DRIVEN_MASK = MASK.PROP & ~CAT.CORPSE & ~CAT.DEBRIS & ~CAT.ITEM;
+const DRIVEN_MASK = MASK.PROP & ~CAT.CORPSE & ~CAT.DEBRIS & ~CAT.ITEM;
 
 // a body driven from now on: never asleep, no air drag (the engine holds its speed: only what it hits slows it),
 // its flanks sliding along a wall (a static body's own friction is 1), over the dead and the pieces
-export function drive(b) {
+export function driveBody(b) {
   b.sleepThreshold = Infinity;
   b.frictionAir = 0;
   b.friction = CHASE.scrape.friction;

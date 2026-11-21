@@ -47,7 +47,7 @@ export function trackY(d) {
 // Across, out of a bend: on a leg that follows him (`track`), the view's middle eased toward trackY as he moves;
 // into the next leg by column with another framing, eased from where the last one had it (no jump), then dropped:
 // the leg's middle held exactly (frame). C.camera.across
-export function acrossStep(d, dt) {
+function acrossStep(d, dt) {
   const K = d.C.camera.across, want = trackY(d);
   if (d.camY === null) { if (!d.leg.track) return; d.camY = want; }
   d.camY += clamp((want - d.camY) * Math.min(1, K.ease * dt), -K.most, K.most);

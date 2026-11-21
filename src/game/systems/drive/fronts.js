@@ -11,7 +11,7 @@ import { crash, tearHeld } from './contacts.js';
 // down)], none within `most` tiles: -+Infinity; null when r itself is one. A window or a door is set back in its wall
 // (its pane, its leaves in the middle of the tile): it counts as the front. A fence does not (it is gone through),
 // nor an opening (an alley, a yard: the face is its back wall)
-export const isFront = (map, c, k) => map.isSolid(c, k) || 'GDL'.includes(map.at(c, k));
+const isFront = (map, c, k) => map.isSolid(c, k) || 'GDL'.includes(map.at(c, k));
 export function frontsAt(map, c, r, most = 8) {
   const front = (k) => isFront(map, c, k);
   if (front(r)) return null;
@@ -50,7 +50,7 @@ export function unstick(d, dt, own) {
 // `moved` px nearer to one than it ever was in each `after` s for `boxed` s (the way round shut: a car shoved in
 // there and pinned, the street's front; a car pushed against it creeps a few px; going back and forth gains
 // nothing) and it is the crash he was told about: the street is his to get round, not to wait in. True: it crashed
-export function boxed(d, dt) {
+function boxed(d, dt) {
   const S = d.C.stall, wall = nosedOn(d);
   if (!wall) return false;
   const left = roundOf(d, wall)?.left ?? Infinity, B = (d.nosing ??= { t: 0, held: 0, best: left });
@@ -65,7 +65,7 @@ export function boxed(d, dt) {
 }
 
 // the `lasting` body its nose leans on (within crash.cone of square on), or null
-export function nosedOn(d) {
+function nosedOn(d) {
   const b = d.car.body, ca = Math.cos(b.angle), sa = Math.sin(b.angle), cone = Math.cos(d.C.crash.cone);
   for (const pair of d.world.physics.activePairs()) {
     const o = otherOf(pair, b);
@@ -78,7 +78,7 @@ export function nosedOn(d) {
 
 // the way round body o across the street: its end with room for the car short of the building fronts, the nearest
 // { side: -1 (-y) | 1, left: px across still to go to clear it }, or null (it shuts the street)
-export function roundOf(d, o) {
+function roundOf(d, o) {
   const [lo, hi] = fronts(d), y = d.car.y, h = d.car.h, ob = o.bounds, ends = [];
   if (ob.min.y - lo >= h) ends.push({ side: -1, left: y + h / 2 - ob.min.y });
   if (hi - ob.max.y >= h) ends.push({ side: 1, left: ob.max.y - (y - h / 2) });
@@ -87,7 +87,7 @@ export function roundOf(d, o) {
 
 // which way out of what holds it (-1: -y): round the end of what its nose leans on, else the way the solid contacts
 // push it, else the street's middle, else the lane it is farthest from
-export function wayOut(d, mid) {
+function wayOut(d, mid) {
   const wall = nosedOn(d), round = wall && roundOf(d, wall);
   if (round) return round.side;
   const S = d.C.stall, b = d.car.body, y = d.car.y;
