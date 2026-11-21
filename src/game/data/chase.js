@@ -326,7 +326,8 @@ export const CHASE = {
   //   than `limp` px/step over his speed (it only just keeps up; all of its speed while still in his lane ahead of
   //   him); lost: `lost` px behind him, it is out of the chase
   //   most: how many of them drive after him at once at the most (an event's car past that does not join; the plaza
-  //   held five of them when none was shot)
+  //   held five of them when none was shot); a toll's wrong-gate car always joins, over it if it must (intended:
+  //   pursuit/events.js)
   //   rubber: in the chase but more than `far` px behind him for `t` s, or more than `close` px from its slot for
   //   `held` s, off the picture: brought back up behind it, on its slot's line (`room`: [px ahead of its middle, px
   //   of road] that must be clear there)

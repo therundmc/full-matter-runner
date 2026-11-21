@@ -41,7 +41,8 @@ export function trigger(P, e, tg) {
   } else if (e.kind === 'behind') {
     // (C.most of them on him at once at the most: with that many still driving, one more does not join; a toll's
     // wrong-gate car is its event: the rearmost of the others, off the picture, drops out for it; none can: it
-    // joins all the same, one over the cap)
+    // joins all the same, one over the cap. Intended (the user's call): the toll's beat is that car on the boom, it
+    // is never lost to the cap; tests/toll.test.mjs)
     const live = P.cars.filter((c) => !c.dummy && DRIVEN.has(c.state));
     if (live.length >= C.most) {
       if (!e.gate) return;
