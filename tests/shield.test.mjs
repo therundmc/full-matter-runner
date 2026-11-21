@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
-import { noop, sink } from './helpers.mjs';
+import { noop, sink, makePlayer } from './helpers.mjs';
 
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {}, drawImage() {} }) }) };
 const { default: Player } = await load('game/entities/Player.js');
@@ -50,18 +50,7 @@ function world() {
   return w;
 }
 
-function player(w, type = 'fists') {
-  const p = Object.create(Player.prototype);
-  Object.assign(p, { world: w, isPlayer: true, team: 'player', alive: true, knocked: 0, angle: 0, strike: 0, punchSide: 1, recoil: 0,
-    body: Matter.Bodies.circle(0, 0, 10), radius: 10, nearItem: null, slideCd: 0, winded: 0, stamina: 1, safe: { x: 0, y: 0 }, sit: 0,
-    vel: { x: 0, y: 0 }, cooldown: 0, swing: 0, throwT: 0, throwDur: 0.28, throwHold: null, ammo: { '9mm': 0, '12g': 0 }, held: null,
-    lunge: null, facingLock: null, snatch: null, shield: null, nearShield: null, reloading: 0,
-    baseUpdate() {}, unstick() {}, updateVault: () => false });
-  p.setWeapon(type);
-  w.player = p;
-  w.chars.push(p);
-  return p;
-}
+const player = (w, type = 'fists') => makePlayer(Player, w, type, { ammo: { '9mm': 0, '12g': 0 }, shield: null, nearShield: null, reloading: 0 }, true);
 
 // a guard 20 px ahead of the player, his back to him (angle 0) unless told otherwise
 function guard(w, x = 20, y = 0, more = {}) {

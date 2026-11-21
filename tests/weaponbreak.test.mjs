@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
-import { noop, sink } from './helpers.mjs';
+import { noop, sink, makePlayer } from './helpers.mjs';
 
 // the sprites, loaded as the browser does (sizes from the files)
 const ROOT = new URL('../', import.meta.url);
@@ -51,12 +51,7 @@ function world(victims = []) {
 }
 // the player, a weapon in hand, facing east at the origin
 function fighter(type, w = world()) {
-  const p = Object.create(Player.prototype);
-  Object.assign(p, { world: w, isPlayer: true, team: 'player', alive: true, knocked: 0, angle: 0, strike: 0, punchSide: 1, recoil: 0,
-    vel: { x: 0, y: 0 }, body: Matter.Bodies.circle(0, 0, 10), broke: null, brokeAt: null, snatch: null, execution: null, takedown: null,
-    ammo: { '9mm': 0, '12g': 0, '762': 0, rocket: 0 } });
-  p.setWeapon(type);
-  return p;
+  return makePlayer(Player, w, type, { broke: null, brokeAt: null, execution: null, takedown: null, ammo: { '9mm': 0, '12g': 0, '762': 0, rocket: 0 } });
 }
 // a guard in reach whose death is only noted
 const guard = (x = 14, y = 0) => ({

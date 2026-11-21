@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
-import { noop, sink } from './helpers.mjs';
+import { noop, sink, makePlayer } from './helpers.mjs';
 
 const { lungeTarget } = await load('game/systems/Lunge.js');
 const { PLAYER } = await load('game/Config.js');
@@ -117,11 +117,7 @@ function swing(type, d, off, { wait = 0, more = [], steps = wait + 12 } = {}) {
     props: [], items: [], corpses: [], debris: [], uses: { near: () => null }, windows: [], fences: [], ladders: [], doors: [], director: { phase: 'combat' },
     aimMark: false,
   };
-  const p = Object.create(Player.prototype);
-  Object.assign(p, { world: w, isPlayer: true, team: 'player', alive: true, knocked: 0, angle: 0, strike: 0, punchSide: 1, recoil: 0,
-    body: Matter.Bodies.circle(0, 0, 10), radius: 10, nearItem: null, slideCd: 0, winded: 0, stamina: 1, safe: { x: 0, y: 0 }, sit: 0,
-    vel: { x: 0, y: 0 }, cooldown: 0, swing: 0, baseUpdate() {}, unstick() {}, updateVault: () => false });
-  p.setWeapon(type);
+  const p = makePlayer(Player, w, type);
   const man = (d, off) => ({
     alive: true, team: 'enemy', isEnemy: true, aware: 2, meter: 1, radius: 10, held: null, knocked: 0, angle: Math.PI + off,
     body: Matter.Bodies.circle(Math.cos(off) * d, Math.sin(off) * d, 10),
