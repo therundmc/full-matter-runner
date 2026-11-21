@@ -211,3 +211,9 @@ test('road: part two: works shut the street past the side street, its alley unde
   }
   assert.ok(L1.cruise > C.cruise, 'faster out of the detour');
 });
+
+test('road: the cross street\'s lights run SIGNALS.traffic.cross s behind ours (the builder\'s phases keep to the data)', () => {
+  const phases = [...new Set(level2a.props.filter(([t]) => t === 'traffic_light').map(([, , , , o]) => o?.phase ?? 0))].sort((a, b) => a - b);
+  assert.equal(phases.length, 2, phases.join());
+  assert.equal(phases[1] - phases[0], SIGNALS.traffic.cross);
+});

@@ -3,9 +3,10 @@
 // is out thins away). A spark in the cloud blows all of it: a trigger pulled in it, a blast, a fire, metal struck
 // there. The bigger the cloud, the bigger the blast (Explosions), with a flash of flame through it. DOM-free.
 import { GAS_VALVE } from '../data/devices.js';
+import { ROUNDS } from '../data/weapons.js';
 import { rand, TAU, chance } from '../../engine/math.js';
 
-const SPARKS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel', 'blunt']);
+const SPARKS = new Set([...ROUNDS, 'blunt']);
 
 // how far the gas has spread (px) after it has been filling to `gas` (0..1)
 export const reach = (gas, cfg = GAS_VALVE) => cfg.radius * Math.sqrt(gas);

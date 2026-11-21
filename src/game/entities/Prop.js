@@ -1,6 +1,7 @@
 import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, WALL_RIM } from '../Config.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { PROPS } from '../data/props.js';
+import { ROUNDS } from '../data/weapons.js';
 import { recipeFor, BITS, FLOATS } from '../data/destruction.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
 import { sprite, spriteOpt, chunk, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
@@ -31,7 +32,7 @@ const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 2
 // what reaches a fitting up on a ceiling (mount 'ceiling': hits 'blast')
 const BLASTS = new Set(['blast', 'shrapnel']);
 // what holes a gas bottle or a stove (see gasHit)
-const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
+const PIERCING = ROUNDS;
 const COAST = 1.6; // s a fan takes to run down once the power is cut
 const d0 = (d) => d.w * d.h; // area of a prop's whole box (none for a round one)
 const INK_DOOR = '#141018'; // outline of a cabinet's open doors

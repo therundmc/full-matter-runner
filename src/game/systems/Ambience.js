@@ -20,8 +20,8 @@ import { AMBIENCE, TILE } from '../Config.js';
 import { ZONES, PROP_BEDS, CARS, CITY, SPOTS } from '../data/soundscape.js';
 import { rand, clamp } from '../../engine/math.js';
 import { WALKER } from '../ai/Civilians.js';
+import { OPENINGS } from '../world/TileMap.js';
 
-const OPENINGS = new Set(['D', 'L', 'G', 'F']); // doors and windows: between two places, they keep the last one
 const SOUND = 343 * 32;                          // px/s: the speed of sound (1 m = 32 px)
 const ROOMS = [...new Set(Object.values(ZONES).map((z) => z.room))];
 const CAR_BEDS = new Set(['engine', 'road']); // the traffic's voices follow their cars at once (the mixer glides them)
@@ -51,7 +51,7 @@ export function zoneMap(map, def = {}, cfg = AMBIENCE) {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x, ch = map.at(x, y);
-      if (map.solid[i] || OPENINGS.has(ch)) continue;
+      if (map.solid[i] || OPENINGS.has(ch)) continue; // (between two places: they keep the last one)
       const z = rects.find(([, c0, r0, c1, r1]) => x >= c0 && x <= c1 && y >= r0 && y <= r1);
       kinds[i] = z ? z[0] : ch === '^' ? 'roof' : indoors.has(map.floor[i]) ? 'room' : 'street';
     }

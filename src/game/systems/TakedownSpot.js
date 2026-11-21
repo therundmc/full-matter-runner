@@ -6,8 +6,8 @@
 import { segPoly } from '../../engine/physics/Raycast.js';
 import { TILE } from '../Config.js';
 import { SLAMS, SPOT } from '../data/finishers.js';
+import { OPENINGS } from '../world/TileMap.js';
 
-const STRUCT = new Set(['D', 'L', 'G', 'F']); // a doorway, a window, a gate: never a wall to slam on
 
 // g: the guard { x, y, angle }; map: TileMap; props: the level's (anything with def, body.vertices, dead).
 // -> { kind, x, y (the point of the surface struck, just off it), nx, ny (its normal, toward him), d (px from his
@@ -58,7 +58,7 @@ function throughOpening(map, x, y, c, s, d) {
   const cx0 = Math.floor(x / TILE), cy0 = Math.floor(y / TILE);
   for (let k = 2; k < d; k += 2) {
     const cx = Math.floor((x + c * k) / TILE), cy = Math.floor((y + s * k) / TILE);
-    if ((cx !== cx0 || cy !== cy0) && STRUCT.has(map.at(cx, cy))) return true;
+    if ((cx !== cx0 || cy !== cy0) && OPENINGS.has(map.at(cx, cy))) return true; // (never a wall to slam on)
   }
   return false;
 }

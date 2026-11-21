@@ -146,3 +146,8 @@ export const AMMO = {
 
 // actors-layer chars for ammo pickups (by caliber)
 export const AMMO_CHARS = { n: '9mm', z: '9mm', v: '762', w: '762', g: '12g', q: 'rocket' };
+
+// the damage kinds of a round and of what flies like one (a graze is a round too, shrapnel a blast's pieces): what
+// holes a gas bottle, a stove or a steam pipe, goes through a windscreen into a driver, strikes a spark off a valve
+// (entities/Prop.js, systems/Steam.js, GasValve.js, Pursuit.js)
+export const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);

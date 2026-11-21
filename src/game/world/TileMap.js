@@ -14,7 +14,8 @@ export const FLOORS = {
 export const WALLS = { '#': 'wall', 'X': 'brick', P: 'stucco_pink', M: 'stucco_mint', Y: 'stucco_peach', V: 'stucco_lilac' };
 // the chips off each when it is hit
 const CHIPS = { X: '#8a3a2a', P: '#e8a8b8', M: '#9ad0bc', Y: '#ecc0a0', V: '#b8a8d8' };
-const STRUCT = new Set(['D', 'L', 'G', 'F']);
+// the tiles between two places: a doorway, a window, a gate, a fire door (systems/Ambience.js, TakedownSpot.js)
+export const OPENINGS = new Set(['D', 'L', 'G', 'F']);
 
 // Pure grid logic (no DOM): tiles, solidity, path blocking, wall HP, raycasts, wall bodies.
 export default class TileMap {
@@ -39,7 +40,7 @@ export default class TileMap {
     // structural tiles take the floor of a neighbour
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
-        if (!STRUCT.has(this.chars[y][x])) continue;
+        if (!OPENINGS.has(this.chars[y][x])) continue;
         const i = y * this.w + x;
         for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
           const f = FLOORS[this.at(x + dx, y + dy)];

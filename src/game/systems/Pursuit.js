@@ -39,7 +39,7 @@ import { TILE, CAT, MASK } from '../Config.js';
 import { clamp, angDiff, approachAngle, rand, chance } from '../../engine/math.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import { CHASE } from '../data/chase.js';
-import { WEAPONS } from '../data/weapons.js';
+import { WEAPONS, ROUNDS } from '../data/weapons.js';
 import Vehicle from '../entities/Vehicle.js';
 import { MUZZLE_IN, onSprite } from '../entities/CharacterAnim.js';
 import { sprite, sw } from '../../engine/Assets.js';
@@ -50,7 +50,6 @@ import { dice } from './Rng.js';
 const { Body, Sleeping, Query } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
 const DRIVEN = new Set(['cross', 'chase', 'limp']);
-const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']); // what goes through a windscreen into a driver
 const AGAIN = 2; // s a knock from his car counts as his doing (a wreck then is 'shoved')
 const SWAP = { lead: 'ahead', ahead: 'lead' }; // he changed lanes: the two ahead of him keep theirs (assign)
 const PISTOL = WEAPONS.pistol; // the gunmen's 1911 (pistolOf; render/PursuitArt.js draws it)

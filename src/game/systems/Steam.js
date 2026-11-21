@@ -6,9 +6,10 @@
 // at most). The rain thickens it (`wet`: the cold drops on a warm cover). DOM-free.
 import { TILE } from '../Config.js';
 import { SMOKE } from '../data/atmosphere.js';
+import { ROUNDS } from '../data/weapons.js';
 import { rand } from '../../engine/math.js';
 
-const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'shrapnel']);
+const PIERCING = ROUNDS; // (a graze too: it holes a pipe as it holes any prop)
 
 export default class Steam {
   constructor(world, manholes = [], cfg = SMOKE, rain = 0) {
