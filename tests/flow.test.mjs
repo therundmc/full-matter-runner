@@ -208,6 +208,18 @@ test('game: TO BE CONTINUED is skipped by holding SPACE once it is up, never by 
   assert.deepEqual(k.calls, ['showResults']);
 });
 
+test('game: the hit list between two levels plays the menu\'s music, calm, not the last level\'s', async () => {
+  const { default: Music } = await load('audio/Music.js');
+  const { MENU_TRACK, TRACKS } = await load('audio/tracks/index.js');
+  const other = Object.keys(TRACKS).find((id) => id !== MENU_TRACK);
+  Music.setTrack(other);
+  Music.setIntensity(0.8);
+  const g = harness('hitlist', 0.2);
+  assert.equal(frame(g), 'done');
+  assert.equal(Music.track, MENU_TRACK);
+  assert.equal(Music.game.intensity, 0);
+});
+
 test('game: the pause\'s page reads what it was opened from (RETRY over the death screen)', () => {
   const seen = [];
   const g = Object.assign(Object.create(Game.prototype), {

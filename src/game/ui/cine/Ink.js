@@ -2,7 +2,6 @@
 // so that a pixel is a pixel whatever the window's size. Flat colours, hard edges, shades laid flat (never a
 // gradient, never a dither).
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-export const smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 export const lerp = (a, b, k) => a + (b - a) * k;
 export const hash = (n) => { const s = Math.sin(n * 127.1 + 31.7) * 43758.5453; return s - Math.floor(s); };
 
