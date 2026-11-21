@@ -4699,20 +4699,13 @@ def knocked_down(ch):
 
 
 # --------------------------------------------------------------------------
-# Magazines, shell boxes and ammo pickups (+x = bullet tips)
+# Ammo pickups (+x = bullet tips)
 # --------------------------------------------------------------------------
 
 def mags():
     out = {}
     # (the guns' magazines are painted with the guns, weapons())
     red = ramp('#e8303a', 0.5, 0.25, 0.3)
-    out['shells_box'] = ascii_cv(["OAAAAAAO",
-                                  "AbBbBbBR",
-                                  "ABbBbBbR",
-                                  "AyyyyyyR",
-                                  "ArrrrrrR",
-                                  "ORRRRRRO"], {'O': OUTLINE, 'A': red[3], 'r': red[2], 'R': red[0], 'b': BRASS[2],
-                                                'B': BRASS[3], 'y': hx('#f9c80e')}, ol=None)
     # floor pickups: bright boxes with a label stripe
     yel = ramp('#f9c80e', 0.5, 0.25, 0.45)
     out['ammo_9mm'] = ascii_cv([".........",
@@ -18359,7 +18352,7 @@ EXPECTED = {
                     pistol_bare=(27, 15), uzi_bare=(33, 18), uzi_silenced_bare=(46, 18), rifle_bare=(56, 16),
                     sniper_bare=(72, 17),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(5, 14), mag_uzi=(5, 18), mag_rifle=(8, 16),
-                    mag_sniper=(9, 12), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
+                    mag_sniper=(9, 12), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
                     ammo_rocket=(12, 6)),
     'props': dict((n + g, (w * FINE, h * FINE) if n in FINE_PROPS else (w, h))
                   for n, (w, h) in PROP_SIZES.items() for g in ([''] + (['_glow'] if n in GLOWING else []))),
