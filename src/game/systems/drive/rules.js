@@ -138,7 +138,7 @@ export function doorOf(v, C = CHASE) {
   return v.m?.door ?? [v.w * C.door[0], -C.door[1]];
 }
 
-// Is a contact the crash? a: the van's angle, (vx, vy) its velocity, (nx, ny) the normal into what it hit
+// Is a contact the crash? a: the car's angle, (vx, vy) its velocity, (nx, ny) the normal into what it hit
 export function nosedIn(a, vx, vy, nx, ny, C = CHASE) {
   const ca = Math.cos(a), sa = Math.sin(a);
   return ca * nx + sa * ny >= Math.cos(C.crash.cone) && vx * ca + vy * sa > C.crash.speed;

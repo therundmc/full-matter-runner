@@ -124,7 +124,7 @@ export default class Toll {
   // nothing else is told while a plaza is (Pursuit.busy: no shot, no ram, no brake), a breath before it too
   busy(x, v) { return !!this.near(x, v, this.C.tell + this.C.breath); }
 
-  // A wreck of theirs at (x, y) coming at a plaza (Pursuit.exit; C.wreck): { stop }: the x it is braked to a stand
+  // A wreck of theirs at (x, y) coming at a plaza (pursuit/wreck.js exit; C.wreck): { stop }: the x it is braked to a stand
   // before, `short` px short of the islands' noses (from `from` px out); nearer than `room` px to that, and to `past`
   // px beyond the gates, { lane, run }: its lane's line across, kept, and the least speed it runs on through at;
   // else null
@@ -152,7 +152,7 @@ export default class Toll {
     return { k, y: laneY(P, k, x + reach(this.C.lead, this.world.drive?.v ?? 0)) };
   }
 
-  // A pursuer's line across the road while it goes through a plaza (Pursuit.want): its gate chosen `decide` s out
+  // A pursuer's line across the road while it goes through a plaza (pursuit/steering.js want): its gate chosen `decide` s out
   // (car.toll: { P, k }), chosen again as he changes his mind until it is in the fan, then kept to the gates and
   // `past` px beyond: a wooden lane, the one he is not heading for if there are two, never across his way nor the
   // others' (woodFor); one with `gate0` 'steel' the steel one beside his (steelFor). The line `lead` s ahead of it;
@@ -169,7 +169,7 @@ export default class Toll {
     return laneY(P, car.toll.k, x + reach(C.lead, car.s));
   }
 
-  // the px along the road a car going through holds its middle at (Pursuit.want), or null (its slot's): one sent the
+  // the px along the road a car going through holds its middle at (pursuit/steering.js want), or null (its slot's): one sent the
   // wrong way `wrong` px off his (a car's length behind him: it hits the boom a moment after he is through), one
   // following him down his own lane `follow` px off it (behind him, never side by side in it); either keeps its slot
   // while still ahead of him in his lane (it would brake onto his nose)

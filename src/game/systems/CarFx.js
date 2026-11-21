@@ -248,7 +248,7 @@ export default class CarFx {
   contacts(dt) {
     const w = this.world, S = this.C.scrape;
     for (const pair of w.physics?.activePairs?.() || []) {
-      if (pair.isSensor && !pair.flank) continue; // (a car scraped along in a bend: Drive.flankOn, never resolved)
+      if (pair.isSensor && !pair.flank) continue; // (a car scraped along in a bend: drive/contacts.js flankOn, never resolved)
       const A = pair.bodyA.parent || pair.bodyA, B = pair.bodyB.parent || pair.bodyB;
       const ea = A.entity, eb = B.entity, ca = !!ea?.isVehicle, cb = !!eb?.isVehicle;
       if (!ca && !cb) continue;
